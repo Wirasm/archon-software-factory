@@ -60,9 +60,11 @@ The factory holds what the factory derived. The tracker holds what its authors w
 - A run leaves asks as part of its outcome. The engine validates them and opens them in the same write that completes the run.
 - A failed run has no outcome, so it opens no asks. It shows as a failure to look at.
 - An ask can be withdrawn. A new set from the same stage for the same item replaces the old one.
-- An operator who may act on the item's project may answer. When the operator is an agent, the answer records the run that gave it.
+- A set is settled when every ask in it is answered or withdrawn. If all were withdrawn, nothing starts.
+- Who may answer: for now the rule a run uses today, whoever started the work or an admin. It moves to the item's project when projects have permissions of their own. When the operator is an agent, the answer records the run that gave it.
 - When the whole set is answered, the engine starts the stage that asked, with the answers as input. The answer and that start are one write.
-- Later, on the same primitive: the pack may declare a shortcut from one option straight to another stage; a run may wait for an answer mid-run; a run may ask and keep going on its own recommendation. An agent never names a route at run time.
+- A run that pauses mid-run for an answer is shown as an ask, but it is not stored as one. The run owns its pause, and the attention list reads stored asks and paused runs into one shape, through one reader, answered by one call. Approval gates follow the same way. A run with no item needs none for this.
+- Later, on the same primitive: the pack may declare a shortcut from one option straight to another stage; a run may ask and keep going on its own recommendation. An agent never names a route at run time.
 
 ## Seams
 
@@ -90,7 +92,7 @@ No stage prompt names a forge.
 Attention, its watch, its events and the permission to answer are keyed on a run, and cleanup of finished runs erases an item's history. The engine work, in slices that are each correct alone:
 
 1. The item: a row, and its key on every run and start.
-2. Attention keyed on the item, with today's mid-run pause rebuilt on top.
+2. One attention reader and one item shape, in which a run is optional. Today's pause is derived into it, not copied.
 3. A typed outcome on a workflow, with asks as part of it; the last answer starts a stage.
 4. A binding that fires on a run's outcome.
 5. Retention by item.
