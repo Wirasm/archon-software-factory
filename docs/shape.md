@@ -70,6 +70,23 @@ An item's state is not a document. It is what a reader folds from the facts reco
 - A pack that reaches for a state document to hold item state is an engine finding.
 - To be tested on validate and land: a fact that changes often and that no stage owns, such as the current head of a change while checks come in. If an event per update is too heavy there, this section is wrong and gets reshaped.
 
+## Work orders
+
+A work order is a planned group of items: a release, a batch, a backlog switched on. It is an item, not a new primitive.
+
+- The order depends on its members (`depends_on` from the order to each). When every member has landed the order is ready, and its own stage starts, for example cutting the release.
+- Intake starts only members of an active order, top-ranked first, up to what capacity takes. The backlog waits as items, not as queued starts, so the start queue stays short and an answered item waits behind a few runs, not behind the backlog.
+- The order has its own asks and its own outcome, like any item.
+- Rank is a fact a ranking stage writes on the order. Dependencies between members give part of the order; rank fills in the rest.
+- One item sent by hand is an order of one. Automatic intake is a standing order with a rule for what joins it.
+
+The complexity sits in two places, and neither is measured yet.
+
+| Where | The hard part | Direction, unproven |
+|---|---|---|
+| At intake | Mapping dependencies across the whole group. Linking item by item compares each against all the others and raises an ask per proposed link, so switching on a backlog floods the operator. | Link the order once: one run sees the whole group and proposes the graph as one set of asks on the order. |
+| At outcome | Grouping what the members produce: one branch, a release, a staging or test pass on the combined tree. | The target is a fact of the order. Intake passes it to each member in the event that starts it, so a member's land stage lands on the order's target without reading its parent. Testing and staging are stages on the order, on the tree its members made. |
+
 ## Links
 
 Three kinds, each stored with a direction. Only accepted links are stored.
