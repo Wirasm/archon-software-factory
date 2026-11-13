@@ -8,6 +8,8 @@ $INPUTS.item
 
 You are in a checkout of the project. Change nothing.
 
+Read `.archon/direction.md`, `.archon/engineering.md` and `.archon/architecture.md`, and judge the item against them.
+
 The buckets:
 
 - **build**: the work should be done.
