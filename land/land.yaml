@@ -1,0 +1,57 @@
+name: land
+description: |
+  Land one built change on its landing branch, after checking the tree that
+  would land. With no forge, the landing branch is a local branch. Pushes nothing.
+
+model: ['@lander', medium]
+
+inputs:
+  item:
+    description: The work item as text.
+  build:
+    description: What build concluded, as its result. It holds the commit to land.
+  landing_branch:
+    default: ""
+    description: The branch this change lands on. Empty means the project's base branch.
+
+returns: land
+
+nodes:
+  - id: land
+    command: land
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        outcome: { type: string, enum: [landed, returned, stop] }
+        summary: { type: string, description: 'For a maintainer who has not followed the item.' }
+        landing_branch: { type: string, description: 'The branch it landed on, or would have.' }
+        from: { type: string, description: 'The commit the landing branch pointed at when you started.' }
+        to: { type: string, description: 'The commit it points at now. Empty unless landed.' }
+        checked: { type: string, description: 'The command run on the combined tree, and what it showed.' }
+        returned: { type: string, description: 'With returned: what a builder needs to fix. Empty otherwise.' }
+        stop: { type: string, description: 'With stop: what prevents landing, and what you recommend. Empty otherwise.' }
+        asks:
+          type: array
+          description: 'Each decision that belongs to a maintainer. Empty when there is none.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              question: { type: string }
+              context: { type: string }
+              options:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    id: { type: string }
+                    does: { type: string }
+                    cost: { type: string }
+                  required: [id, does, cost]
+              recommend: { type: string }
+              why: { type: string }
+            required: [question, context, options, recommend, why]
+        notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
+      required: [outcome, summary, landing_branch, from, to, checked, returned, stop, asks, notes]
