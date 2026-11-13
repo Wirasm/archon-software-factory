@@ -70,6 +70,21 @@ An item's state is not a document. It is what a reader folds from the facts reco
 - A pack that reaches for a state document to hold item state is an engine finding.
 - To be tested on validate and land: a fact that changes often and that no stage owns, such as the current head of a change while checks come in. If an event per update is too heavy there, this section is wrong and gets reshaped.
 
+## Links
+
+Three kinds, each stored with a direction. Only accepted links are stored.
+
+| Kind | Direction | Who acts on it |
+|---|---|---|
+| `depends_on` | from the item that waits, to the item it waits for | The engine: an item is ready when what it depends on has landed |
+| `part_of` | from the piece, to the whole | Ranking and the graph |
+| `duplicate_of` | from the item that goes away, to the one that stays | The pack closes or folds the first |
+
+- The link stage proposes, and a proposal is an ask. The answer writes the link. For two items that overlap, the stage says so and asks which one stays; it does not pick.
+- Measured on nine items and six models: five found the real duplicate pair and all five read its direction the other way from the maintainer; two models added dependencies that were not real. A wrong `depends_on` stops an item from starting, so the engine never waits on a guess.
+- A link that stops being true is ended by a second fact, not deleted.
+- Cost: more asks, about one for every three items at first. To be measured, together with how many repeat an answer already given.
+
 ## Asks
 
 - A run leaves asks as part of its outcome. The engine validates them and opens them in the same write that completes the run.
