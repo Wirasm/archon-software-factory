@@ -55,6 +55,21 @@ The factory holds what the factory derived. The tracker holds what its authors w
 - A proposed link that is accepted is a ruling. It is written to the tracker as its author's, and from then on it is input like any other.
 - The engine's graph is the one delivery waits on. Because the engine owns it, any surface can draw it.
 
+## How a pack shapes an item's state
+
+An item's state is not a document. It is what a reader folds from the facts recorded on the item, and a workflow writer shapes it by declaring types, in three places.
+
+| Place | What the writer declares | Status |
+|---|---|---|
+| What a stage writes | The stage's result type. A plan stage that returns `size` and `plan` has added both to the item. | Exists: `returns:` with an output format |
+| What a stage reads | A binding maps the latest result of an earlier stage on the same item, and the item's answered asks, into the stage's inputs. | Slice 4 |
+| What comes from outside | A fact no run produced (the tracker closed the item, a change was merged by hand) arrives as an event on the item with a payload, through the same door as "an item arrives". | Slice 4 |
+
+- A fact is written once and never edited. The latest one wins and the history stays.
+- No node sets a status or a position, and there is no per-item document a workflow can overwrite. Two writers on one field is where the old pack's state drifted, and a run that dies mid-way would leave it half-updated.
+- A pack that reaches for a state document to hold item state is an engine finding.
+- To be tested on validate and land: a fact that changes often and that no stage owns, such as the current head of a change while checks come in. If an event per update is too heavy there, this section is wrong and gets reshaped.
+
 ## Asks
 
 - A run leaves asks as part of its outcome. The engine validates them and opens them in the same write that completes the run.
