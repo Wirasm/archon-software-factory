@@ -1,0 +1,23 @@
+# Scenarios carried from the old pack's backlog
+
+Each row is a problem the SDLC pack bundled with Archon met on real work. The issues were closed there on 2026-11-13 because the pack is being rebuilt here. They are not requirements and they are not shaped yet. They are cases the factory should handle, or should make impossible by its shape, and a place to look for real examples when a stage is built.
+
+| Source | Case | What was true in the old pack | Carry |
+|---|---|---|---|
+| [Archon 4970](https://github.com/coleam00/Archon/issues/4970) | Merge sweep acts through typed tools | Asks to rebuild facts/sweep/record, the hand-off scripts the new shape drops. | move the 8 replayed sweeps as a scenario. |
+| [Archon 5170](https://github.com/coleam00/Archon/issues/5170) | Merge queue records why it acted on each PR | Sweep decision record and sensitive-path facts are old merge-queue machinery; `protected_paths` now exists (`.archon/workflows/sdlc/.pack/pack.yaml:28`). | move "ready PR skipped 12 sweeps with no reason" as a scenario. |
+| [Archon 5171](https://github.com/coleam00/Archon/issues/5171) | Reviewers mark findings blocking with evidence | Merged in PR 5172 (`646fcfb66`); open only for a measurement. | move "only useful tests block" as a scenario. |
+| [Archon 5188](https://github.com/coleam00/Archon/issues/5188) | Only one run writes a PR branch | Two queues writing one branch is a claim/ownership problem of the two-queue shape; push still only refuses (`.archon/workflows/sdlc/.shared/push.ts:1-10`). | move as a scenario. |
+| [Archon 5254](https://github.com/coleam00/Archon/issues/5254) | Build queue relaunches rounds on evidence no stage can produce | Policy now says "the queue asks once for it at that head instead" (`.archon/workflows/sdlc/.shared/policy/build.md:32-33`) and parks outside waits (PR 5539). Prompt policy, not measured. | move the issue-5236 case as a scenario. |
+| [Archon 5316](https://github.com/coleam00/Archon/issues/5316) | PRD intake: hypothesis check, split, post-release verdict | Adds stage machinery to the old pack. | move to the new repo as a scenario. |
+| [Archon 5318](https://github.com/coleam00/Archon/issues/5318) | PRD: a light delivery route | A second route is more stage machinery in the old pack. | move "small change, fast" as a scenario. |
+| [Archon 5355](https://github.com/coleam00/Archon/issues/5355) | Builds stop and ask when they stop converging | Prompt and stop-rule tuning of the old pack. | move the over-build cases (PRs 5306, 5312) as scenarios. |
+| [Archon 5394](https://github.com/coleam00/Archon/issues/5394) | Metrics report whether each stage converges | `sdlc.review_rounds` exists (tracker baseline 2.91); the rest is more pack metric scripts. | move the metric list to the new repo. |
+| [Archon 5399](https://github.com/coleam00/Archon/issues/5399) | Tests lens and test-value judge share one definition | Prompt tuning of the old pack. | move as a scenario. |
+| [Archon 5447](https://github.com/coleam00/Archon/issues/5447) | Builds over-test and review asks for more | Prompt tuning of the old pack. | move the four PRs as scenarios. |
+| [Archon 5459](https://github.com/coleam00/Archon/issues/5459) | A slice ruling settles scope in every review round | Review still defers only on a `part` input (`.archon/workflows/sdlc/review/commands/review-scope.md:47`). Tracker slices no longer land through the old pack. | move as a scenario. |
+| [Archon 5460](https://github.com/coleam00/Archon/issues/5460) | Review refused for a moved head still records the reviewed commit | Still true: the refusal (`.archon/workflows/sdlc/review/scripts/publish-review.ts:79-82`) comes before the cursor write (`:101`). Review-cursor machinery. | move as a scenario. |
+| [Archon 5466](https://github.com/coleam00/Archon/issues/5466) | Build queue can't wait for a sibling PR | A parked item returns only by re-triage (`.archon/workflows/sdlc/.shared/build.ts:99`); the revisit covers only `stage === 'blocked'` (`:176`). | move as a scenario. |
+| [Archon 5468](https://github.com/coleam00/Archon/issues/5468) | Attention: a non-pausing notice | PR 5527 (`62e297607`): a workflow can emit a notice. The mid-run question with a recommendation is not built. | move the mid-run question to the new repo. |
+| [Archon 5478](https://github.com/coleam00/Archon/issues/5478) | Interactive shaping workflow | A new workflow for the old pack. | to the new repo as a scenario. |
+| [Archon 5424](https://github.com/coleam00/Archon/issues/5424) | Linear as the work-item tracker | A forge plugin plus a tracker/code split; a community comment asks the same for Jira. | Keep the plugin; move the split to the new repo's design. |
