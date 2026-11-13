@@ -2,6 +2,8 @@
 
 What the factory is built from, and what it needs the engine to be. One page on purpose. A stage, a slice of engine work or an agent's brief starts from here.
 
+An **operator** is whoever uses Archon: a person, or far more often that person's agent. Where this page says operator it means either.
+
 ## Primitives
 
 | Primitive | What it is |
@@ -38,14 +40,14 @@ Where an item stands is never stored. It is its last outcome plus its open asks.
 
 ## Who holds the state
 
-The factory holds what the factory derived. The tracker holds what its authors wrote, and an author is a person or their agent. There is never a two-way sync.
+The factory holds what the factory derived. The tracker holds what its authors wrote. An author can be an operator or anyone else who files there, and is as likely an agent as a person. There is never a two-way sync.
 
 | Fact | Written by | Lives in | The other side |
 |---|---|---|---|
 | The item's text and its discussion | The tracker's authors | Tracker | The engine keeps a reference and a version |
 | Priority, cycle, a relation someone set | The tracker's authors | Tracker | The engine reads it as input |
 | Bucket, size, proposed links | The factory | Engine | Shown in the tracker as a label, a comment or a native relation |
-| Asks, answers, run history | The factory and whoever answers | Engine | A ruling is written back so it can be seen |
+| Asks, answers, run history | The factory and the operator | Engine | A ruling is written back so it can be seen |
 
 - The factory acts only on items it has admitted. Before intake, an item is just a thing in someone's tracker.
 - Tracker to factory: an edit changes the item's version, so judging or linking runs again and the graph is derived again.
@@ -58,7 +60,7 @@ The factory holds what the factory derived. The tracker holds what its authors w
 - A run leaves asks as part of its outcome. The engine validates them and opens them in the same write that completes the run.
 - A failed run has no outcome, so it opens no asks. It shows as a failure to look at.
 - An ask can be withdrawn. A new set from the same stage for the same item replaces the old one.
-- Whoever may act on the item's project may answer. A person or an agent; an agent's answer records the run that gave it.
+- An operator who may act on the item's project may answer. When the operator is an agent, the answer records the run that gave it.
 - When the whole set is answered, the engine starts the stage that asked, with the answers as input. The answer and that start are one write.
 - Later, on the same primitive: the pack may declare a shortcut from one option straight to another stage; a run may wait for an answer mid-run; a run may ask and keep going on its own recommendation. An agent never names a route at run time.
 
