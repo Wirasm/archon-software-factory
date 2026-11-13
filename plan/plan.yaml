@@ -2,7 +2,7 @@ name: plan
 description: |
   Plan one work item: the ways it could be built, a recommendation, and the plan for a builder. Reads the project, changes nothing.
 
-model: ['@plan', large]
+model: ['@planner', large]
 
 inputs:
   item:
