@@ -46,4 +46,5 @@ nodes:
           type: array
           items: { type: string }
           description: 'What the result rests on: files, docs, commits, other items.'
-      required: [recommend, why, options, summary, size, cites]
+        notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
+      required: [recommend, why, options, summary, size, cites, notes]

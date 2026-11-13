@@ -7,3 +7,9 @@ inputs:
       Path to the project's own triage policy, a document that says what its
       maintainers judge work items against. Relative to the project, or absolute.
       Empty means the project has none and the pack's default applies alone.
+  build_policy:
+    default: ""
+    description: >-
+      Path to the project's own build policy, a document that says what its
+      maintainers hold a change to. Relative to the project, or absolute. Empty
+      means the project has none and the pack's default applies alone.

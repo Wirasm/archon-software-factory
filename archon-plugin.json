@@ -6,6 +6,8 @@
   "entrypoints": {
     "triage": "triage/triage.yaml",
     "judge": "judge/judge.yaml",
-    "link": "link/link.yaml"
+    "link": "link/link.yaml",
+    "plan": "plan/plan.yaml",
+    "plan-single": "plan-single/plan-single.yaml"
   }
 }

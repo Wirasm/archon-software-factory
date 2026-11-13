@@ -1,0 +1,48 @@
+name: plan
+description: |
+  Plan one work item: the ways it could be built, a recommendation, and the plan for a builder. Reads the project, changes nothing.
+
+model: ['@plan', large]
+
+inputs:
+  item:
+    description: The work item as text.
+  judgment:
+    default: "None recorded."
+    description: What triage concluded about the item.
+  links:
+    default: "Nothing."
+    description: The items that had to land before this one.
+
+returns: plan
+
+nodes:
+  - id: plan
+    command: plan
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        options:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              name: { type: string, description: 'smallest, complete, or a short name for a different way.' }
+              does: { type: string }
+              builds_on: { type: string, description: 'What already exists in the project that it uses.' }
+              size: { type: string, enum: [xs, s, m, l, xl], description: 'Changed lines: xs under 300, s under 600, m under 1000, l under 1700, xl above.' }
+              cost: { type: string, description: 'What choosing it costs.' }
+            required: [name, does, builds_on, size, cost]
+        recommend: { type: string, description: 'The name of the option you recommend, or none.' }
+        why: { type: string, description: 'One line: why this one.' }
+        plan: { type: string, description: 'The plan for a builder. Empty when there is none.' }
+        proves:
+          type: array
+          items: { type: string }
+          description: 'For each thing the item asks for, how the change will be shown to do it.'
+        stop: { type: string, description: 'Why it cannot be planned, and what has to happen first. Empty otherwise.' }
+        notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
+      required: [options, recommend, why, plan, proves, stop, notes]

@@ -40,4 +40,5 @@ nodes:
               kind: { type: string, enum: [depends_on, same_as, part_of] }
               why: { type: string }
             required: [to, kind, why]
-      required: [outcome, summary, links]
+        notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
+      required: [outcome, summary, links, notes]
