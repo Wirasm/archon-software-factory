@@ -8,7 +8,7 @@ inputs:
   item:
     description: The work item as text.
   plan:
-    description: What plan concluded: the option it recommends and the plan for it.
+    description: What plan concluded, as its result. It holds the option plan recommends and the plan for it.
   answers:
     default: "None."
     description: Decisions an operator already made on this item.
