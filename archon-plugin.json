@@ -8,6 +8,7 @@
     "judge": "judge/judge.yaml",
     "link": "link/link.yaml",
     "plan": "plan/plan.yaml",
-    "build": "build/build.yaml"
+    "build": "build/build.yaml",
+    "review": "review/review.yaml"
   }
 }

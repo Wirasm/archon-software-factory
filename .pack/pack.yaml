@@ -19,3 +19,9 @@ inputs:
       Path to the project's own build policy, a document that says what its
       maintainers hold the code of a change to. Relative to the project, or absolute. Empty
       means the project has none and the pack's default applies alone.
+  review_policy:
+    default: ""
+    description: >-
+      Path to the project's own review policy, a document that says what its
+      maintainers hold a change to before it lands. Relative to the project, or
+      absolute. Empty means the project has none and the pack's default applies alone.

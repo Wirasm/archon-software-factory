@@ -1,0 +1,64 @@
+name: review
+description: |
+  Review one built change against its item, in a checkout of its commit, and
+  decide whether it should land. Changes nothing in the change.
+
+model: ['@reviewer', large]
+
+inputs:
+  item:
+    description: The work item as text.
+  base:
+    description: The commit the change was built on.
+
+returns: review
+
+nodes:
+  - id: review
+    command: review
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        outcome: { type: string, enum: [approve, return] }
+        summary: { type: string, description: 'For a maintainer deciding whether to land it.' }
+        findings:
+          type: array
+          description: 'With return: each thing that must change. Empty with approve.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              what: { type: string }
+              where: { type: string }
+              evidence: { type: string }
+              cost_to_leave: { type: string }
+            required: [what, where, evidence, cost_to_leave]
+        checked:
+          type: array
+          items: { type: string }
+          description: 'Each thing you ran or read to decide, and what it showed.'
+        asks:
+          type: array
+          description: 'Each decision that belongs to a maintainer. Empty when there is none.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              question: { type: string }
+              context: { type: string }
+              options:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    id: { type: string }
+                    does: { type: string }
+                    cost: { type: string }
+                  required: [id, does, cost]
+              recommend: { type: string }
+              why: { type: string }
+            required: [question, context, options, recommend, why]
+        notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
+      required: [outcome, summary, findings, checked, asks, notes]
