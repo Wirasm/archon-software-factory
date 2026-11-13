@@ -93,18 +93,20 @@ The complexity sits in two places, and neither is measured yet.
 | Where | The hard part | Direction, unproven |
 |---|---|---|
 | At intake | Mapping dependencies across the whole group. Linking item by item compares each against all the others and raises an ask per proposed link, so switching on a backlog floods the operator. | Link the order once: one run sees the whole group and proposes the graph as one set of asks on the order. |
-| At outcome | Grouping what the members produce: one branch, a release, a staging or test pass on the combined tree. | The landing branch, below. Testing and staging are stages on the order, on the tree its members made. |
+| At outcome | Grouping what the members produce: one branch, a release, a staging or test pass on the combined tree. | Opt-in: a target set on the order, below. Without one, members land on the base branch and there is nothing to group. |
 
 ### The landing branch
 
-Every item has two branches: the one its change is made on, and the one that change lands on. For an item on its own, the landing branch is the project's default branch.
+Every item lands on the project's base branch unless a target is set. Setting a target is a choice, for any item and for any work order.
 
-For a work order the rule is the same, applied once more: a member's landing branch is the order's own change branch. Members land there together, the order's stages test or stage that tree, and the order then lands it on its own landing branch. An order inside an order works the same way, so a release made of features made of items needs no extra rule.
+- **No target set:** an item lands on the base branch. A work order's members each land on the base branch, one by one, and the order only tracks them. This is the default and needs no branch of its own.
+- **A target on an item:** that item lands there.
+- **A target on a work order:** its members land there together. The order's stages can test or stage that tree, and the order then lands it where the order itself lands: the base branch, or its own target if it sits inside another order with one.
 
 - Intake passes the landing branch to a member in the event that starts it. A member never reads its order.
-- No stage assumes the default branch. Land takes the landing branch as an input.
+- No stage assumes a branch. Land takes the landing branch as an input, and the base branch is only the value used when nothing was set.
 - With no forge this is local branches and merges.
-- Not measured: an order branch that lives for days drifts from the default branch, so the order's own landing can conflict. Whether the order has to follow the default branch while it is open, and who does that, is open.
+- Not measured: a target branch that lives for days drifts from the base branch, so landing it can conflict late. Whether it has to follow the base branch while it is open, and who does that, is open. It only arises when a target is chosen.
 
 ## Links
 
