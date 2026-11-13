@@ -11,10 +11,11 @@ What the factory is built from, and what it needs the engine to be. One page on 
 | **Run** | One attempt of a stage on one item. Thrown away after. |
 | **Outcome** | The typed end of a run, declared by its stage and checked by the engine. |
 | **Ask** | A decision that belongs to an item: context, options with what each costs, a recommendation, links to artifacts. |
+| **Link** | A relation between two items: depends on, same as, part of. Held by the engine, so it can hold an item back until what it depends on has landed. |
 | **Seam** | A typed operation to something outside: tracker, change host, checks, identity. |
 | **Capacity** | How many runs at once, per resource. |
 
-An item has many runs. A run is one attempt of one stage and ends in exactly one outcome. An item has zero or more asks. Seams belong to the project. Capacity belongs to a resource.
+An item has many runs. A run is one attempt of one stage and ends in exactly one outcome. An item has zero or more asks. Seams belong to the project. Capacity belongs to a resource. Links connect items into a graph, and an item is ready when its last outcome is build and nothing it depends on is still open.
 
 ## The one rule
 
@@ -34,6 +35,23 @@ If this run died now, what must the next run know? That is the item's. What shou
 - **Run:** the checkout, the agent session, the workflow source it started on, its capacity slot, evidence at a head, time and tokens spent.
 
 Where an item stands is never stored. It is its last outcome plus its open asks. Evidence stays on the run and is looked up by item and head.
+
+## Who holds the state
+
+The factory holds what the factory derived. The tracker holds what its authors wrote, and an author is a person or their agent. There is never a two-way sync.
+
+| Fact | Written by | Lives in | The other side |
+|---|---|---|---|
+| The item's text and its discussion | The tracker's authors | Tracker | The engine keeps a reference and a version |
+| Priority, cycle, a relation someone set | The tracker's authors | Tracker | The engine reads it as input |
+| Bucket, size, proposed links | The factory | Engine | Shown in the tracker as a label, a comment or a native relation |
+| Asks, answers, run history | The factory and whoever answers | Engine | A ruling is written back so it can be seen |
+
+- The factory acts only on items it has admitted. Before intake, an item is just a thing in someone's tracker.
+- Tracker to factory: an edit changes the item's version, so judging or linking runs again and the graph is derived again.
+- Factory to tracker: the engine writes its outcome back through the tracker seam.
+- A proposed link that is accepted is a ruling. It is written to the tracker as its author's, and from then on it is input like any other.
+- The engine's graph is the one delivery waits on. Because the engine owns it, any surface can draw it.
 
 ## Asks
 
