@@ -1,0 +1,60 @@
+name: build
+description: |
+  Make one planned change in its own checkout and commit it. Pushes nothing.
+
+model: ['@builder', large]
+
+inputs:
+  item:
+    description: The work item as text.
+  plan:
+    description: What plan concluded: the option it recommends and the plan for it.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
+
+returns: build
+
+nodes:
+  - id: build
+    command: build
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        outcome: { type: string, enum: [built, stop] }
+        summary: { type: string, description: 'For a maintainer who has not read the plan.' }
+        changed:
+          type: array
+          items: { type: string }
+          description: 'What changed, one line per part of the change.'
+        checked:
+          type: array
+          items: { type: string }
+          description: 'Each thing you ran to check your work, and what it showed.'
+        commit: { type: string, description: 'The commit that holds the change. Empty when there is none.' }
+        asks:
+          type: array
+          description: 'Each decision that belongs to a maintainer. Empty when there is none.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              question: { type: string }
+              context: { type: string }
+              options:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    id: { type: string }
+                    does: { type: string }
+                    cost: { type: string }
+                  required: [id, does, cost]
+              recommend: { type: string }
+              why: { type: string }
+            required: [question, context, options, recommend, why]
+        stop: { type: string, description: 'Why it could not be built, and what you recommend. Empty otherwise.' }
+        notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
+      required: [outcome, summary, changed, checked, commit, asks, stop, notes]
