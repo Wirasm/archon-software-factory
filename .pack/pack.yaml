@@ -19,10 +19,3 @@ inputs:
       Path to the project's own build policy, a document that says what its
       maintainers hold the code of a change to. Relative to the project, or absolute. Empty
       means the project has none and the pack's default applies alone.
-  validate_command:
-    default: ""
-    description: >-
-      The command that proves a change works in this project, run from the
-      project's root, for example `cargo test && cargo clippy -- -D warnings`.
-      Empty means none is declared yet: the validate and land stages find the
-      check the maintainers use and propose it as an ask.
