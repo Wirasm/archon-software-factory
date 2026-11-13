@@ -1,6 +1,6 @@
 name: plan-single
 description: |
-  Comparison variant of plan: one plan, with options only when there is a real choice. Reads the project, changes nothing.
+  Comparison variant of plan: one plan that records decisions, not options. Reads the project, changes nothing.
 
 model: ['@plan', large]
 
@@ -24,7 +24,7 @@ nodes:
       type: object
       additionalProperties: false
       properties:
-        outcome: { type: string, enum: [plan, options, stop] }
+        outcome: { type: string, enum: [plan, stop] }
         size: { type: string, enum: [xs, s, m, l, xl, none], description: 'Changed lines of the plan: xs under 300, s under 600, m under 1000, l under 1700, xl above. none when there is no plan.' }
         options:
           type: array
