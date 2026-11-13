@@ -1,0 +1,486 @@
+[
+ {
+  "id": 1014,
+  "title": "Inspect loop iteration output and tool activity",
+  "decision": "build",
+  "note": null,
+  "lane": "decide",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 1175,
+  "title": "Edit a project's base branch from the console",
+  "decision": "row",
+  "note": "would need to be byult with the right primitives and shaped, but yes",
+  "lane": "decide",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 1239,
+  "title": "Stop button for chat responses",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 1281,
+  "title": "worktree.linkFiles symlinks",
+  "decision": "recipe",
+  "note": null,
+  "lane": "decide",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "disagree"
+  }
+ },
+ {
+  "id": 1450,
+  "title": "Microsoft Foundry (Azure) for Claude",
+  "decision": "recipe",
+  "note": "should be users own config in providers",
+  "lane": "decide",
+  "overrode_recommendation": true,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "partly"
+  }
+ },
+ {
+  "id": 2006,
+  "title": "Your project is in the Hermes Community Hub",
+  "decision": "close",
+  "note": null,
+  "lane": "close",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "BLOCKED",
+    "blocked_reason": "A maintainer must decide whether to close this informational announcement; it requests no work, and policy reserves this kind of close for a maintainer.",
+    "blocked_by": []
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 2206,
+  "title": "Repo worktree inside a container",
+  "decision": "park",
+  "note": "there should be another issue for this as well, needs proper shaping, probably build but build the primitive right",
+  "lane": "big",
+  "overrode_recommendation": true,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "partly"
+  }
+ },
+ {
+  "id": 2252,
+  "title": "Projects spanning several git repositories",
+  "decision": "narrow",
+  "note": "would need deeper thinking",
+  "lane": "decide",
+  "overrode_recommendation": true,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "partly"
+  }
+ },
+ {
+  "id": 2540,
+  "title": "Pin a workflow to a project or channel",
+  "decision": "close",
+  "note": "close or keep parked, would need proper shaping and primitives\n\nthe intent is for the factory to run as intended, might be relevant for other marketplace packs etc or users own workflows",
+  "lane": "decide",
+  "overrode_recommendation": true,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "BLOCKED",
+    "blocked_reason": "The requested portable channel override depends on the separately owned normalized adapter/channel identity in #2786.",
+    "blocked_by": [
+     "https://github.com/coleam00/Archon/issues/2786"
+    ]
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 2797,
+  "title": "Codex gateway baseUrl (parity with #2185)",
+  "decision": "native",
+  "note": null,
+  "lane": "decide",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "BLOCKED",
+    "blocked_reason": "The maintainer explicitly sequenced this Codex gateway design work behind the still-open Claude gateway issue #2185.",
+    "blocked_by": [
+     "https://github.com/coleam00/Archon/issues/2185"
+    ]
+   },
+   "grade": "partly"
+  }
+ },
+ {
+  "id": 4291,
+  "title": "PostgreSQL slot-holder query fails on a non-UUID holder",
+  "decision": "close",
+  "note": null,
+  "lane": "close",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "BLOCKED",
+    "blocked_reason": "The maintainer's dated ruling requires a real invalid-UUID error log or a code path that writes non-UUID holder IDs before re-triage; neither is present.",
+    "blocked_by": []
+   },
+   "grade": "partly"
+  }
+ },
+ {
+  "id": 4935,
+  "title": "Bounded correction of invalid final JSON",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 5176,
+  "title": "SQLite \"database is locked\" killed 24 runs on v0.11.1",
+  "decision": "close",
+  "note": null,
+  "lane": "close",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "NO_ACTION",
+    "closure": {
+     "kind": "delivered",
+     "url": "https://github.com/coleam00/Archon/pull/3796"
+    }
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 5256,
+  "title": "auth-service cookie never expires server-side",
+  "decision": "deprecate",
+  "note": "probably drop, needs investigation for a real answer",
+  "lane": "decide",
+  "overrode_recommendation": true,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "deliver"
+   },
+   "grade": "disagree"
+  }
+ },
+ {
+  "id": 5300,
+  "title": "Codex required-field diagnostics docs sentence",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "CLOSED",
+  "old_pack": {
+   "verdict": {
+    "contract": "NO_ACTION",
+    "closure": {
+     "kind": "delivered",
+     "url": "https://github.com/coleam00/Archon/pull/5511"
+    }
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 5301,
+  "title": "SSE heartbeat test cleanup outside finally",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "CLOSED",
+  "old_pack": {
+   "verdict": {
+    "contract": "NO_ACTION",
+    "closure": {
+     "kind": "delivered",
+     "url": "https://github.com/coleam00/Archon/pull/5513"
+    }
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 5335,
+  "title": "Codex rejects omitted nullable MCP status fields",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "CLOSED",
+  "old_pack": {
+   "verdict": {
+    "contract": "NO_ACTION",
+    "closure": {
+     "kind": "delivered",
+     "url": "https://github.com/coleam00/Archon/pull/5434"
+    }
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 5341,
+  "title": "Dry-run loops past iteration 1",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 5343,
+  "title": "Live graph node state + loop drill-in",
+  "decision": "fold",
+  "note": null,
+  "lane": "decide",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "disagree"
+  }
+ },
+ {
+  "id": 5349,
+  "title": "Expose the run's starting commit to nodes",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 5350,
+  "title": "workflow get --json cuts node output to 200 chars",
+  "decision": "close",
+  "note": null,
+  "lane": "close",
+  "overrode_recommendation": false,
+  "state_at_eval": "CLOSED",
+  "old_pack": {
+   "verdict": {
+    "contract": "NO_ACTION",
+    "closure": {
+     "kind": "delivered",
+     "url": "https://github.com/coleam00/Archon/pull/5440"
+    }
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 5351,
+  "title": "Load workflows from a git ref of the project's repo",
+  "decision": "decline",
+  "note": null,
+  "lane": "decide",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "BLOCKED",
+    "blocked_reason": "A maintainer decision is needed on whether to close the request or keep it after the author explains what the existing alternatives do not cover.",
+    "blocked_by": []
+   },
+   "grade": "partly"
+  }
+ },
+ {
+  "id": 5388,
+  "title": "Slack select answers can't carry text",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "BLOCKED",
+    "blocked_reason": "The maintainer's recorded decision on #5474 is required before building Slack support for the Other answer, which is part of this issue's acceptance.",
+    "blocked_by": [
+     "https://github.com/coleam00/Archon/issues/5474"
+    ]
+   },
+   "grade": "partly"
+  }
+ },
+ {
+  "id": 5408,
+  "title": "Console: per-node model/provider/effort + totals",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 5418,
+  "title": "Run page tab and node filter not in the URL",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "CLOSED",
+  "old_pack": {
+   "verdict": {
+    "contract": "NO_ACTION",
+    "closure": {
+     "kind": "delivered",
+     "url": "https://github.com/coleam00/Archon/pull/5436"
+    }
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 5419,
+  "title": "Run lists never show when a run started",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "CLOSED",
+  "old_pack": {
+   "verdict": {
+    "contract": "NO_ACTION",
+    "closure": {
+     "kind": "delivered",
+     "url": "https://github.com/coleam00/Archon/pull/5435"
+    }
+   },
+   "grade": "agree"
+  }
+ },
+ {
+  "id": 5424,
+  "title": "Linear as work-item tracker (forge plugin + SDLC change)",
+  "decision": "list-pack",
+  "note": "should build but needs proper shaping, and preferably this is a community plugin, we choose between jira and linear as a archon supported plugion, or rather archon maintained",
+  "lane": "decide",
+  "overrode_recommendation": true,
+  "state_at_eval": "OPEN",
+  "old_pack": {
+   "verdict": {
+    "contract": "READY",
+    "route": "plan"
+   },
+   "grade": "partly"
+  }
+ },
+ {
+  "id": 5425,
+  "title": "Docs: terminal answer 'continues in place'",
+  "decision": "build",
+  "note": null,
+  "lane": "build",
+  "overrode_recommendation": false,
+  "state_at_eval": "CLOSED",
+  "old_pack": {
+   "verdict": {
+    "contract": "NO_ACTION",
+    "closure": {
+     "kind": "delivered",
+     "url": "https://github.com/coleam00/Archon/pull/5439"
+    }
+   },
+   "grade": "agree"
+  }
+ }
+]

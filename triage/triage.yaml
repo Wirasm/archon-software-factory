@@ -1,0 +1,51 @@
+name: triage
+description: |
+  Decide what should happen next to one work item: route it to be built, leave
+  asks for a maintainer, or close it with a reason. Reads the project, changes
+  nothing.
+
+model: ['@triage', medium]
+
+inputs:
+  item:
+    description: >-
+      The work item as text: its title, its body, and the discussion on it.
+
+returns: triage
+
+nodes:
+  - id: triage
+    command: triage
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        outcome: { type: string, enum: [route, asks, close] }
+        summary: { type: string }
+        route: { type: string, enum: [investigate, plan, deliver, none] }
+        size: { type: string, enum: [xs, s, m, l, xl, none] }
+        close_reason: { type: string, enum: [delivered, duplicate, already_possible, out_of_scope, not_actionable, none] }
+        cites: { type: array, items: { type: string } }
+        asks:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              question: { type: string }
+              context: { type: string }
+              options:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    id: { type: string }
+                    does: { type: string }
+                    tradeoff: { type: string }
+                  required: [id, does, tradeoff]
+              recommend: { type: string }
+              why: { type: string }
+            required: [question, context, options, recommend, why]
+      required: [outcome, summary, route, size, close_reason, cites, asks]
