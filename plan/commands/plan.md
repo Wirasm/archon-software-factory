@@ -14,7 +14,7 @@ What had to land before it:
 
 $INPUTS.links
 
-The build policy is what this project's maintainers hold a change to. Read the pack's default at `$PACK_DIR/.shared/policy/build.md`. Then read the project's own at `$INPUTS.build_policy`, when one is named there. Where they differ, the project's wins.
+The plan policy is what this project's maintainers hold a design to. Read the pack's default at `$PACK_DIR/.shared/policy/plan.md`. Then read the project's own at `$INPUTS.plan_policy`, when one is named there. Where they differ, the project's wins.
 
 You are in a checkout of the project.
 
