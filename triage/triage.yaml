@@ -22,13 +22,26 @@ nodes:
       additionalProperties: false
       properties:
         outcome: { type: string, enum: [route, asks, close] }
-        summary: { type: string }
-        route: { type: string, enum: [investigate, plan, deliver, none] }
-        size: { type: string, enum: [xs, s, m, l, xl, none] }
-        close_reason: { type: string, enum: [delivered, duplicate, already_possible, out_of_scope, not_actionable, none] }
-        cites: { type: array, items: { type: string } }
+        summary: { type: string, description: 'For a maintainer who has not read the item.' }
+        route:
+          type: string
+          enum: [investigate, plan, deliver, none]
+          description: 'With outcome route: what the work needs next. Otherwise none.'
+        size:
+          type: string
+          enum: [xs, s, m, l, xl, none]
+          description: 'With outcome route: changed lines of the smallest change that meets the item. xs under 300, s under 600, m under 1000, l under 1700, xl above. Otherwise none.'
+        close_reason:
+          type: string
+          enum: [delivered, duplicate, already_possible, out_of_scope, not_actionable, none]
+          description: 'With outcome close: why nothing should be built. Otherwise none.'
+        cites:
+          type: array
+          items: { type: string }
+          description: 'What the result rests on: files, docs, commits, other items.'
         asks:
           type: array
+          description: 'With outcome asks: each decision a maintainer has to make, with its context, the options and what each costs, and the one recommended. Otherwise empty.'
           items:
             type: object
             additionalProperties: false
