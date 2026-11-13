@@ -72,6 +72,8 @@ An item's state is not a document. It is what a reader folds from the facts reco
 
 ## Work orders
 
+> **Hypothesis, not a decision.** Everything in this section, including turning everything on and the landing branch, is shaping from 2026-11-13. Nothing here is ruled, and nothing is built on it until it has been tried on real items.
+
 A work order is a planned group of items: a release, a batch, a backlog switched on. It is an item, not a new primitive.
 
 - The order depends on its members (`depends_on` from the order to each). When every member has landed the order is ready, and its own stage starts, for example cutting the release.
