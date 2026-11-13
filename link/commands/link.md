@@ -23,6 +23,8 @@ You are in a checkout of the project. Change nothing.
 End in one of two outcomes:
 
 - **place**: it stands as its own piece of work. Name what has to land before it.
-- **fold**: it is the same work as another item, or a part of one. Name that item.
+- **fold**: it overlaps another item, or is a part of one. Name that item.
 
-Whoever orders the work next should be able to rely on your links without redoing them.
+When two items overlap, say so and say what each covers. Which of the two stays is the maintainers' call, not yours.
+
+Every link you name is a proposal a maintainer accepts or rejects, so give each the reason they would need.
