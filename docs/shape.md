@@ -64,7 +64,7 @@ The factory holds what the factory derived. The tracker holds what its authors w
 - Who may answer: for now the rule a run uses today, whoever started the work or an admin. It moves to the item's project when projects have permissions of their own. When the operator is an agent, the answer records the run that gave it.
 - When the whole set is answered, the engine starts the stage that asked, with the answers as input. The answer and that start are one write.
 - A run that pauses mid-run for an answer is shown as an ask, but it is not stored as one. The run owns its pause, and the attention list reads stored asks and paused runs into one shape, through one reader, answered by one call. Approval gates follow the same way. A run with no item needs none for this.
-- Later, on the same primitive: the pack may declare a shortcut from one option straight to another stage; a run may ask and keep going on its own recommendation. An agent never names a route at run time.
+- Later, on the same primitive: the pack may declare a shortcut from one option straight to another stage; a run may ask and keep going on its own recommendation. An agent never names a route at run time. Later, an agent may propose a route the table lacks, as an ask: it takes effect only once an operator accepts it and it is written into the pack.
 
 ## Seams
 
