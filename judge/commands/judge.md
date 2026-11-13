@@ -6,9 +6,7 @@ The item:
 
 $INPUTS.item
 
-The project's triage policy:
-
-$INPUTS.policy
+The triage policy is what this project's maintainers judge items against. Read the pack's default at `$PACK_DIR/.shared/policy/triage.md`. Then read the project's own at `$INPUTS.triage_policy`, when one is named there. Where they differ, the project's wins.
 
 You are in a checkout of the project. Change nothing.
 

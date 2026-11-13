@@ -1,53 +1,29 @@
 name: triage
 description: |
-  Decide what should happen to one work item, the way its maintainers would:
-  the options that realistically apply, a recommendation and why. Reads the
-  project, changes nothing.
-
-model: ['@triage', medium]
+  Take one work item through triage: judge what should happen to it, and when
+  it should be built, place it among the project's other open work. Two stages
+  in one run, until the engine can start a stage on another stage's outcome.
 
 inputs:
   item:
     description: >-
       The work item as text: its title, its body, and the discussion on it.
-  policy:
-    default: "None."
+  open_items:
+    default: "None listed."
     description: >-
-      The project's triage policy: what its maintainers judge items against.
-
-returns: triage
+      The project's other open items, as a short index that says where each can be read in full.
 
 nodes:
-  - id: triage
-    command: triage
-    mutates_checkout: false
-    output_format:
-      type: object
-      additionalProperties: false
-      properties:
-        recommend:
-          type: string
-          enum: &verbs [build, narrow, recipe, native, fold, park, deprecate, decline, close]
-          description: 'The option you recommend. It is one of the options below.'
-        why: { type: string, description: 'One line: why this one.' }
-        options:
-          type: array
-          description: 'The two or three that realistically apply, the recommended one among them.'
-          items:
-            type: object
-            additionalProperties: false
-            properties:
-              verb: { type: string, enum: *verbs }
-              does: { type: string, description: 'What happens to the item under this option.' }
-              cost: { type: string, description: 'What choosing it costs.' }
-            required: [verb, does, cost]
-        summary: { type: string, description: 'For a maintainer who has not read the item.' }
-        size:
-          type: string
-          enum: [xs, s, m, l, xl, none]
-          description: 'For build or narrow: changed lines of the smallest change that meets it. xs under 300, s under 600, m under 1000, l under 1700, xl above. Otherwise none.'
-        cites:
-          type: array
-          items: { type: string }
-          description: 'What the result rests on: files, docs, commits, other items.'
-      required: [recommend, why, options, summary, size, cites]
+  - id: judge
+    workflow: judge
+    with:
+      item: $INPUTS.item
+
+  - id: link
+    workflow: link
+    depends_on: [judge]
+    when: "$judge.output.recommend == 'build' || $judge.output.recommend == 'narrow'"
+    with:
+      item: $INPUTS.item
+      judgment: $judge.output
+      open_items: $INPUTS.open_items

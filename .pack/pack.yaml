@@ -1,0 +1,9 @@
+# The factory's settings. A project sets them in
+# `.archon/packs/Wirasm.archon-software-factory.yaml`, under `settings:`.
+inputs:
+  triage_policy:
+    default: ""
+    description: >-
+      Path to the project's own triage policy, a document that says what its
+      maintainers judge work items against. Relative to the project, or absolute.
+      Empty means the project has none and the pack's default applies alone.

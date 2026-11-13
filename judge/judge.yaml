@@ -1,0 +1,49 @@
+name: judge
+description: |
+  Decide what should happen to one work item, the way its maintainers would:
+  the options that realistically apply, a recommendation and why. Reads the
+  project, changes nothing.
+
+model: ['@judge', medium]
+
+inputs:
+  item:
+    description: >-
+      The work item as text: its title, its body, and the discussion on it.
+
+returns: judge
+
+nodes:
+  - id: judge
+    command: judge
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        recommend:
+          type: string
+          enum: &verbs [build, narrow, recipe, native, fold, park, deprecate, decline, close]
+          description: 'The option you recommend. It is one of the options below.'
+        why: { type: string, description: 'One line: why this one.' }
+        options:
+          type: array
+          description: 'The two or three that realistically apply, the recommended one among them.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              verb: { type: string, enum: *verbs }
+              does: { type: string, description: 'What happens to the item under this option.' }
+              cost: { type: string, description: 'What choosing it costs.' }
+            required: [verb, does, cost]
+        summary: { type: string, description: 'For a maintainer who has not read the item.' }
+        size:
+          type: string
+          enum: [xs, s, m, l, xl, none]
+          description: 'For build or narrow: changed lines of the smallest change that meets it. xs under 300, s under 600, m under 1000, l under 1700, xl above. Otherwise none.'
+        cites:
+          type: array
+          items: { type: string }
+          description: 'What the result rests on: files, docs, commits, other items.'
+      required: [recommend, why, options, summary, size, cites]

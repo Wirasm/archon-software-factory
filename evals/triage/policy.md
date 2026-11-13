@@ -1,1 +1,1 @@
-Judge items against this project's own documents: `.archon/direction.md`, `.archon/engineering.md` and `.archon/architecture.md`.
+Judge work items against this project's own documents: `.archon/direction.md`, `.archon/engineering.md` and `.archon/architecture.md`.

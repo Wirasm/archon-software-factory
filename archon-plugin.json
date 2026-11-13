@@ -5,6 +5,7 @@
   "description": "A software factory on Archon: work items in, merged changes out, asks only when the decision is yours",
   "entrypoints": {
     "triage": "triage/triage.yaml",
+    "judge": "judge/judge.yaml",
     "link": "link/link.yaml"
   }
 }
