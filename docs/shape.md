@@ -93,6 +93,17 @@ Attention, its watch, its events and the permission to answer are keyed on a run
 
 1. The item: a row, and its key on every run and start.
 2. One attention reader and one item shape, in which a run is optional. Today's pause is derived into it, not copied.
-3. A typed outcome on a workflow, with asks as part of it; the last answer starts a stage.
-4. A binding that fires on a run's outcome.
-5. Retention by item.
+3. Asks as part of a run's result. The engine already has a typed result (`returns:` names a node, and that node's output schema is the type). The addition is a reserved `asks` field in it, checked by the engine and opened in the write that completes the run.
+4. A binding on an item event. One mechanism for all three events: a run ends with an outcome, a set of asks is settled, an item becomes ready because what it depends on has landed. The binding table in the pack says which stage each event starts, and what each recommended verb leads to.
+5. Links between items, and holding an item until what it depends on has landed.
+6. Retention by item.
+
+Until slice 4 exists, two stages run in one parent run only where they belong to the same moment for the same item, as judging and linking do. A hand-off between stages with different capacity waits for slice 4; a node that fires the next stage itself is the workaround this factory does not use.
+
+## Where a stage's inputs come from
+
+| Kind | Source |
+|---|---|
+| The item | The event that started the stage. A binding maps event fields into the stage's declared inputs. |
+| An earlier stage's result | Inside one parent run, passed from one stage to the next. Across runs, the item event binding of slice 4. |
+| The project's policy | A pack setting holds the path to the project's policy file. The pack ships a default. The prompt tells the agent to read both, and the project's wins. No script loads either. |
