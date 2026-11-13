@@ -3,5 +3,8 @@
   "kind": "workflow-pack",
   "name": "archon-software-factory",
   "description": "A software factory on Archon: work items in, merged changes out, asks only when the decision is yours",
-  "entrypoints": { "triage": "triage/triage.yaml" }
+  "entrypoints": {
+    "triage": "triage/triage.yaml",
+    "link": "link/link.yaml"
+  }
 }

@@ -1,0 +1,43 @@
+name: link
+description: |
+  Place one work item among the project's other open work: what has to land
+  before it, or which item it is the same as or a part of. Reads the project,
+  changes nothing.
+
+model: ['@link', medium]
+
+inputs:
+  item:
+    description: The work item as text.
+  judgment:
+    description: What triage concluded about the item.
+  open_items:
+    description: The project's other open items, as a short index that says where each can be read in full.
+  relations:
+    default: "None recorded."
+    description: Relations the tracker already holds for this item.
+
+returns: link
+
+nodes:
+  - id: link
+    command: link
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        outcome: { type: string, enum: [place, fold] }
+        summary: { type: string, description: 'For whoever orders the work next.' }
+        links:
+          type: array
+          description: 'With place: every item that has to land before this one. With fold: the item this one is the same as, or a part of.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              to: { type: string, description: 'The id of the other item, as the index gives it.' }
+              kind: { type: string, enum: [depends_on, same_as, part_of] }
+              why: { type: string }
+            required: [to, kind, why]
+      required: [outcome, summary, links]
