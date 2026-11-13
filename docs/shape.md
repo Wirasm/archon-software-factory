@@ -112,6 +112,8 @@ Every item lands on the project's base branch unless a target is set. Setting a 
 
 ## Links
 
+> **Hypothesis, not a decision.** The direction we lean to, from 2026-11-13. It rests on one measurement of nine items and fixes a permanent table, so nothing is built on it until the link stage is measured again with this shape. The pack's link stage already uses its wording (an overlap, proposals only) and is unmeasured in that form.
+
 Three kinds, each stored with a direction. Only accepted links are stored.
 
 | Kind | Direction | Who acts on it |
