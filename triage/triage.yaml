@@ -1,8 +1,7 @@
 name: triage
 description: |
-  Decide what should happen next to one work item: route it to be built, leave
-  asks for a maintainer, or close it with a reason. Reads the project, changes
-  nothing.
+  Put one work item in the bucket its maintainers would choose: build, decide
+  or close. Reads the project, changes nothing.
 
 model: ['@triage', medium]
 
@@ -21,27 +20,27 @@ nodes:
       type: object
       additionalProperties: false
       properties:
-        outcome: { type: string, enum: [route, asks, close] }
+        bucket: { type: string, enum: [build, decide, close] }
         summary: { type: string, description: 'For a maintainer who has not read the item.' }
-        route:
+        next:
           type: string
           enum: [investigate, plan, deliver, none]
-          description: 'With outcome route: what the work needs next. Otherwise none.'
+          description: 'With bucket build: what the work needs next. Otherwise none.'
         size:
           type: string
           enum: [xs, s, m, l, xl, none]
-          description: 'With outcome route: changed lines of the smallest change that meets the item. xs under 300, s under 600, m under 1000, l under 1700, xl above. Otherwise none.'
+          description: 'With bucket build: changed lines of the smallest change that meets the item. xs under 300, s under 600, m under 1000, l under 1700, xl above. Otherwise none.'
         close_reason:
           type: string
           enum: [delivered, duplicate, already_possible, out_of_scope, not_actionable, none]
-          description: 'With outcome close: why nothing should be built. Otherwise none.'
+          description: 'With bucket close: why nothing should be built. Otherwise none.'
         cites:
           type: array
           items: { type: string }
           description: 'What the result rests on: files, docs, commits, other items.'
         asks:
           type: array
-          description: 'With outcome asks: each decision a maintainer has to make, with its context, the options and what each costs, and the one recommended. Otherwise empty.'
+          description: 'With bucket decide: each decision a maintainer has to make, with its context, the options and what each costs, and the one recommended. Otherwise empty.'
           items:
             type: object
             additionalProperties: false
@@ -61,4 +60,4 @@ nodes:
               recommend: { type: string }
               why: { type: string }
             required: [question, context, options, recommend, why]
-      required: [outcome, summary, route, size, close_reason, cites, asks]
+      required: [bucket, summary, next, size, close_reason, cites, asks]

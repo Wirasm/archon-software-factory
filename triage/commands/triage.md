@@ -1,6 +1,6 @@
 # Triage one item
 
-A maintainer's attention and this project's build capacity are scarce. Triage exists so they are spent only on work that should exist.
+Your job is to triage work items for this codebase and put each in the bucket its maintainers would choose.
 
 The item:
 
@@ -8,10 +8,10 @@ $INPUTS.item
 
 You are in a checkout of the project. Change nothing.
 
-End in one of three outcomes:
+The buckets:
 
-- **route**: the work should be done.
-- **asks**: a maintainer has to decide something first.
+- **build**: the work should be done.
+- **decide**: a maintainer has to decide something first.
 - **close**: nothing should be built.
 
 Whoever acts next should be able to act on your result without redoing your work.
