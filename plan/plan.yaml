@@ -33,7 +33,7 @@ nodes:
               name: { type: string, description: 'smallest, complete, or a short name for a different way.' }
               does: { type: string }
               builds_on: { type: string, description: 'What already exists in the project that it uses.' }
-              size: { type: string, enum: [xs, s, m, l, xl], description: 'Changed lines: xs under 300, s under 600, m under 1000, l under 1700, xl above.' }
+              size: { type: string, enum: [xs, s, m, l, xl], description: 'How far it reaches. xs: one place, a function or a file and its test. s: one part, a few files in one component. m: several parts of one area that have to change together. l: crosses areas, or changes something others depend on, such as a stored format, a public shape or a contract. xl: a new part of the system.' }
               cost: { type: string, description: 'What choosing it costs.' }
             required: [name, does, builds_on, size, cost]
         recommend: { type: string, description: 'The name of the option you recommend, or none.' }

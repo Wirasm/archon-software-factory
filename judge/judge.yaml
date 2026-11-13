@@ -41,7 +41,7 @@ nodes:
         size:
           type: string
           enum: [xs, s, m, l, xl, none]
-          description: 'For build or narrow: changed lines of the smallest change that meets it. xs under 300, s under 600, m under 1000, l under 1700, xl above. Otherwise none.'
+          description: 'For build or narrow: how far the smallest change that meets it reaches. xs: one place, a function or a file and its test. s: one part, a few files in one component. m: several parts of one area that have to change together. l: crosses areas, or changes something others depend on, such as a stored format, a public shape or a contract. xl: a new part of the system. Otherwise none.'
         cites:
           type: array
           items: { type: string }
