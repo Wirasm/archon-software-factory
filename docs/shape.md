@@ -80,6 +80,14 @@ A work order is a planned group of items: a release, a batch, a backlog switched
 - Rank is a fact a ranking stage writes on the order. Dependencies between members give part of the order; rank fills in the rest.
 - One item sent by hand is an order of one. Automatic intake is a standing order with a rule for what joins it.
 
+### Turning everything on
+
+Automatic intake is an agent that builds a work order and an operator who approves it. One stage reads the open items and returns a proposed order: its members, the links between them, their rank and the target. Its asks are the approval and the few calls it could not make, such as which of two overlapping items stays. When the asks are settled the order is active and intake starts its members.
+
+Nothing new is needed for this: the proposal is a stage result on the order, the approval is an ask, and activation is the event "asks settled". It is the same pattern as a proposed link and a proposed route: an agent proposes, an operator rules, and the ruling becomes a fact.
+
+To be measured: how often an approved order is changed first, and how large an order can be before the approval stops being a real read.
+
 The complexity sits in two places, and neither is measured yet.
 
 | Where | The hard part | Direction, unproven |
