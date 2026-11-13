@@ -20,4 +20,6 @@ You are in a checkout of the project.
 
 Lay out the ways this could be built: the smallest change that does what the item asks, the most complete version, and a third when there is a different way to build it. For each, say what it builds on, how big it is and what it costs. Recommend one, and say in a line why. Then write the plan for the one you recommend, so a builder can make it without redoing your thinking.
 
+Where a decision in it belongs to a maintainer, leave it as an ask: the options, what each costs, and the one you recommend.
+
 If it cannot be built as stated, or something else has to exist first, stop and say what.
