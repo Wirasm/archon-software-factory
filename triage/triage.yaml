@@ -1,7 +1,8 @@
 name: triage
 description: |
-  Put one work item in the bucket its maintainers would choose: build, decide
-  or close. Reads the project, changes nothing.
+  Decide what should happen to one work item, the way its maintainers would:
+  the options that realistically apply, a recommendation and why. Reads the
+  project, changes nothing.
 
 model: ['@triage', medium]
 
@@ -9,6 +10,10 @@ inputs:
   item:
     description: >-
       The work item as text: its title, its body, and the discussion on it.
+  policy:
+    default: "None."
+    description: >-
+      The project's triage policy: what its maintainers judge items against.
 
 returns: triage
 
@@ -20,44 +25,29 @@ nodes:
       type: object
       additionalProperties: false
       properties:
-        bucket: { type: string, enum: [build, decide, close] }
-        summary: { type: string, description: 'For a maintainer who has not read the item.' }
-        next:
+        recommend:
           type: string
-          enum: [investigate, plan, deliver, none]
-          description: 'With bucket build: what the work needs next. Otherwise none.'
-        size:
-          type: string
-          enum: [xs, s, m, l, xl, none]
-          description: 'With bucket build: changed lines of the smallest change that meets the item. xs under 300, s under 600, m under 1000, l under 1700, xl above. Otherwise none.'
-        close_reason:
-          type: string
-          enum: [delivered, duplicate, already_possible, out_of_scope, not_actionable, none]
-          description: 'With bucket close: why nothing should be built. Otherwise none.'
-        cites:
+          enum: &verbs [build, narrow, recipe, native, fold, park, deprecate, decline, close]
+          description: 'The option you recommend. It is one of the options below.'
+        why: { type: string, description: 'One line: why this one.' }
+        options:
           type: array
-          items: { type: string }
-          description: 'What the result rests on: files, docs, commits, other items.'
-        asks:
-          type: array
-          description: 'With bucket decide: each decision a maintainer has to make, with its context, the options and what each costs, and the one recommended. Otherwise empty.'
+          description: 'The two or three that realistically apply, the recommended one among them.'
           items:
             type: object
             additionalProperties: false
             properties:
-              question: { type: string }
-              context: { type: string }
-              options:
-                type: array
-                items:
-                  type: object
-                  additionalProperties: false
-                  properties:
-                    id: { type: string }
-                    does: { type: string }
-                    tradeoff: { type: string }
-                  required: [id, does, tradeoff]
-              recommend: { type: string }
-              why: { type: string }
-            required: [question, context, options, recommend, why]
-      required: [bucket, summary, next, size, close_reason, cites, asks]
+              verb: { type: string, enum: *verbs }
+              does: { type: string, description: 'What happens to the item under this option.' }
+              cost: { type: string, description: 'What choosing it costs.' }
+            required: [verb, does, cost]
+        summary: { type: string, description: 'For a maintainer who has not read the item.' }
+        size:
+          type: string
+          enum: [xs, s, m, l, xl, none]
+          description: 'For build or narrow: changed lines of the smallest change that meets it. xs under 300, s under 600, m under 1000, l under 1700, xl above. Otherwise none.'
+        cites:
+          type: array
+          items: { type: string }
+          description: 'What the result rests on: files, docs, commits, other items.'
+      required: [recommend, why, options, summary, size, cites]
