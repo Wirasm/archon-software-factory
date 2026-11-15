@@ -1,5 +1,15 @@
 # Overrule log
 
+## 2026-11-16: resume of a run with no completed node split off the resume change
+
+- **Item and change:** Archon issue 5699, branch `factory/5699`. Base `9ea33a98d`, head `845bd0972`.
+- **Run:** `review`, first check, `codex/gpt-6.1-sol`, not told (nothing was returned before). 4m9s. Stage prompt `review.md` at pack commit `ae7fc12` (with the "repeated kind of finding" sentence). The test check in the same round failed on output format (Haiku, five attempts, missing `for_next`) and was re-run on Sonnet.
+- **What the stage returned:** `return`. "Finish ownerless recovery for runs with zero completed nodes. The new ownership check accepts these runs, but engine hydration still refuses them."
+- **What was done instead, and by whom:** Claude, acting for the operator, did not send it back. Filed as Archon issue 5720.
+- **Why:** The refusal the reviewer hit is older than the change and applies to failed runs too: resume refuses any run with nothing completed and prints a `--supersedes` relaunch command. The change makes a killed run resumable on the same terms as a failed one, which is what the item asks. Whether a run with nothing completed should restart in place is a separate decision with its own invariants.
+- **Kind:** `scope`.
+- **What it says about the stage:** Second scope overrule where the gap predates the change (the first was issue 5696, 2026-11-15). The reviewer ran a good probe and read the acceptance line broadly. Same hypothesis as before: when a finding is about behaviour next to the change, say whether the base has the same gap, and report it as noticed when it does. Worth a sentence in review.md now that it has happened twice.
+
 ## 2026-11-15: chat readers of the outcome left for a follow-up
 
 - **Item and change:** Archon issue 5660, PR 5698. Base `d5d99c9bb`, head `9b89b7f97`.
