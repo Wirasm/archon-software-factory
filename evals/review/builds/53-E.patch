@@ -1,0 +1,130 @@
+diff --git a/assets/runtime.js b/assets/runtime.js
+index 6cdfab3..811ae56 100644
+--- a/assets/runtime.js
++++ b/assets/runtime.js
+@@ -895,9 +895,16 @@
+   });
+   subs.push(() => setTimeout(drawMarkers, 0));
+   btn.onclick = (e) => { e.stopPropagation(); setMode(!commenting); };
++  // Esc while choosing a part ends comment mode and nothing else: the view never sees it.
++  // The runtime loads before the view's scripts, so this capture listener runs first.
++  addEventListener("keydown", (e) => {
++    if (e.key !== "Escape" || !commenting) return;
++    e.stopImmediatePropagation();
++    setMode(false);
++  }, true);
+   addEventListener("keydown", (e) => {
+     if (e.key !== "Escape") return;
+-    // Esc inside a jelly closes the comment mode first, then reaches the jelly page.
++    // Any other Esc inside an embedded jelly reaches the jelly page, unless it closed a comment editor.
+     const inPop = e.target.closest?.(".jf-pop");
+     if (embedded && !commenting && !inPop && !pop?.isConnected) parent.postMessage({ type: "jelly:escape", name: boot.name }, location.origin);
+     setMode(false);
+diff --git a/tests/README.md b/tests/README.md
+index 92e0aee..82c3721 100644
+--- a/tests/README.md
++++ b/tests/README.md
+@@ -45,6 +45,33 @@ failures of the newest request.
+ Hidden-section visibility fails on the pre-fix runtime. Stop the throwaway daemon
+ after testing; no real jelly home is used.
+ 
++# Comment Escape browser check
++
++Requires Cargo, Chrome and `playwright-cli`. Build from the checkout, start a fresh
++throwaway daemon and make the fixture from the map recipe (substitute your scratch
++paths and port):
++
++```sh
++cargo build --locked --target-dir /tmp/jelly-escape-target
++/tmp/jelly-escape-target/debug/jelly serve --port 17883 --home /tmp/jelly-escape-home
++# In another terminal, from the checkout:
++/tmp/jelly-escape-target/debug/jelly --url http://127.0.0.1:17883 new escape:map --from skill/recipes/map
++```
++
++From a scratch directory, run the check with an absolute path to the script:
++
++```sh
++playwright-cli -s=escape open http://127.0.0.1:17883/
++playwright-cli -s=escape run-code --filename=/path/to/jelly/tests/comment-escape.js
++playwright-cli -s=escape close
++```
++
++It walks a map trace to step 3, turns on commenting and presses Escape, standalone
++and inside the jelly page's full view. Commenting must end while the trace keeps its
++step, and a second Escape must leave the trace. It also checks that Escape in the
++comment editor closes it without moving the trace. Both Escape checks fail on the
++pre-fix runtime. Stop the throwaway daemon afterward.
++
+ # Full-view header browser check
+ 
+ Requires Cargo, Chrome and `playwright-cli`. Build from the checkout and start a
+diff --git a/tests/comment-escape.js b/tests/comment-escape.js
+new file mode 100644
+index 0000000..1d5297a
+--- /dev/null
++++ b/tests/comment-escape.js
+@@ -0,0 +1,64 @@
++async page => {
++  // Esc that ends comment mode must not also reach the view: the map trace and its step stay put.
++  const base = new URL(page.url()).origin;
++  const name = 'escape:map';
++  const assert = (ok, message) => { if (!ok) throw Error(message); };
++  // The trace step shown in the crumbs, or null once the trace is gone.
++  const step = async doc => {
++    const chips = await doc.locator('.crumbs .chip').allTextContents();
++    return chips.map(t => t.match(/^Step (\d+) of /)?.[1]).find(Boolean) ?? null;
++  };
++  const walk = async doc => {
++    await doc.locator('#t-click').click();
++    await doc.locator('[data-step="1"]').click();
++    await doc.locator('[data-step="1"]').click();
++    assert(await step(doc) === '3', 'trace did not reach step 3');
++  };
++
++  // Standalone.
++  await page.goto(`${base}/j/${name}/`);
++  await page.waitForFunction(() => window.jelly?.state);
++  await walk(page);
++  const btn = page.locator('.jf-btn');
++  await btn.click();
++  await page.waitForFunction(() => document.querySelector('.jf-btn').textContent === 'Click a part to comment · Esc');
++  await page.evaluate(() => document.activeElement?.blur());
++  await page.keyboard.press('Escape');
++  await page.waitForFunction(() => document.querySelector('.jf-btn').textContent === 'Comment');
++  assert(await step(page) === '3', 'standalone: Esc that ended comment mode moved the trace');
++  await page.keyboard.press('Escape');
++  await page.locator('#tools [data-trace].on').waitFor({state:'detached'});
++  assert(await step(page) === null, 'standalone: second Esc did not leave the trace');
++
++  // The comment editor still cancels on Esc and leaves the trace alone.
++  await walk(page);
++  await btn.click();
++  await page.locator('#map .node').first().click();
++  await page.locator('.jf-pop textarea').waitFor();
++  await page.locator('.jf-pop textarea').press('Escape');
++  await page.locator('.jf-pop').waitFor({state:'detached'});
++  assert(await step(page) === '3', 'standalone: Esc in the comment editor moved the trace');
++
++  // Embedded in the jelly page's full view: focus lands in the iframe after the header's Comment.
++  await page.goto(`${base}/`);
++  await page.waitForFunction(() => window.jelly && typeof pendingFocusWrites === 'number' && pendingFocusWrites === 0);
++  const response = await page.request.post(`${base}/api/jellies/surface/call`, {data:{verb:'focus', args:{name}, by:'test'}});
++  assert(response.ok(), await response.text());
++  await page.locator('#full').waitFor({state:'visible'});
++  await page.waitForFunction(name => document.querySelector('#full iframe')?.contentWindow.jelly?.name === name, name);
++  const frame = page.frameLocator('#full iframe');
++  await walk(frame);
++  await page.locator('#fcomment').click();
++  // The header turns on before the iframe hears about it; a highlighted part proves the iframe is commenting.
++  await page.locator('#back').hover();
++  await frame.locator('#map .node').first().hover();
++  await page.waitForFunction(() => document.querySelector('#full iframe').contentDocument.querySelector('.jf-hover'));
++  await page.keyboard.press('Escape');
++  await page.waitForFunction(() => !document.querySelector('#fcomment').classList.contains('on'));
++  assert(await page.locator('#full').isVisible(), 'embedded: Esc that ended comment mode closed the full view');
++  assert(await step(frame) === '3', 'embedded: Esc that ended comment mode moved the trace');
++  await frame.locator('body').press('Escape');
++  await frame.locator('#tools [data-trace].on').waitFor({state:'detached'});
++  assert(await step(frame) === null, 'embedded: second Esc did not leave the trace');
++  return 'ok';
++}

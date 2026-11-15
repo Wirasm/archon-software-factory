@@ -1,0 +1,49 @@
+diff --git a/src/store.rs b/src/store.rs
+index b24a452..26ce2b5 100644
+--- a/src/store.rs
++++ b/src/store.rs
+@@ -1078,7 +1078,16 @@ impl Store {
+ 
+     fn log(&mut self, ev: &Event) -> Result<(), Error> {
+         let append = || -> std::io::Result<(u64, usize)> {
+-            let mut file = fs::OpenOptions::new().create(true).read(true).append(true).open(self.events_path())?;
++            // A log that vanished after events were recorded must not be recreated holding
++            // only the newest event: readers would commit past the lost history. Only a
++            // home with no recorded events creates its log here.
++            let create = self.timestamps.is_empty();
++            let mut file = match fs::OpenOptions::new().create(create).read(true).append(true).open(self.events_path()) {
++                Err(e) if !create && e.kind() == std::io::ErrorKind::NotFound => {
++                    return Err(std::io::Error::other("events.jsonl is missing; restore it before retrying"));
++                }
++                other => other?,
++            };
+             let len = file.metadata()?.len();
+             if len > 0 {
+                 file.seek(SeekFrom::End(-1))?;
+@@ -1920,6 +1929,26 @@ mod tests {
+         assert_eq!(consume_inbox(&mut s, "p", reader).unwrap().len(), 1);
+     }
+ 
++    #[test]
++    fn missing_event_log_is_not_recreated_over_unread_history() {
++        let (dir, mut s) = store();
++        s.create("sample", "".into(), VERBS.into(), json!({"labels": {}}), "agent", false, "", "p").unwrap();
++        let reader = InboxReader::Named { name: "a".into() };
++        consume_inbox(&mut s, "p", reader.clone()).unwrap();
++        s.call("p:sample", "label", json!({"id": "a", "value": "x"}), PERSON).unwrap();
++        let path = dir.path().join("inbox-readers.json");
++        let saved = fs::read(&path).unwrap();
++        let log = fs::read(s.events_path()).unwrap();
++        fs::remove_file(s.events_path()).unwrap();
++        assert!(s.call("p:sample", "label", json!({"id": "b", "value": "y"}), "agent").is_err());
++        assert!(!s.events_path().exists());
++        assert!(consume_inbox(&mut s, "p", reader.clone()).unwrap().is_empty());
++        assert_eq!(fs::read(&path).unwrap(), saved);
++        fs::write(s.events_path(), log).unwrap();
++        assert_eq!(consume_inbox(&mut s, "p", reader.clone()).unwrap().len(), 1);
++        assert!(consume_inbox(&mut s, "p", reader).unwrap().is_empty());
++    }
++
+     #[test]
+     fn diff_names_changed_pointers() {
+         let mut out = Vec::new();

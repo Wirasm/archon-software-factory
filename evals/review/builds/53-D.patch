@@ -1,0 +1,125 @@
+diff --git a/assets/runtime.js b/assets/runtime.js
+index 6cdfab3..4604638 100644
+--- a/assets/runtime.js
++++ b/assets/runtime.js
+@@ -895,12 +895,17 @@
+   });
+   subs.push(() => setTimeout(drawMarkers, 0));
+   btn.onclick = (e) => { e.stopPropagation(); setMode(!commenting); };
++  // Esc while choosing a part ends comment mode and nothing else: capture phase, so the view never sees it.
++  addEventListener("keydown", (e) => {
++    if (e.key !== "Escape" || !commenting) return;
++    e.stopImmediatePropagation();
++    setMode(false);
++  }, true);
+   addEventListener("keydown", (e) => {
+     if (e.key !== "Escape") return;
+-    // Esc inside a jelly closes the comment mode first, then reaches the jelly page.
++    // With comment mode off, Esc inside an embedded jelly goes on to the jelly page.
+     const inPop = e.target.closest?.(".jf-pop");
+     if (embedded && !commenting && !inPop && !pop?.isConnected) parent.postMessage({ type: "jelly:escape", name: boot.name }, location.origin);
+-    setMode(false);
+   });
+   addEventListener("mouseover", (e) => {
+     if (!(commenting || e.altKey) || isOurs(e.target)) return;
+diff --git a/tests/README.md b/tests/README.md
+index 92e0aee..e5aedc1 100644
+--- a/tests/README.md
++++ b/tests/README.md
+@@ -138,3 +138,28 @@ Stop the daemon afterward with Ctrl-C. Existing homes retain their stored jelly
+ page; use a fresh home to test the newly built bundled view. To explicitly update
+ a stored page, use `jelly --url http://127.0.0.1:17850 reshape surface --view assets/surface.html`
+ from the checkout, merging these changes into any customized view first.
++
++# Comment Escape browser check
++
++Requires Cargo, Chrome and `playwright-cli`. Build from the checkout, start a
++fresh throwaway daemon and create the map fixture:
++
++```sh
++cargo build --locked --target-dir /tmp/jelly-escape-target
++/tmp/jelly-escape-target/debug/jelly serve --port 17883 --home /tmp/jelly-escape-home
++/tmp/jelly-escape-target/debug/jelly --url http://127.0.0.1:17883 new escape:map --from skill/recipes/map
++```
++
++From a scratch directory, run with an absolute path to the script:
++
++```sh
++playwright-cli -s=escape open http://127.0.0.1:17883/
++playwright-cli -s=escape run-code --filename=/path/to/jelly/tests/comment-escape.js
++playwright-cli -s=escape close
++```
++
++It walks the map's "click" trace to step 3, enters comment mode and presses Escape
++outside an input. Commenting must end while the trace stays at step 3; a second
++Escape then dismisses the trace. It also checks Escape inside the comment editor
++and the same sequence inside the jelly page's full view. It fails on a runtime
++without the capture-phase Escape handler.
+diff --git a/tests/comment-escape.js b/tests/comment-escape.js
+new file mode 100644
+index 0000000..3c17727
+--- /dev/null
++++ b/tests/comment-escape.js
+@@ -0,0 +1,62 @@
++// Esc that cancels comment mode must not also reach the view (here: the map's trace).
++// Needs the fixture `escape:map`, see tests/README.md.
++async page => {
++  const base = new URL(page.url()).origin;
++  const name = 'escape:map';
++  const assert = (ok, message) => { if (!ok) throw Error(message); };
++  const step = async (root, n) => root.locator('.crumbs .chip').filter({hasText: `Step ${n} of`}).waitFor({timeout: 3000});
++  const noTrace = async root => root.locator('.crumbs .x[data-close]').waitFor({state: 'detached', timeout: 3000});
++  const advance = async root => {
++    await root.locator('#t-click').click();
++    await step(root, 1);
++    await root.locator('[data-step="1"]').click();
++    await root.locator('[data-step="1"]').click();
++    await step(root, 3);
++  };
++  const blur = () => page.evaluate(() => document.activeElement?.blur());
++
++  // Standalone.
++  await page.goto(`${base}/j/${name}/`);
++  await page.waitForFunction(() => window.jelly && document.querySelector('#t-click'));
++  await advance(page);
++  const comment = page.locator('.jf-btn');
++  await comment.click();
++  await page.waitForFunction(() => document.querySelector('.jf-btn').textContent.includes('Esc'));
++  await blur();
++  await page.keyboard.press('Escape');
++  await page.waitForFunction(() => document.querySelector('.jf-btn').textContent === 'Comment');
++  await step(page, 3);
++  await page.keyboard.press('Escape');
++  await noTrace(page);
++
++  // Comment editor: Esc in the textarea closes it and leaves the trace alone.
++  await advance(page);
++  await comment.click();
++  await page.locator('.crumbs').click();
++  await page.locator('.jf-pop textarea').waitFor();
++  await page.keyboard.press('Escape');
++  await page.locator('.jf-pop').waitFor({state: 'detached'});
++  await step(page, 3);
++
++  // Embedded in the jelly page's full view.
++  await page.goto(`${base}/p/escape`);
++  await page.waitForFunction(() => window.jelly && document.querySelector(".entry"));
++  await page.waitForFunction(() => pendingFocusWrites === 0);
++  const response = await page.request.post(`${base}/api/jellies/surface/call`, {data: {verb: 'focus', args: {name}, by: 'test'}});
++  assert(response.ok(), await response.text());
++  await page.locator('#full').waitFor({state: 'visible'});
++  await page.waitForFunction(name => document.querySelector('#full iframe')?.contentWindow.jelly?.name === name, name);
++  const frame = page.frameLocator('#full iframe');
++  await advance(frame);
++  await page.locator('#fcomment').click();
++  // The parent flips its button at once; wait until the frame has really entered comment mode.
++  await frame.locator('.crumbs').hover();
++  await frame.locator('.jf-hover').first().waitFor({state: 'attached'});
++  await page.keyboard.press('Escape');
++  await page.waitForFunction(() => !document.querySelector('#fcomment').classList.contains('on'));
++  assert(await page.locator('#full').isVisible(), 'Esc that cancels commenting keeps the full view open');
++  await step(frame, 3);
++  await page.keyboard.press('Escape');
++  await noTrace(frame);
++  return {passed: true};
++}

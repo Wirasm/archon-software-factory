@@ -1,0 +1,154 @@
+diff --git a/src/store.rs b/src/store.rs
+index b24a452..61c8e74 100644
+--- a/src/store.rs
++++ b/src/store.rs
+@@ -528,6 +528,8 @@ pub struct Store {
+     dir: PathBuf,
+     jellies: BTreeMap<String, Entry>,
+     seq: u64,
++    /// Bytes of events.jsonl this store has read or appended. A shorter or missing log has lost history, and appending to it would let an inbox reader commit past events it never saw.
++    log_len: u64,
+     recent: BTreeMap<String, RecentEvents>,
+     timestamps: TimestampIndex,
+     /// The element behind the verb call being committed; taken by the next event.
+@@ -556,7 +558,7 @@ impl RecentEvents {
+ 
+ type TimestampIndex = BTreeMap<(u64, u64), (u64, usize)>;
+ 
+-fn read_event_history(path: &Path) -> std::io::Result<(u64, BTreeMap<String, RecentEvents>, TimestampIndex)> {
++fn read_event_history(path: &Path) -> std::io::Result<(u64, BTreeMap<String, RecentEvents>, TimestampIndex, u64)> {
+     let log = read_optional(path)?;
+     if !log.is_empty() && !log.ends_with('\n') {
+         return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "event log is missing its final newline"));
+@@ -572,7 +574,7 @@ fn read_event_history(path: &Path) -> std::io::Result<(u64, BTreeMap<String, Rec
+         seq = seq.max(event.seq);
+         recent.entry(event.jelly.clone()).or_default().push(event);
+     }
+-    Ok((seq, recent, timestamps))
++    Ok((seq, recent, timestamps, offset))
+ }
+ 
+ impl Store {
+@@ -596,8 +598,8 @@ impl Store {
+             }
+         }
+         // Sequence numbers continue across restarts, so an event's seq is unique.
+-        let (seq, recent, timestamps) = read_event_history(&dir.join("events.jsonl"))?;
+-        Ok(Store { dir: dir.to_path_buf(), jellies, seq, recent, timestamps, source: None, #[cfg(test)] log_failure: None })
++        let (seq, recent, timestamps, log_len) = read_event_history(&dir.join("events.jsonl"))?;
++        Ok(Store { dir: dir.to_path_buf(), jellies, seq, log_len, recent, timestamps, source: None, #[cfg(test)] log_failure: None })
+     }
+ 
+     pub fn list(&self) -> impl Iterator<Item = &Jelly> {
+@@ -1078,8 +1080,17 @@ impl Store {
+ 
+     fn log(&mut self, ev: &Event) -> Result<(), Error> {
+         let append = || -> std::io::Result<(u64, usize)> {
+-            let mut file = fs::OpenOptions::new().create(true).read(true).append(true).open(self.events_path())?;
++            let mut file = match fs::OpenOptions::new().create(self.log_len == 0).read(true).append(true).open(self.events_path()) {
++                Ok(file) => file,
++                Err(e) if e.kind() == std::io::ErrorKind::NotFound && self.log_len > 0 => {
++                    return Err(std::io::Error::other("event history is missing: events.jsonl; restore it before retrying"));
++                }
++                Err(e) => return Err(e),
++            };
+             let len = file.metadata()?.len();
++            if len < self.log_len {
++                return Err(std::io::Error::other(format!("event history is missing: events.jsonl has {len} of {} recorded bytes; restore it before retrying", self.log_len)));
++            }
+             if len > 0 {
+                 file.seek(SeekFrom::End(-1))?;
+                 let mut last = [0];
+@@ -1104,6 +1115,7 @@ impl Store {
+             Ok((len, line.len()))
+         };
+         let (offset, length) = append().map_err(|e| Error::Invalid(format!("could not record event for {}: {e}", ev.jelly)))?;
++        self.log_len = offset + length as u64;
+         self.timestamps.insert((ev.at_ms, ev.seq), (offset, length));
+         self.recent.entry(ev.jelly.clone()).or_default().push(ev.clone());
+         if offset + length as u64 > LOG_LIMIT {
+@@ -1120,9 +1132,10 @@ impl Store {
+ 
+     pub(crate) fn trim_events(&mut self, keep: usize, carry: usize) -> std::io::Result<()> {
+         trim_log(&self.events_path(), keep, carry)?;
+-        let (_, recent, timestamps) = read_event_history(&self.events_path())?;
++        let (_, recent, timestamps, log_len) = read_event_history(&self.events_path())?;
+         self.recent = recent;
+         self.timestamps = timestamps;
++        self.log_len = log_len;
+         Ok(())
+     }
+ 
+@@ -1168,7 +1181,8 @@ impl Store {
+     pub fn events_back(&self, mut visit: impl FnMut(&str) -> std::io::Result<bool>) -> std::io::Result<()> {
+         let mut file = match fs::File::open(self.events_path()) {
+             Ok(f) => f,
+-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
++            Err(e) if e.kind() == std::io::ErrorKind::NotFound && self.log_len == 0 => return Ok(()),
++            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err(std::io::Error::other("event history is missing: events.jsonl; restore it before retrying")),
+             Err(e) => return Err(e),
+         };
+         // The start of a line whose beginning is in an earlier chunk.
+@@ -1789,13 +1803,61 @@ mod tests {
+ 
+     #[test]
+     fn inbox_without_history_needs_no_event_log() {
+-        let (_dir, s) = store();
++        let (_dir, mut s) = store();
+         assert!(!s.events_path().exists());
+         assert!(s.events_since(0).unwrap().is_empty());
+         let reader = InboxReader::Named { name: "new".into() };
+         let batch = s.read_inbox("p", &reader).unwrap();
+         assert!(batch.events.is_empty());
+         assert_eq!(batch.through, 0);
++        s.create("sample", "".into(), VERBS.into(), json!({"labels": {}}), "agent", false, "", "p").unwrap();
++        let event = s.call("p:sample", "label", json!({"id": "a", "value": "x"}), PERSON).unwrap();
++        assert_eq!(consume_inbox(&mut s, "p", reader).unwrap().iter().map(|e| e.seq).collect::<Vec<_>>(), [event.seq]);
++    }
++
++    #[test]
++    fn inbox_lost_history_is_refused_until_restored() {
++        for loss in ["moved", "emptied"] {
++            let (dir, mut s) = store();
++            s.create("sample", "".into(), VERBS.into(), json!({"labels": {}}), "agent", false, "", "p").unwrap();
++            let reader = InboxReader::Named { name: "a".into() };
++            consume_inbox(&mut s, "p", reader.clone()).unwrap();
++            let committed = s.sequence();
++            let unread = s.call("p:sample", "label", json!({"id": "a", "value": "x"}), PERSON).unwrap();
++            let path = s.events_path();
++            let history = fs::read(&path).unwrap();
++            let readers_path = dir.path().join("inbox-readers.json");
++            let readers = fs::read(&readers_path).unwrap();
++            let aside = dir.path().join("aside.jsonl");
++            if loss == "moved" {
++                fs::rename(&path, &aside).unwrap();
++            } else {
++                fs::write(&aside, &history).unwrap();
++                fs::write(&path, "").unwrap();
++            }
++
++            let error = s.call("p:sample", "label", json!({"id": "b", "value": "y"}), PERSON).unwrap_err();
++            assert!(error.to_string().contains("event history is missing"), "{error}");
++            assert!(!s.get("p:sample").unwrap().state["labels"].get("b").is_some());
++            if loss == "moved" {
++                assert!(!path.exists());
++                assert!(consume_inbox(&mut s, "p", reader.clone()).is_err());
++            } else {
++                assert!(consume_inbox(&mut s, "p", reader.clone()).unwrap().is_empty());
++            }
++            assert_eq!(fs::read(&readers_path).unwrap(), readers);
++
++            if loss == "moved" {
++                fs::rename(&aside, &path).unwrap();
++            } else {
++                fs::write(&path, history).unwrap();
++            }
++            assert_eq!(consume_inbox(&mut s, "p", reader.clone()).unwrap().iter().map(|e| e.seq).collect::<Vec<_>>(), [unread.seq]);
++            let next = s.call("p:sample", "label", json!({"id": "c", "value": "z"}), PERSON).unwrap();
++            assert_eq!(consume_inbox(&mut s, "p", reader.clone()).unwrap().iter().map(|e| e.seq).collect::<Vec<_>>(), [next.seq]);
++            assert!(consume_inbox(&mut s, "p", reader).unwrap().is_empty());
++            assert!(committed < unread.seq);
++        }
+     }
+ 
+     #[test]

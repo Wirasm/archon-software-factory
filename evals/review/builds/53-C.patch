@@ -1,0 +1,109 @@
+diff --git a/assets/runtime.js b/assets/runtime.js
+index 6cdfab3..ad517de 100644
+--- a/assets/runtime.js
++++ b/assets/runtime.js
+@@ -900,8 +900,11 @@
+     // Esc inside a jelly closes the comment mode first, then reaches the jelly page.
+     const inPop = e.target.closest?.(".jf-pop");
+     if (embedded && !commenting && !inPop && !pop?.isConnected) parent.postMessage({ type: "jelly:escape", name: boot.name }, location.origin);
++    // Capture phase, so ending comment mode consumes the Esc before a view's own handler
++    // (the map closes its trace on Esc) sees it. Inside the comment editor the editor handles it.
++    if (commenting && !inPop) e.stopPropagation();
+     setMode(false);
+-  });
++  }, true);
+   addEventListener("mouseover", (e) => {
+     if (!(commenting || e.altKey) || isOurs(e.target)) return;
+     hovered?.classList.remove("jf-hover");
+diff --git a/tests/map-escape.html b/tests/map-escape.html
+new file mode 100644
+index 0000000..bc14143
+--- /dev/null
++++ b/tests/map-escape.html
+@@ -0,0 +1,19 @@
++<!doctype html>
++<meta charset="utf-8">
++<title>Map Escape check</title>
++<script>
++  // Loads the real map recipe under the real runtime, with no daemon.
++  (async () => {
++    const [view, state] = await Promise.all([
++      fetch('../skill/recipes/map/view.html').then((r) => r.text()),
++      fetch('../skill/recipes/map/state.json').then((r) => r.json()),
++    ]);
++    const boot = JSON.stringify({ name: 'test:map-escape', state, version: 1, viewRev: 1 }).replace(/</g, '\\u003c');
++    document.open();
++    document.write(`<script>window.__JELLY__ = ${boot};
++      window.WebSocket = class {};
++      window.fetch = async () => ({ ok: true, json: async () => ({}) });<\/script>
++      <script src="../assets/runtime.js"><\/script>` + view);
++    document.close();
++  })();
++</script>
+diff --git a/tests/map-escape.js b/tests/map-escape.js
+new file mode 100644
+index 0000000..6b4a839
+--- /dev/null
++++ b/tests/map-escape.js
+@@ -0,0 +1,61 @@
++// Escape that ends comment mode must leave the map trace alone; the next Escape closes it.
++// Run from the repository root:
++// python3 -m http.server 7889 --bind 127.0.0.1
++// playwright-cli -s=jelly-map-escape open
++// playwright-cli -s=jelly-map-escape run-code --filename=tests/map-escape.js --raw
++// playwright-cli -s=jelly-map-escape close
++async (page) => {
++  const assert = (ok, message) => { if (!ok) throw Error(message); };
++  const url = 'http://127.0.0.1:7889/tests/map-escape.html';
++  // Embedded, the frame has no Comment button and reports its mode to the parent instead.
++  let reported = false;
++  await page.exposeFunction('reportCommenting', (on) => { reported = on; });
++  const isOn = async (f, embedded) => embedded
++    ? (await page.waitForTimeout(150), reported)
++    : f.getByRole('button', { name: 'Click a part to comment · Esc', exact: true }).isVisible();
++
++  // Embedded, the jelly page owns the Comment button and tells the frame by message.
++  const comment = (f, embedded) => embedded
++    ? page.evaluate(() => document.getElementById('f').contentWindow.postMessage({ type: 'jelly:comment', on: true }, location.origin))
++    : f.getByRole('button', { name: 'Comment', exact: true }).click();
++
++  async function check(f, label, embedded) {
++    await f.locator('#tools .pill').first().click();
++    const chip = f.locator('.chip', { hasText: /^Step \d+ of/ });
++    await chip.waitFor();
++    await f.locator('[data-step="1"]').first().click();
++    const before = await chip.textContent();
++    assert(!before.startsWith('Step 1 '), `${label}: advanced past step one`);
++
++    await comment(f, embedded);
++    assert(await isOn(f, embedded), `${label}: commenting is on`);
++    await page.keyboard.press('Escape');
++    assert(!(await isOn(f, embedded)), `${label}: Escape ends commenting`);
++    assert(await chip.textContent() === before, `${label}: trace stays on its step`);
++
++    await page.keyboard.press('Escape');
++    assert(await f.locator('.chip', { hasText: /^Step \d+ of/ }).count() === 0, `${label}: next Escape leaves the trace`);
++
++    // The comment editor still cancels itself.
++    await comment(f, embedded);
++    await f.locator('#map').click({ position: { x: 5, y: 5 } });
++    const ta = f.locator('.jf-pop textarea');
++    await ta.waitFor();
++    await page.keyboard.press('Escape');
++    assert(await f.locator('.jf-pop').count() === 0, `${label}: Escape closes the comment editor`);
++  }
++
++  await page.setViewportSize({ width: 1100, height: 800 });
++  await page.goto(url);
++  await check(page, 'standalone', false);
++
++  await page.goto('about:blank');
++  await page.goto('http://127.0.0.1:7889/tests/README.md');
++  await page.evaluate((src) => {
++    addEventListener('message', (e) => { if (e.data?.type === 'jelly:commenting') reportCommenting(e.data.on); });
++    document.body.innerHTML = `<iframe id="f" src="${src}" style="width:1100px;height:760px"></iframe>`;
++  }, url);
++  await page.frameLocator('#f').locator('#tools .pill').first().waitFor();
++  await check(page.frameLocator('#f'), 'embedded', true);
++  return { passed: true };
++}

@@ -1,0 +1,137 @@
+diff --git a/src/server.rs b/src/server.rs
+index ee20649..92f57e2 100644
+--- a/src/server.rs
++++ b/src/server.rs
+@@ -467,9 +467,14 @@ fn recorded_change(reader: &mut impl BufRead, q: &WaitQ) -> Result<Option<Event>
+     Ok(None)
+ }
+ 
+-fn open_history(store: &Store) -> Result<Option<BufReader<File>>, Error> {
++struct History {
++    reader: BufReader<File>,
++    generation: u64,
++}
++
++fn open_history(store: &Store) -> Result<Option<History>, Error> {
+     match File::open(store.events_path()) {
+-        Ok(file) => Ok(Some(BufReader::new(file))),
++        Ok(file) => Ok(Some(History { reader: BufReader::new(file), generation: store.log_generation() })),
+         Err(e) if e.kind() == std::io::ErrorKind::NotFound && store.sequence() == 0 => Ok(None),
+         Err(e) => Err(history_error(e)),
+     }
+@@ -487,7 +492,8 @@ async fn wait_since_at_handoff(app: &App, q: &WaitQ, after_scan: impl FnOnce(&mu
+     let mut reader = {
+         let mut store = app.store.lock().expect("store lock");
+         let mut reader = open_history(&store)?;
+-        if let (Some(preferred), Some(reader)) = (&q.project_jelly, &mut reader) {
++        if let (Some(preferred), Some(history)) = (&q.project_jelly, &mut reader) {
++            let reader = &mut history.reader;
+             let (project, short) = preferred.split_once(':').unwrap_or(("", preferred));
+             let mut identities = std::collections::BTreeSet::new();
+             let mut line = String::new();
+@@ -513,8 +519,8 @@ async fn wait_since_at_handoff(app: &App, q: &WaitQ, after_scan: impl FnOnce(&mu
+             }
+             std::io::Seek::rewind(reader).map_err(history_error)?;
+         }
+-        if let Some(reader) = &mut reader {
+-            if let Some(ev) = recorded_change(reader, &q)? { return Ok(Some(ev)); }
++        if let Some(history) = &mut reader {
++            if let Some(ev) = recorded_change(&mut history.reader, &q)? { return Ok(Some(ev)); }
+         }
+         if let Some(name) = &q.jelly { store.get(name)?; }
+         after_scan(&mut store);
+@@ -526,7 +532,7 @@ async fn wait_since_at_handoff(app: &App, q: &WaitQ, after_scan: impl FnOnce(&mu
+ async fn wait_for_record(
+     app: &App,
+     q: &WaitQ,
+-    reader: &mut Option<BufReader<File>>,
++    reader: &mut Option<History>,
+     mut rx: broadcast::Receiver<Event>,
+     deadline: Option<Instant>,
+ ) -> Result<Option<Event>, Error> {
+@@ -543,9 +549,12 @@ async fn wait_for_record(
+         // Commits are ordered under the store lock; broadcasts happen after it
+         // is released, so notifications only wake the reader, never choose a result.
+         let store = app.store.lock().expect("store lock");
+-        if reader.is_none() { *reader = open_history(&store)?; }
+-        if let Some(reader) = reader {
+-            if let Some(ev) = recorded_change(reader, q)? { return Ok(Some(ev)); }
++        // A trim replaces events.jsonl by rename; the old handle would never see later appends. Rescanning from the start is safe: anything already scanned did not match, or the wait would have returned.
++        if reader.as_ref().is_none_or(|history| history.generation != store.log_generation()) {
++            *reader = open_history(&store)?;
++        }
++        if let Some(history) = reader {
++            if let Some(ev) = recorded_change(&mut history.reader, q)? { return Ok(Some(ev)); }
+         }
+         if matches!(notification, Err(broadcast::error::RecvError::Closed)) {
+             return Err(Error::Invalid("the event stream ended".into()));
+@@ -1742,7 +1751,8 @@ mod wait_tests {
+             (s.note("j", "first", "helper").unwrap(), s.note("j", "second", "person").unwrap())
+         };
+         app.events.send(second).unwrap();
+-        let result = wait_for_record(&app, &q, &mut Some(reader), rx, None).await.unwrap().unwrap();
++        let history = History { reader, generation: app.store.lock().unwrap().log_generation() };
++        let result = wait_for_record(&app, &q, &mut Some(history), rx, None).await.unwrap().unwrap();
+         assert_eq!(result.seq, first.seq);
+     }
+ 
+@@ -1761,6 +1771,23 @@ mod wait_tests {
+         assert_eq!(tokio::time::timeout(Duration::from_secs(1), future).await.unwrap().unwrap().unwrap().seq, expected.seq);
+     }
+ 
++    #[tokio::test]
++    async fn an_open_wait_hears_events_after_the_log_is_trimmed() {
++        let (_dir, app) = fixture(8);
++        let start = note(&app, "j", "agent");
++        let q = WaitQ { timeout: None, ..query(Some("j"), start.seq) };
++        let future = wait_since(&app, &q);
++        tokio::pin!(future);
++        assert!(tokio::time::timeout(Duration::from_millis(5), &mut future).await.is_err());
++
++        app.store.lock().unwrap().trim_events(1, 0).unwrap();
++        note(&app, "j", "agent");
++        assert!(tokio::time::timeout(Duration::from_millis(5), &mut future).await.is_err());
++
++        let expected = note(&app, "j", "person");
++        assert_eq!(tokio::time::timeout(Duration::from_secs(1), future).await.unwrap().unwrap().unwrap().seq, expected.seq);
++    }
++
+     #[tokio::test]
+     async fn ignored_notifications_do_not_extend_the_deadline() {
+         let (_dir, app) = fixture(8);
+diff --git a/src/store.rs b/src/store.rs
+index b24a452..c3905c1 100644
+--- a/src/store.rs
++++ b/src/store.rs
+@@ -530,6 +530,8 @@ pub struct Store {
+     seq: u64,
+     recent: BTreeMap<String, RecentEvents>,
+     timestamps: TimestampIndex,
++    /// Bumped each time the event log file is replaced by a trim. Readers holding the old file reopen when it changes.
++    log_generation: u64,
+     /// The element behind the verb call being committed; taken by the next event.
+     source: Option<Value>,
+     #[cfg(test)]
+@@ -597,7 +599,7 @@ impl Store {
+         }
+         // Sequence numbers continue across restarts, so an event's seq is unique.
+         let (seq, recent, timestamps) = read_event_history(&dir.join("events.jsonl"))?;
+-        Ok(Store { dir: dir.to_path_buf(), jellies, seq, recent, timestamps, source: None, #[cfg(test)] log_failure: None })
++        Ok(Store { dir: dir.to_path_buf(), jellies, seq, recent, timestamps, log_generation: 0, source: None, #[cfg(test)] log_failure: None })
+     }
+ 
+     pub fn list(&self) -> impl Iterator<Item = &Jelly> {
+@@ -1118,8 +1120,13 @@ impl Store {
+         self.seq
+     }
+ 
++    pub fn log_generation(&self) -> u64 {
++        self.log_generation
++    }
++
+     pub(crate) fn trim_events(&mut self, keep: usize, carry: usize) -> std::io::Result<()> {
+         trim_log(&self.events_path(), keep, carry)?;
++        self.log_generation += 1;
+         let (_, recent, timestamps) = read_event_history(&self.events_path())?;
+         self.recent = recent;
+         self.timestamps = timestamps;

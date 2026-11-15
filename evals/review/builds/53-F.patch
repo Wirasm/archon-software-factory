@@ -1,0 +1,174 @@
+diff --git a/assets/runtime.js b/assets/runtime.js
+index 6cdfab3..7b13c52 100644
+--- a/assets/runtime.js
++++ b/assets/runtime.js
+@@ -895,13 +895,16 @@
+   });
+   subs.push(() => setTimeout(drawMarkers, 0));
+   btn.onclick = (e) => { e.stopPropagation(); setMode(!commenting); };
++  // Capture phase, so Esc that ends comment mode stops here and the view's own
++  // Esc (closing a trace, a panel) waits for the next press.
+   addEventListener("keydown", (e) => {
+     if (e.key !== "Escape") return;
+-    // Esc inside a jelly closes the comment mode first, then reaches the jelly page.
+     const inPop = e.target.closest?.(".jf-pop");
+-    if (embedded && !commenting && !inPop && !pop?.isConnected) parent.postMessage({ type: "jelly:escape", name: boot.name }, location.origin);
++    if (commenting && !inPop) { e.stopPropagation(); return setMode(false); }
++    // With comment mode off, Esc inside a jelly reaches the jelly page.
++    if (embedded && !inPop && !pop?.isConnected) parent.postMessage({ type: "jelly:escape", name: boot.name }, location.origin);
+     setMode(false);
+-  });
++  }, true);
+   addEventListener("mouseover", (e) => {
+     if (!(commenting || e.altKey) || isOurs(e.target)) return;
+     hovered?.classList.remove("jf-hover");
+diff --git a/src/server.rs b/src/server.rs
+index ee20649..c852fc8 100644
+--- a/src/server.rs
++++ b/src/server.rs
+@@ -1373,6 +1373,50 @@ async fn ask(State(app): State<Shared>, Path(name): Path<String>, Json(r): Json<
+     app.change_many(|s| s.ask_round(&name, &r.spec, ASK_VIEW, ASK_VERBS, &r.project, &who))
+ }
+ 
++#[cfg(test)]
++mod escape_tests {
++    use super::*;
++    use std::future::IntoFuture as _;
++
++    /// Esc that ends comment mode must not also close the map's trace, standalone or
++    /// embedded. Runs the map recipe and the real runtime in Chrome against a live daemon.
++    #[tokio::test]
++    async fn escape_ends_commenting_without_closing_the_map_trace() {
++        let browser = chrome().expect("Chrome/Chromium required; set JELLY_CHROME to the browser binary");
++        let results = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
++        let callback = format!("http://{}/result", results.local_addr().unwrap());
++        let (send, mut receive) = tokio::sync::mpsc::channel(1);
++        let receiver = tokio::spawn(axum::serve(results, Router::new().route("/result", post(move |body: String| async move {
++            send.send(serde_json::from_str::<Value>(&body).unwrap()).await.unwrap();
++            StatusCode::NO_CONTENT
++        }))).into_future());
++
++        let dir = tempfile::tempdir().unwrap();
++        let mut store = Store::open(dir.path()).unwrap();
++        let check = include_str!("../tests/fixtures/map-escape/check.js").replace("__TEST_RESULT__", &callback);
++        let view = include_str!("../skill/recipes/map/view.html").replace("</body>", &format!("<script>{check}</script></body>"));
++        let state = serde_json::from_str(include_str!("../skill/recipes/map/state.json")).unwrap();
++        store.create("test:map", view, include_str!("../skill/recipes/map/verbs.js").into(), state, "agent", false, "", "").unwrap();
++        let daemon = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
++        let port = daemon.local_addr().unwrap().port();
++        let server = tokio::spawn(serve(store, daemon));
++
++        let mut chrome = tokio::process::Command::new(browser)
++            .args(["--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check", "--disable-component-update", "--window-size=1400,1000"])
++            .arg(format!("--user-data-dir={}", dir.path().join("chrome").display()))
++            .arg(format!("http://127.0.0.1:{port}/j/test:map/"))
++            .stdout(std::process::Stdio::null())
++            .stderr(std::process::Stdio::null())
++            .kill_on_drop(true).spawn().expect("browser could not start");
++        let result = tokio::time::timeout(std::time::Duration::from_secs(30), receive.recv()).await;
++        chrome.kill().await.expect("browser could not stop");
++        server.abort();
++        receiver.abort();
++        let result = result.expect("browser did not report within 30 seconds").expect("result channel closed");
++        assert_eq!(result["ok"], true, "{result:#}");
++    }
++}
++
+ #[cfg(test)]
+ mod share_tests {
+     use super::*;
+diff --git a/tests/README.md b/tests/README.md
+index 92e0aee..afa1ebc 100644
+--- a/tests/README.md
++++ b/tests/README.md
+@@ -138,3 +138,12 @@ Stop the daemon afterward with Ctrl-C. Existing homes retain their stored jelly
+ page; use a fresh home to test the newly built bundled view. To explicitly update
+ a stored page, use `jelly --url http://127.0.0.1:17850 reshape surface --view assets/surface.html`
+ from the checkout, merging these changes into any customized view first.
++
++# Map Escape browser check
++
++`cargo test` includes `server::escape_tests`, which needs Chrome/Chromium (set
++`JELLY_CHROME` if it is not in a usual location). It serves the map recipe from a
++temporary daemon with `tests/fixtures/map-escape/check.js` appended, and runs the
++check standalone and inside an iframe. Esc that ends comment mode must keep the
++trace step; Esc in the comment editor closes only the editor; Esc with comment
++mode off still leaves the trace, and embedded, still reaches the jelly page.
+diff --git a/tests/fixtures/map-escape/check.js b/tests/fixtures/map-escape/check.js
+new file mode 100644
+index 0000000..e285f9c
+--- /dev/null
++++ b/tests/fixtures/map-escape/check.js
+@@ -0,0 +1,72 @@
++// Appended to the map recipe's view. The top window runs the check standalone,
++// then loads the same jelly in an iframe to run it embedded, and posts both results.
++(() => {
++  const embedded = window.parent !== window;
++  const tick = () => new Promise((r) => setTimeout(r, 30));
++  const escape = (el = document.body) => el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
++  const chip = () => document.querySelector("#panel .chip")?.textContent || null;
++  // Standalone, the runtime's Comment button shows the mode. Embedded, the jelly page
++  // owns that button and hears about the mode, and about Esc, over postMessage.
++  const heard = () => embedded ? parent.__heard : [];
++  const commenting = () => embedded
++    ? !!heard().filter((m) => m.type === "jelly:commenting").at(-1)?.on
++    : document.querySelector(".jf-btn").classList.contains("on");
++  const setCommenting = async (on) => {
++    if (embedded) window.postMessage({ type: "jelly:comment", on }, location.origin);
++    else if (commenting() !== on) document.querySelector(".jf-btn").click();
++    await tick();
++  };
++
++  async function check() {
++    const steps = [];
++    const expect = (what, ok, got) => steps.push({ what, ok: !!ok, got });
++    await tick();
++    document.querySelector(`#tools [data-trace="${jelly.state.traces[0].id}"]`).click();
++    document.querySelector('[data-step="1"]').click();
++    const atStep = chip();
++    expect("trace advanced past step one", atStep?.startsWith("Step 2 "), atStep);
++
++    await setCommenting(true);
++    expect("comment mode on", commenting(), commenting());
++    const escapesBefore = heard().filter((m) => m.type === "jelly:escape").length;
++    escape();
++    await tick();
++    expect("Esc ends comment mode", !commenting(), commenting());
++    expect("Esc that ends comment mode keeps the trace step", chip() === atStep, chip());
++    if (embedded) expect("Esc that ends comment mode stays in the jelly", heard().filter((m) => m.type === "jelly:escape").length === escapesBefore, heard());
++
++    await setCommenting(true);
++    document.querySelector("#title").click();
++    const ta = document.querySelector(".jf-pop textarea");
++    expect("clicking in comment mode opens the editor", ta, !!ta);
++    ta?.focus();
++    escape(ta);
++    await tick();
++    expect("Esc in the editor closes it", !document.querySelector(".jf-pop"), !!document.querySelector(".jf-pop"));
++    expect("Esc in the editor keeps the trace step", chip() === atStep, chip());
++
++    escape();
++    await tick();
++    expect("Esc with comment mode off leaves the trace", chip() === null, chip());
++    if (embedded) expect("Esc with comment mode off reaches the jelly page", heard().filter((m) => m.type === "jelly:escape").length === escapesBefore + 1, heard());
++    return steps;
++  }
++
++  addEventListener("load", async () => {
++    if (embedded) return parent.postMessage({ type: "map-escape", steps: await check().catch((e) => [{ what: String(e), ok: false }]) }, location.origin);
++    window.__heard = [];
++    let standalone;
++    addEventListener("message", (e) => {
++      if (e.data?.type?.startsWith("jelly:")) window.__heard.push(e.data);
++      if (e.data?.type !== "map-escape") return;
++      const result = { standalone, embedded: e.data.steps };
++      result.ok = [...standalone, ...e.data.steps].every((s) => s.ok) && standalone.length > 0 && e.data.steps.length > 0;
++      fetch("__TEST_RESULT__", { method: "POST", mode: "no-cors", body: JSON.stringify(result) });
++    });
++    standalone = await check().catch((e) => [{ what: String(e), ok: false }]);
++    const frame = document.createElement("iframe");
++    frame.style.cssText = "width:1280px;height:900px";
++    frame.src = location.href;
++    document.body.appendChild(frame);
++  });
++})();

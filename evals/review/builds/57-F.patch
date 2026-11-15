@@ -1,0 +1,60 @@
+diff --git a/src/store.rs b/src/store.rs
+index b24a452..b56cbf0 100644
+--- a/src/store.rs
++++ b/src/store.rs
+@@ -807,7 +807,8 @@ impl Store {
+             .collect();
+         stale.iter().filter_map(|n| match self.set_archived(n, true, "jelly") {
+             Ok(ev) => Some(ev),
+-            Err(e) => { eprintln!("could not archive {n}: {e}"); None }
++            // The sweeper holds the store lock; a panic on closed stderr would poison it.
++            Err(e) => { let _ = writeln!(std::io::stderr().lock(), "could not archive {n}: {e}"); None }
+         }).collect()
+     }
+ 
+@@ -2085,6 +2086,45 @@ mod tests {
+         assert!(next.source.is_none());
+     }
+ 
++    /// Runs only as a child of `failed_archive_keeps_the_store_usable`, which
++    /// sets the env var and chooses where stderr goes.
++    #[test]
++    #[ignore]
++    fn failed_archive_child() {
++        if std::env::var_os("JELLY_SWEEP_CHILD").is_none() {
++            return;
++        }
++        let (_d, mut s) = store();
++        s.create("old", "".into(), VERBS.into(), json!({"labels": {}}), "agent", false, "", "").unwrap();
++        s.jellies.get_mut("old").unwrap().jelly.updated_ms = 0;
++        s.log_failure = Some((s.seq + 1, 0));
++        let store = std::sync::Mutex::new(s);
++        let swept = store.lock().unwrap().sweep(0);
++        assert!(swept.is_empty());
++        let s = store.lock().expect("store lock survives the failed archive");
++        assert!(!s.get("old").unwrap().archived);
++    }
++
++    #[test]
++    fn failed_archive_keeps_the_store_usable() {
++        let run = |stderr: std::process::Stdio| {
++            std::process::Command::new(std::env::current_exe().unwrap())
++                .args(["--exact", "store::tests::failed_archive_child", "--ignored", "--nocapture", "--test-threads=1"])
++                .env("JELLY_SWEEP_CHILD", "1")
++                .stdout(std::process::Stdio::null())
++                .stderr(stderr)
++                .output()
++                .unwrap()
++        };
++        let (reader, writer) = std::io::pipe().unwrap();
++        drop(reader);
++        let closed = run(writer.into());
++        assert!(closed.status.success(), "child panicked with closed stderr: {closed:?}");
++        let open = run(std::process::Stdio::piped());
++        assert!(open.status.success(), "{open:?}");
++        assert!(String::from_utf8_lossy(&open.stderr).contains("could not archive old: "), "{open:?}");
++    }
++
+     #[test]
+     fn quiet_jellies_archive_and_come_back_on_change() {
+         let (_d, mut s) = store();

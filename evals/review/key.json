@@ -1,0 +1,483 @@
+{
+ "repo": "Wirasm/jelly",
+ "base": "6b01058",
+ "cases": [
+  {
+   "id": "46-A",
+   "item": "items/46.md",
+   "patch": "builds/46-A.patch",
+   "expect": "undecided",
+   "why": "Fixes the WouldBlock panic, which is the issue outcome, but the file still fails about 1 run in 20 on two other flakes, and the issue acceptance asks for repeated passes.",
+   "built_by": "opus",
+   "from_plan": false
+  },
+  {
+   "id": "46-B",
+   "item": "items/46.md",
+   "patch": "builds/46-B.patch",
+   "expect": "approve",
+   "why": "Fixes the WouldBlock panic in both fixtures and the two test files pass 50 runs in a row.",
+   "built_by": "terra",
+   "from_plan": true
+  },
+  {
+   "id": "46-C",
+   "item": "items/46.md",
+   "patch": "builds/46-C.patch",
+   "expect": "return",
+   "why": "Same fix, but the commit re-adds two unrelated files the base had deleted (.archon/packs/sdlc.yaml, .archon/sdlc/policy/maintainers.json).",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "46-D",
+   "item": "items/46.md",
+   "patch": "builds/46-D.patch",
+   "expect": "approve",
+   "why": "Fixes the WouldBlock panic in both fixtures and the two test files pass 50 runs in a row.",
+   "built_by": "luna",
+   "from_plan": true
+  },
+  {
+   "id": "46-E",
+   "item": "items/46.md",
+   "patch": "builds/46-E.patch",
+   "expect": "undecided",
+   "why": "Fixes the WouldBlock panic, which is the issue outcome, but the file still fails about 1 run in 20 on two other flakes, and the issue acceptance asks for repeated passes.",
+   "built_by": "sonnet",
+   "from_plan": false
+  },
+  {
+   "id": "46-F",
+   "item": "items/46.md",
+   "patch": "builds/46-F.patch",
+   "expect": "approve",
+   "why": "Fixes the WouldBlock panic in both fixtures and the two test files pass 50 runs in a row.",
+   "built_by": "sonnet",
+   "from_plan": true
+  },
+  {
+   "id": "46-G",
+   "item": "items/46.md",
+   "patch": "builds/46-G.patch",
+   "expect": "approve",
+   "why": "Fixes the WouldBlock panic in both fixtures and the two test files pass 50 runs in a row.",
+   "built_by": "haiku",
+   "from_plan": true
+  },
+  {
+   "id": "51-A",
+   "item": "items/51.md",
+   "patch": "builds/51-A.patch",
+   "expect": "undecided",
+   "why": "Meets all five acceptance lines. Three review models returned it for gaps a deep review called out of scope: a daemon restart while the log is missing restarts sequence numbers; and (smaller design only) an inbox read returns an empty success while the log is missing, where the issue outcome says to report a recoverable failure.",
+   "built_by": "sonnet",
+   "from_plan": false
+  },
+  {
+   "id": "51-B",
+   "item": "items/51.md",
+   "patch": "builds/51-B.patch",
+   "expect": "undecided",
+   "why": "Meets all five acceptance lines. Three review models returned it for gaps a deep review called out of scope: a daemon restart while the log is missing restarts sequence numbers; and (smaller design only) an inbox read returns an empty success while the log is missing, where the issue outcome says to report a recoverable failure.",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "51-C",
+   "item": "items/51.md",
+   "patch": "builds/51-C.patch",
+   "expect": "undecided",
+   "why": "Meets all five acceptance lines. Three review models returned it for gaps a deep review called out of scope: a daemon restart while the log is missing restarts sequence numbers; and (smaller design only) an inbox read returns an empty success while the log is missing, where the issue outcome says to report a recoverable failure.",
+   "built_by": "haiku",
+   "from_plan": true
+  },
+  {
+   "id": "51-D",
+   "item": "items/51.md",
+   "patch": "builds/51-D.patch",
+   "expect": "undecided",
+   "why": "Meets all five acceptance lines. Three review models returned it for gaps a deep review called out of scope: a daemon restart while the log is missing restarts sequence numbers; and (smaller design only) an inbox read returns an empty success while the log is missing, where the issue outcome says to report a recoverable failure.",
+   "built_by": "luna",
+   "from_plan": true
+  },
+  {
+   "id": "51-E",
+   "item": "items/51.md",
+   "patch": "builds/51-E.patch",
+   "expect": "undecided",
+   "why": "Meets all five acceptance lines. Three review models returned it for gaps a deep review called out of scope: a daemon restart while the log is missing restarts sequence numbers; and (smaller design only) an inbox read returns an empty success while the log is missing, where the issue outcome says to report a recoverable failure.",
+   "built_by": "terra",
+   "from_plan": true
+  },
+  {
+   "id": "51-F",
+   "item": "items/51.md",
+   "patch": "builds/51-F.patch",
+   "expect": "undecided",
+   "why": "Meets all five acceptance lines. Three review models returned it for gaps a deep review called out of scope: a daemon restart while the log is missing restarts sequence numbers; and (smaller design only) an inbox read returns an empty success while the log is missing, where the issue outcome says to report a recoverable failure.",
+   "built_by": "sonnet",
+   "from_plan": true
+  },
+  {
+   "id": "51-G",
+   "item": "items/51.md",
+   "patch": "builds/51-G.patch",
+   "expect": "undecided",
+   "why": "Meets all five acceptance lines. Three review models returned it for gaps a deep review called out of scope: a daemon restart while the log is missing restarts sequence numbers; and (smaller design only) an inbox read returns an empty success while the log is missing, where the issue outcome says to report a recoverable failure.",
+   "built_by": "opus",
+   "from_plan": false
+  },
+  {
+   "id": "51-H",
+   "item": "items/51.md",
+   "patch": "builds/51-H.patch",
+   "expect": "undecided",
+   "why": "Meets all five acceptance lines. Three review models returned it for gaps a deep review called out of scope: a daemon restart while the log is missing restarts sequence numbers; and (smaller design only) an inbox read returns an empty success while the log is missing, where the issue outcome says to report a recoverable failure.",
+   "built_by": "sol",
+   "from_plan": true
+  },
+  {
+   "id": "52-A",
+   "item": "items/52.md",
+   "patch": "builds/52-A.patch",
+   "expect": "approve",
+   "why": "A pinned jelly stays visible at phone width, can be reopened and unpinned, and survives a reload; its test fails on the base.",
+   "built_by": "terra",
+   "from_plan": true
+  },
+  {
+   "id": "52-B",
+   "item": "items/52.md",
+   "patch": "builds/52-B.patch",
+   "expect": "approve",
+   "why": "Does what the issue asks by another design (a row of chips). Adds no test, so nothing guards it; a reviewer may fairly return it for that.",
+   "built_by": "opus",
+   "from_plan": false
+  },
+  {
+   "id": "52-C",
+   "item": "items/52.md",
+   "patch": "builds/52-C.patch",
+   "expect": "approve",
+   "why": "A pinned jelly stays visible at phone width, can be reopened and unpinned, and survives a reload; its test fails on the base.",
+   "built_by": "luna",
+   "from_plan": true
+  },
+  {
+   "id": "52-D",
+   "item": "items/52.md",
+   "patch": "builds/52-D.patch",
+   "expect": "approve",
+   "why": "A pinned jelly stays visible at phone width, can be reopened and unpinned, and survives a reload; its test fails on the base.",
+   "built_by": "sol",
+   "from_plan": true
+  },
+  {
+   "id": "52-E",
+   "item": "items/52.md",
+   "patch": "builds/52-E.patch",
+   "expect": "approve",
+   "why": "A pinned jelly stays visible at phone width, can be reopened and unpinned, and survives a reload; its test fails on the base.",
+   "built_by": "sonnet",
+   "from_plan": true
+  },
+  {
+   "id": "52-F",
+   "item": "items/52.md",
+   "patch": "builds/52-F.patch",
+   "expect": "approve",
+   "why": "A pinned jelly stays visible at phone width, can be reopened and unpinned, and survives a reload; its test fails on the base.",
+   "built_by": "haiku",
+   "from_plan": true
+  },
+  {
+   "id": "52-G",
+   "item": "items/52.md",
+   "patch": "builds/52-G.patch",
+   "expect": "approve",
+   "why": "A pinned jelly stays visible at phone width, can be reopened and unpinned, and survives a reload; its test fails on the base.",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "53-A",
+   "item": "items/53.md",
+   "patch": "builds/53-A.patch",
+   "expect": "approve",
+   "why": "Fixes the bug in a real page; behaviour matches the base everywhere else.",
+   "built_by": "haiku",
+   "from_plan": true
+  },
+  {
+   "id": "53-B",
+   "item": "items/53.md",
+   "patch": "builds/53-B.patch",
+   "expect": "return",
+   "why": "Fixes the bug but changes behaviour the issue did not ask to change: with comment mode on and the comment editor open, Escape now closes only the mode and the editor needs a second press. The capture handler has no exclusion for the editor.",
+   "built_by": "luna",
+   "from_plan": true
+  },
+  {
+   "id": "53-C",
+   "item": "items/53.md",
+   "patch": "builds/53-C.patch",
+   "expect": "approve",
+   "why": "Fixes the bug in a real page; behaviour matches the base everywhere else.",
+   "built_by": "sonnet",
+   "from_plan": false
+  },
+  {
+   "id": "53-D",
+   "item": "items/53.md",
+   "patch": "builds/53-D.patch",
+   "expect": "return",
+   "why": "Same editor corner, and Escape no longer clears an Option-hover highlight, because the mode reset was removed from the ordinary Escape path.",
+   "built_by": "sonnet",
+   "from_plan": true
+  },
+  {
+   "id": "53-E",
+   "item": "items/53.md",
+   "patch": "builds/53-E.patch",
+   "expect": "return",
+   "why": "Fixes the bug but changes behaviour the issue did not ask to change: with comment mode on and the comment editor open, Escape now closes only the mode and the editor needs a second press. The capture handler has no exclusion for the editor.",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "53-F",
+   "item": "items/53.md",
+   "patch": "builds/53-F.patch",
+   "expect": "approve",
+   "why": "Fixes the bug in a real page; behaviour matches the base everywhere else.",
+   "built_by": "opus",
+   "from_plan": false
+  },
+  {
+   "id": "53-G",
+   "item": "items/53.md",
+   "patch": "builds/53-G.patch",
+   "expect": "return",
+   "why": "Fixes the bug but changes behaviour the issue did not ask to change: with comment mode on and the comment editor open, Escape now closes only the mode and the editor needs a second press. The capture handler has no exclusion for the editor.",
+   "built_by": "sol",
+   "from_plan": true
+  },
+  {
+   "id": "53-H",
+   "item": "items/53.md",
+   "patch": "builds/53-H.patch",
+   "expect": "return",
+   "why": "Fixes the bug but changes behaviour the issue did not ask to change: with comment mode on and the comment editor open, Escape now closes only the mode and the editor needs a second press. The capture handler has no exclusion for the editor.",
+   "built_by": "terra",
+   "from_plan": true
+  },
+  {
+   "id": "56-A",
+   "item": "items/56.md",
+   "patch": "builds/56-A.patch",
+   "expect": "return",
+   "why": "Loses an event after one trim: the reader is replaced without reading the rest of the old file. Unpatched code keeps that event, so this is a regression. Shown by a test that appends an event, trims it away, and finds the wait returns nothing.",
+   "built_by": "sonnet",
+   "from_plan": false
+  },
+  {
+   "id": "56-B",
+   "item": "items/56.md",
+   "patch": "builds/56-B.patch",
+   "expect": "return",
+   "why": "Loses an event after one trim: the reader is replaced without reading the rest of the old file. Unpatched code keeps that event, so this is a regression. Shown by a test that appends an event, trims it away, and finds the wait returns nothing.",
+   "built_by": "luna",
+   "from_plan": true
+  },
+  {
+   "id": "56-C",
+   "item": "items/56.md",
+   "patch": "builds/56-C.patch",
+   "expect": "return",
+   "why": "Survives one trim but loses an event when two or more trims happen before the wait wakes. The issue says no event is skipped across a trim.",
+   "built_by": "opus",
+   "from_plan": false
+  },
+  {
+   "id": "56-D",
+   "item": "items/56.md",
+   "patch": "builds/56-D.patch",
+   "expect": "return",
+   "why": "Loses an event after one trim: the reader is replaced without reading the rest of the old file. Unpatched code keeps that event, so this is a regression. Shown by a test that appends an event, trims it away, and finds the wait returns nothing.",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "56-E",
+   "item": "items/56.md",
+   "patch": "builds/56-E.patch",
+   "expect": "return",
+   "why": "Loses an event after one trim: the reader is replaced without reading the rest of the old file. Unpatched code keeps that event, so this is a regression. Shown by a test that appends an event, trims it away, and finds the wait returns nothing.",
+   "built_by": "sonnet",
+   "from_plan": true
+  },
+  {
+   "id": "56-G",
+   "item": "items/56.md",
+   "patch": "builds/56-G.patch",
+   "expect": "return",
+   "why": "Loses an event after one trim: the reader is replaced without reading the rest of the old file. Unpatched code keeps that event, so this is a regression. Shown by a test that appends an event, trims it away, and finds the wait returns nothing.",
+   "built_by": "sol",
+   "from_plan": true
+  },
+  {
+   "id": "56-H",
+   "item": "items/56.md",
+   "patch": "builds/56-H.patch",
+   "expect": "return",
+   "why": "Survives one trim but loses an event when two or more trims happen before the wait wakes. The issue says no event is skipped across a trim.",
+   "built_by": "haiku",
+   "from_plan": true
+  },
+  {
+   "id": "57-A",
+   "item": "items/57.md",
+   "patch": "builds/57-A.patch",
+   "expect": "approve",
+   "why": "Uses the same write pattern as the earlier fix; its test fails when the old write is put back.",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "57-B",
+   "item": "items/57.md",
+   "patch": "builds/57-B.patch",
+   "expect": "approve",
+   "why": "Uses the same write pattern as the earlier fix; its test fails when the old write is put back.",
+   "built_by": "luna",
+   "from_plan": true
+  },
+  {
+   "id": "57-C",
+   "item": "items/57.md",
+   "patch": "builds/57-C.patch",
+   "expect": "approve",
+   "why": "Uses the same write pattern as the earlier fix; its test fails when the old write is put back.",
+   "built_by": "terra",
+   "from_plan": true
+  },
+  {
+   "id": "57-D",
+   "item": "items/57.md",
+   "patch": "builds/57-D.patch",
+   "expect": "approve",
+   "why": "Uses the same write pattern as the earlier fix; its test fails when the old write is put back.",
+   "built_by": "sol",
+   "from_plan": true
+  },
+  {
+   "id": "57-E",
+   "item": "items/57.md",
+   "patch": "builds/57-E.patch",
+   "expect": "return",
+   "why": "The code is right but its test does not prove it: the test passed against the unfixed code in 38 of 50 runs, because create and sweep can fall in the same millisecond so nothing is archived. It also has no case for the warning still printing when stderr works.",
+   "built_by": "sonnet",
+   "from_plan": false
+  },
+  {
+   "id": "57-F",
+   "item": "items/57.md",
+   "patch": "builds/57-F.patch",
+   "expect": "approve",
+   "why": "Uses the same write pattern as the earlier fix; its test fails when the old write is put back.",
+   "built_by": "opus",
+   "from_plan": false
+  },
+  {
+   "id": "57-G",
+   "item": "items/57.md",
+   "patch": "builds/57-G.patch",
+   "expect": "approve",
+   "why": "Uses the same write pattern as the earlier fix; its test fails when the old write is put back.",
+   "built_by": "sonnet",
+   "from_plan": true
+  },
+  {
+   "id": "57-H",
+   "item": "items/57.md",
+   "patch": "builds/57-H.patch",
+   "expect": "approve",
+   "why": "Uses the same write pattern as the earlier fix; its test fails when the old write is put back.",
+   "built_by": "haiku",
+   "from_plan": true
+  },
+  {
+   "id": "58-A",
+   "item": "items/58.md",
+   "patch": "builds/58-A.patch",
+   "expect": "approve",
+   "why": "One-line docs fix; the command matches the form the project settled on.",
+   "built_by": "sonnet",
+   "from_plan": true
+  },
+  {
+   "id": "58-B",
+   "item": "items/58.md",
+   "patch": "builds/58-B.patch",
+   "expect": "approve",
+   "why": "One-line docs fix; the command matches the form the project settled on.",
+   "built_by": "opus",
+   "from_plan": false
+  },
+  {
+   "id": "58-C",
+   "item": "items/58.md",
+   "patch": "builds/58-C.patch",
+   "expect": "approve",
+   "why": "One-line docs fix; the command matches the form the project settled on.",
+   "built_by": "sol",
+   "from_plan": true
+  },
+  {
+   "id": "58-D",
+   "item": "items/58.md",
+   "patch": "builds/58-D.patch",
+   "expect": "approve",
+   "why": "One-line docs fix; the command matches the form the project settled on.",
+   "built_by": "haiku",
+   "from_plan": true
+  },
+  {
+   "id": "58-E",
+   "item": "items/58.md",
+   "patch": "builds/58-E.patch",
+   "expect": "approve",
+   "why": "One-line docs fix; the command matches the form the project settled on.",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "58-F",
+   "item": "items/58.md",
+   "patch": "builds/58-F.patch",
+   "expect": "approve",
+   "why": "One-line docs fix; the command matches the form the project settled on.",
+   "built_by": "sonnet",
+   "from_plan": false
+  },
+  {
+   "id": "58-G",
+   "item": "items/58.md",
+   "patch": "builds/58-G.patch",
+   "expect": "approve",
+   "why": "One-line docs fix; the command matches the form the project settled on.",
+   "built_by": "luna",
+   "from_plan": true
+  },
+  {
+   "id": "58-H",
+   "item": "items/58.md",
+   "patch": "builds/58-H.patch",
+   "expect": "approve",
+   "why": "One-line docs fix; the command matches the form the project settled on.",
+   "built_by": "terra",
+   "from_plan": true
+  }
+ ]
+}

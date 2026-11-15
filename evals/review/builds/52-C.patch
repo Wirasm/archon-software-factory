@@ -1,0 +1,171 @@
+diff --git a/README.md b/README.md
+index d0a814d..ac6a3e8 100644
+--- a/README.md
++++ b/README.md
+@@ -66,8 +66,9 @@ local endpoint, including `http://localhost:7878` and equivalent URL spellings;
+ other `--url` / `JELLY_URL` targets must already be running.
+ 
+ When upgrading, existing homes keep their stored jelly page, including any
+-customizations. To install the bundled dock improvements and responsive stream and
+-full-view headers, run this from the updated checkout against your running daemon:
++customizations. To install the bundled dock improvements, responsive stream and
++full-view headers, and pinned jellies reachable on phones, run this from the
++updated checkout against your running daemon:
+ 
+ ```bash
+ jelly reshape surface --view assets/surface.html
+diff --git a/assets/surface.html b/assets/surface.html
+index 588474d..9839a97 100644
+--- a/assets/surface.html
++++ b/assets/surface.html
+@@ -216,6 +216,8 @@
+   const $ = (id) => document.getElementById(id);
+   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+   const enc = encodeURIComponent;
++  // On narrow screens the pinned panel is hidden, so pinned jellies stay in the stream.
++  const narrow = matchMedia("(max-width: 900px)");
+   let jellies = [];
+   const byName = (n) => jellies.find((j) => j.name === n);
+   const entries = new Map();   // name -> stream <article>
+@@ -282,13 +284,13 @@
+   function entryHead(j) {
+     const last = lastEvent.get(j.name);
+     return `<span class="av ${j.made_by === "person" ? "person" : ""}">${esc(who(j.made_by)[0].toUpperCase())}</span>
+-      <div class="who"><b>${esc(who(j.made_by))}</b><span>${ago(j.created_ms)}</span><code>${esc(short(j.name))}</code>${{ new: '<span class="badge-new">New</span>', updated: '<span class="badge-upd">Updated</span>' }[freshness(j)] || ""}${flags(j)}
++      <div class="who"><b>${esc(who(j.made_by))}</b><span>${ago(j.created_ms)}</span><code>${esc(short(j.name))}</code>${{ new: '<span class="badge-new">New</span>', updated: '<span class="badge-upd">Updated</span>' }[freshness(j)] || ""}${j.pinned ? '<span class="tag soft">Pinned</span>' : ""}${flags(j)}
+         ${last ? `<span class="last">· ${esc(who(last.by))} ${esc(last.text)} ${ago(last.at)}</span>` : ""}</div>
+       <h2>${esc(j.about || j.name)}</h2>
+       <div class="acts">
+         <button class="btn" data-act="comment">Comment</button>
+         <button class="btn quiet" data-act="open" title="Open full size (↵)">Open</button>
+-        <button class="btn quiet" data-act="pin" title="Keep it pinned beside the stream">Pin</button>
++        <button class="btn quiet" data-act="pin" title="${j.pinned ? "Take it off the pinned list" : "Keep it pinned beside the stream"}">${j.pinned ? "Unpin" : "Pin"}</button>
+         <button class="btn quiet" data-act="rm">Remove</button>
+       </div>`;
+   }
+@@ -310,7 +312,7 @@
+ 
+   function renderStream() {
+     // Newest first: what an agent just made is at the top.
+-    const list = jellies.filter((j) => !j.pinned).sort((a, b) => b.created_ms - a.created_ms);
++    const list = jellies.filter((j) => narrow.matches || !j.pinned).sort((a, b) => b.created_ms - a.created_ms);
+     const col = $("col");
+     for (const [name, el] of entries) if (!list.some((j) => j.name === name)) { el.remove(); entries.delete(name); }
+     const fresh = [];
+@@ -335,7 +337,7 @@
+     col.querySelector(".end")?.remove();
+     col.querySelector(".empty")?.remove();
+     col.insertAdjacentHTML("beforeend", list.length
+-      ? `<div class="end">Agents add jellies here as they work. Pinned ones move to the side. Quiet ones archive after a week.${archivedNote()}</div>`
++      ? `<div class="end">Agents add jellies here as they work. Pinned ones move to the side on wide screens. Quiet ones archive after a week.${archivedNote()}</div>`
+       : (PROJECT ? `<div class="empty"><h2>Nothing in ${esc(PROJECT)} yet</h2>Agents working in that repo put their jellies here. Move one in with <code>jelly project NAME ${esc(PROJECT)}</code>.</div>` : `<div class="empty"><h2>Nothing in the stream</h2>Agents put things here as they work. Ask one to show you something, or run <code>jelly ask</code>.</div>`));
+     if (fresh.length) arrived(fresh[0]);
+     watchSeen();
+@@ -715,6 +717,7 @@
+     applyFocus(s);
+   });
+   setInterval(() => jellies.length && (renderStream(), renderBoard()), 30000); // keep "3m ago" honest
++  narrow.addEventListener("change", () => renderStream());
+   $("live").classList.add("live");
+   refresh();
+ </script>
+diff --git a/tests/README.md b/tests/README.md
+index 92e0aee..0fc6b91 100644
+--- a/tests/README.md
++++ b/tests/README.md
+@@ -131,7 +131,10 @@ visible keyboard focus, Comment and iframe Escape, c, j/k, Enter, Open, Back,
+ Pin persistence, and cancelled/confirmed Remove. Project and All identification
+ are checked at 390 and 1280px.
+ 
+-It returns measurements and saves `stream-390.png`, `stream-390-expanded.png` and
++It checks pinned access: phone entries keep a Pinned tag, Unpin and Open across a
++reload; desktop pinned tiles open full view and unpin there. Two pinned jellies at
++900/901px verify the layout boundary and project-scoped tiles. It returns
++measurements and saves `stream-390.png`, `stream-390-expanded.png` and
+ `stream-1280.png` in the scratch directory. Inspect these images for readability.
+ Run `full-view-header.js` against the same daemon to check full-view behavior.
+ Stop the daemon afterward with Ctrl-C. Existing homes retain their stored jelly
+diff --git a/tests/stream-header.js b/tests/stream-header.js
+index 0c0f232..5f51bd2 100644
+--- a/tests/stream-header.js
++++ b/tests/stream-header.js
+@@ -17,7 +17,15 @@ async page => {
+     const activate = async locator => touch ? locator.tap() : locator.click();
+     const savedPin = async (name, pinned) => {
+       await page.waitForFunction(async ({name,pinned}) => (await (await fetch(`/api/jellies/${name}`)).json()).pinned === pinned, {name,pinned});
+-      await entry(name).waitFor({state:pinned ? 'detached' : 'visible'});
++      if (await page.evaluate(() => innerWidth <= 900)) {
++        await entry(name).waitFor({state:'visible'});
++        if (pinned) {
++          await page.waitForFunction(name => {
++            const el = document.querySelector(`.entry[data-name="${name}"]`);
++            return el?.querySelector('.who')?.textContent.includes('Pinned') && el.querySelector('[data-act="pin"]')?.textContent === 'Unpin';
++          }, name);
++        } else await page.waitForFunction(name => document.querySelector(`.entry[data-name="${name}"] [data-act="pin"]`)?.textContent === 'Pin', name);
++      } else await entry(name).waitFor({state:pinned ? 'detached' : 'visible'});
+     };
+     const comment = async (name, on) => {
+       await page.waitForFunction(({name,on}) => document.querySelector(`.entry[data-name="${name}"] [data-act="comment"]`)?.classList.contains('on') === on, {name,on});
+@@ -40,7 +48,7 @@ async page => {
+         const h = rect(header), title = header.querySelector('h2'), meta = header.querySelector('.who');
+         const t = rect(title), m = rect(meta), acts = header.querySelector('.acts'), a = rect(acts);
+         const controls = [...acts.children], boxes = controls.map(rect);
+-        const labels = [expanded ? 'Click a part · Esc' : 'Comment','Open','Pin','Remove'];
++        const labels = [expanded ? 'Click a part · Esc' : 'Comment','Open',header.querySelector('[data-act="pin"]').textContent,'Remove'];
+         const fail = message => { throw Error(`${label}: ${message}`); };
+         const overlap = (a,b) => a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
+         const inside = r => r.left >= h.left - 1 && r.right <= h.right + 1;
+@@ -107,6 +115,22 @@ async page => {
+         await geometry(long,`${width} status and activity expanded`,false,true);
+         await exitComment(long);
+       }
++      if (!touch) {
++        for (const name of names) await post(`/api/jellies/${name}/pin`, {pinned:true});
++        await page.setViewportSize({width:900,height:900});
++        for (const name of names) {
++          await entry(name).waitFor({state:'visible'});
++          await page.waitForFunction(name => document.querySelector(`.entry[data-name="${name}"] [data-act="pin"]`)?.textContent === 'Unpin', name);
++        }
++        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.querySelector('#stream').scrollWidth <= innerWidth), '900px has no horizontal overflow');
++        await geometry(names[1], '900 pinned long title', false, false);
++        await page.setViewportSize({width:901,height:900});
++        for (const name of names) await entry(name).waitFor({state:'detached'});
++        assert(await page.locator('#board .tile').count() === 2, '901px shows both pinned tiles');
++        assert(await page.locator('#board .tile').evaluateAll((tiles, project) => tiles.every(tile => tile.dataset.name.startsWith(project + ':')), project), 'pinned tiles stay project-scoped');
++        for (const name of names) await post(`/api/jellies/${name}/pin`, {pinned:false});
++        await entry(names[0]).waitFor({state:'visible'});
++      }
+       for (const width of widths.filter(w => [390,1280].includes(w))) {
+         await page.setViewportSize({width,height:900});
+         const name = names[0];
+@@ -165,8 +189,28 @@ async page => {
+         await exitComment(name);
+         await activate(button(name,'pin'));
+         await savedPin(name,true);
+-        await post(`/api/jellies/${name}/pin`, {pinned:false});
+-        await savedPin(name,false);
++        if (touch) {
++          await page.goto(`${base}/p/${project}`);
++          await savedPin(name,true);
++          await activate(button(name,'open'));
++          await page.locator('#full').waitFor({state:'visible'});
++          assert(await page.locator('#fpin').textContent() === 'Unpin', 'full view can unpin phone-pinned jelly');
++          await activate(page.locator('#back'));
++          await page.locator('#full').waitFor({state:'hidden'});
++          await activate(button(name,'pin'));
++          await savedPin(name,false);
++        } else {
++          await page.reload();
++          await page.locator(`#board .tile[data-name="${name}"]`).waitFor({state:'visible'});
++          await activate(page.locator(`#board .tile[data-name="${name}"]`));
++          await page.locator('#full').waitFor({state:'visible'});
++          assert(await page.locator('#ftitle').textContent() === 'Weekly project plan', 'pinned tile opens full view');
++          await activate(page.locator('#fpin'));
++          await page.locator('#fpin').waitFor();
++          await activate(page.locator('#back'));
++          await page.locator('#full').waitFor({state:'hidden'});
++          await savedPin(name,false);
++        }
+         page.once('dialog', dialog => dialog.dismiss());
+         await activate(button(name,'rm'));
+         assert((await page.request.get(`${base}/api/jellies/${name}`)).ok(), 'cancel Remove preserves fixture');

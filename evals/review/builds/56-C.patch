@@ -1,0 +1,172 @@
+diff --git a/src/server.rs b/src/server.rs
+index ee20649..9daa032 100644
+--- a/src/server.rs
++++ b/src/server.rs
+@@ -467,14 +467,36 @@ fn recorded_change(reader: &mut impl BufRead, q: &WaitQ) -> Result<Option<Event>
+     Ok(None)
+ }
+ 
+-fn open_history(store: &Store) -> Result<Option<BufReader<File>>, Error> {
++/// An open `events.jsonl` and the store's trim count when it was opened.
++struct History {
++    reader: BufReader<File>,
++    generation: u64,
++}
++
++fn open_history(store: &Store) -> Result<Option<History>, Error> {
+     match File::open(store.events_path()) {
+-        Ok(file) => Ok(Some(BufReader::new(file))),
++        Ok(file) => Ok(Some(History { reader: BufReader::new(file), generation: store.log_generation() })),
+         Err(e) if e.kind() == std::io::ErrorKind::NotFound && store.sequence() == 0 => Ok(None),
+         Err(e) => Err(history_error(e)),
+     }
+ }
+ 
++/// Reads on from where `history` stopped. A trim replaces the log file, so a
++/// stale reader is drained (it may hold unread events the trim dropped) and then
++/// reopened and read from the start; the filter in `recorded_change` makes the
++/// overlap harmless. Call with the store locked.
++fn next_record(store: &Store, history: &mut Option<History>, q: &WaitQ) -> Result<Option<Event>, Error> {
++    if let Some(h) = history {
++        if let Some(ev) = recorded_change(&mut h.reader, q)? { return Ok(Some(ev)); }
++        if h.generation == store.log_generation() { return Ok(None); }
++    }
++    *history = open_history(store)?;
++    match history {
++        Some(h) => recorded_change(&mut h.reader, q),
++        None => Ok(None),
++    }
++}
++
+ async fn wait_since(app: &App, q: &WaitQ) -> Result<Option<Event>, Error> {
+     wait_since_at_handoff(app, q, |_| {}).await
+ }
+@@ -487,7 +509,7 @@ async fn wait_since_at_handoff(app: &App, q: &WaitQ, after_scan: impl FnOnce(&mu
+     let mut reader = {
+         let mut store = app.store.lock().expect("store lock");
+         let mut reader = open_history(&store)?;
+-        if let (Some(preferred), Some(reader)) = (&q.project_jelly, &mut reader) {
++        if let (Some(preferred), Some(History { reader, .. })) = (&q.project_jelly, &mut reader) {
+             let (project, short) = preferred.split_once(':').unwrap_or(("", preferred));
+             let mut identities = std::collections::BTreeSet::new();
+             let mut line = String::new();
+@@ -513,9 +535,7 @@ async fn wait_since_at_handoff(app: &App, q: &WaitQ, after_scan: impl FnOnce(&mu
+             }
+             std::io::Seek::rewind(reader).map_err(history_error)?;
+         }
+-        if let Some(reader) = &mut reader {
+-            if let Some(ev) = recorded_change(reader, &q)? { return Ok(Some(ev)); }
+-        }
++        if let Some(ev) = next_record(&store, &mut reader, &q)? { return Ok(Some(ev)); }
+         if let Some(name) = &q.jelly { store.get(name)?; }
+         after_scan(&mut store);
+         reader
+@@ -526,7 +546,7 @@ async fn wait_since_at_handoff(app: &App, q: &WaitQ, after_scan: impl FnOnce(&mu
+ async fn wait_for_record(
+     app: &App,
+     q: &WaitQ,
+-    reader: &mut Option<BufReader<File>>,
++    reader: &mut Option<History>,
+     mut rx: broadcast::Receiver<Event>,
+     deadline: Option<Instant>,
+ ) -> Result<Option<Event>, Error> {
+@@ -543,10 +563,7 @@ async fn wait_for_record(
+         // Commits are ordered under the store lock; broadcasts happen after it
+         // is released, so notifications only wake the reader, never choose a result.
+         let store = app.store.lock().expect("store lock");
+-        if reader.is_none() { *reader = open_history(&store)?; }
+-        if let Some(reader) = reader {
+-            if let Some(ev) = recorded_change(reader, q)? { return Ok(Some(ev)); }
+-        }
++        if let Some(ev) = next_record(&store, reader, q)? { return Ok(Some(ev)); }
+         if matches!(notification, Err(broadcast::error::RecvError::Closed)) {
+             return Err(Error::Invalid("the event stream ended".into()));
+         }
+@@ -1735,8 +1752,8 @@ mod wait_tests {
+         let (_dir, app) = fixture(4);
+         let rx = app.events.subscribe();
+         let q = query(Some("j"), 0);
+-        let mut reader = BufReader::new(File::open(app.store.lock().unwrap().events_path()).unwrap());
+-        assert!(recorded_change(&mut reader, &q).unwrap().is_none());
++        let mut reader = open_history(&app.store.lock().unwrap()).unwrap().unwrap();
++        assert!(recorded_change(&mut reader.reader, &q).unwrap().is_none());
+         let (first, second) = {
+             let mut s = app.store.lock().unwrap();
+             (s.note("j", "first", "helper").unwrap(), s.note("j", "second", "person").unwrap())
+@@ -1746,6 +1763,39 @@ mod wait_tests {
+         assert_eq!(result.seq, first.seq);
+     }
+ 
++    #[tokio::test]
++    async fn an_open_wait_hears_events_written_after_a_trim() {
++        let (_dir, app) = fixture(8);
++        let q = WaitQ { timeout: Some(5), ..query(Some("j"), 0) };
++        let waiting = wait_since(&app, &q);
++        tokio::pin!(waiting);
++        assert!(tokio::time::timeout(Duration::from_millis(5), &mut waiting).await.is_err());
++        let skipped = note(&app, "j", "agent");
++        assert!(tokio::time::timeout(Duration::from_millis(5), &mut waiting).await.is_err());
++        app.store.lock().unwrap().trim_events(1, 0).unwrap();
++        let answer = note(&app, "j", "person");
++        assert!(answer.seq > skipped.seq);
++        let result = tokio::time::timeout(Duration::from_secs(1), waiting).await.unwrap().unwrap().unwrap();
++        assert_eq!(result.seq, answer.seq);
++
++        // An answer the trim drops before the wait reads it still comes from the old file.
++        let q = WaitQ { timeout: Some(5), ..query(Some("j"), answer.seq) };
++        let waiting = wait_since(&app, &q);
++        tokio::pin!(waiting);
++        assert!(tokio::time::timeout(Duration::from_millis(5), &mut waiting).await.is_err());
++        let dropped = {
++            let mut s = app.store.lock().unwrap();
++            let ev = s.note("j", "changed", "person").unwrap();
++            s.note("other", "changed", "agent").unwrap();
++            s.trim_events(1, 0).unwrap();
++            ev
++        };
++        assert!(!std::fs::read_to_string(app.store.lock().unwrap().events_path()).unwrap().contains(&format!("\"seq\":{},", dropped.seq)));
++        app.events.send(dropped.clone()).unwrap();
++        let result = tokio::time::timeout(Duration::from_secs(1), waiting).await.unwrap().unwrap().unwrap();
++        assert_eq!(result.seq, dropped.seq);
++    }
++
+     #[tokio::test]
+     async fn ignored_activity_stays_pending_until_an_eligible_change() {
+         let (_dir, app) = fixture(8);
+diff --git a/src/store.rs b/src/store.rs
+index b24a452..314f3be 100644
+--- a/src/store.rs
++++ b/src/store.rs
+@@ -532,6 +532,9 @@ pub struct Store {
+     timestamps: TimestampIndex,
+     /// The element behind the verb call being committed; taken by the next event.
+     source: Option<Value>,
++    /// Counts trims. A trim replaces `events.jsonl` with a new file, so a
++    /// reader opened at an older count holds a file nothing appends to.
++    log_generation: u64,
+     #[cfg(test)]
+     pub log_failure: Option<(u64, usize)>,
+ }
+@@ -597,7 +600,7 @@ impl Store {
+         }
+         // Sequence numbers continue across restarts, so an event's seq is unique.
+         let (seq, recent, timestamps) = read_event_history(&dir.join("events.jsonl"))?;
+-        Ok(Store { dir: dir.to_path_buf(), jellies, seq, recent, timestamps, source: None, #[cfg(test)] log_failure: None })
++        Ok(Store { dir: dir.to_path_buf(), jellies, seq, recent, timestamps, source: None, log_generation: 0, #[cfg(test)] log_failure: None })
+     }
+ 
+     pub fn list(&self) -> impl Iterator<Item = &Jelly> {
+@@ -1118,7 +1121,13 @@ impl Store {
+         self.seq
+     }
+ 
++    pub fn log_generation(&self) -> u64 {
++        self.log_generation
++    }
++
+     pub(crate) fn trim_events(&mut self, keep: usize, carry: usize) -> std::io::Result<()> {
++        // Counted even on failure: a spurious reopen is harmless, a missed one is not.
++        self.log_generation += 1;
+         trim_log(&self.events_path(), keep, carry)?;
+         let (_, recent, timestamps) = read_event_history(&self.events_path())?;
+         self.recent = recent;

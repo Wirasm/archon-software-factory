@@ -1,0 +1,129 @@
+diff --git a/assets/runtime.js b/assets/runtime.js
+index 6cdfab3..656cfbb 100644
+--- a/assets/runtime.js
++++ b/assets/runtime.js
+@@ -895,9 +895,15 @@
+   });
+   subs.push(() => setTimeout(drawMarkers, 0));
+   btn.onclick = (e) => { e.stopPropagation(); setMode(!commenting); };
++  // Esc while choosing a part ends comment mode before the view sees the key.
++  addEventListener("keydown", (e) => {
++    if (e.key !== "Escape" || !commenting) return;
++    e.stopImmediatePropagation();
++    setMode(false);
++  }, true);
+   addEventListener("keydown", (e) => {
+     if (e.key !== "Escape") return;
+-    // Esc inside a jelly closes the comment mode first, then reaches the jelly page.
++    // With comment mode handled in capture, forward ordinary Esc to the jelly page.
+     const inPop = e.target.closest?.(".jf-pop");
+     if (embedded && !commenting && !inPop && !pop?.isConnected) parent.postMessage({ type: "jelly:escape", name: boot.name }, location.origin);
+     setMode(false);
+diff --git a/tests/README.md b/tests/README.md
+index 92e0aee..914bd3e 100644
+--- a/tests/README.md
++++ b/tests/README.md
+@@ -73,6 +73,34 @@ It returns measurements and saves `header-390.png` and `header-1280.png` in the
+ scratch directory. Stop the throwaway daemon afterward. Existing homes retain
+ their stored surface; use a fresh home for the newly built bundled view.
+ 
++# Comment Escape browser check
++
++Requires Cargo, Chrome and `playwright-cli`. From the checkout, build and start a
++fresh throwaway daemon:
++
++```sh
++cargo build --locked --target-dir /tmp/jelly-escape-target
++/tmp/jelly-escape-target/debug/jelly serve --port 17883 --home /tmp/jelly-escape-home
++# In another terminal, from the checkout:
++/tmp/jelly-escape-target/debug/jelly --url http://127.0.0.1:17883 new escape:map \
++  --view skill/recipes/map/view.html --verbs skill/recipes/map/verbs.js \
++  --state skill/recipes/map/state.json
++```
++
++From a scratch directory, run with an absolute path to the script:
++
++```sh
++playwright-cli -s=escape open http://127.0.0.1:17883/
++playwright-cli -s=escape run-code --filename=/path/to/jelly/tests/comment-escape.js
++playwright-cli -s=escape close
++```
++
++The check uses the real runtime and map recipe, standalone and in the full-view
++iframe. It advances to step 3, checks that Escape cancels commenting and the
++comment editor without losing the step, then checks ordinary Escape still
++dismisses the trace. It fails on the pre-fix runtime. Stop the throwaway daemon
++after testing; no real jelly home is used.
++
+ # Shared-file browser check
+ 
+ `cargo test` includes the shared-file browser regression. Chrome/Chromium is
+diff --git a/tests/comment-escape.js b/tests/comment-escape.js
+new file mode 100644
+index 0000000..c9393d5
+--- /dev/null
++++ b/tests/comment-escape.js
+@@ -0,0 +1,63 @@
++// Uses escape:map, installed from skill/recipes/map as described in tests/README.md.
++async page => {
++  const base = new URL(page.url()).origin;
++  const assert = (ok, message) => { if (!ok) throw Error(message); };
++  const failures = [];
++  await page.setViewportSize({width:1280, height:900});
++  for (const embedded of [false, true]) {
++    const label = embedded ? 'embedded' : 'standalone';
++    try {
++      await page.goto(`${base}${embedded ? '/' : '/j/escape:map/'}`);
++      if (embedded) {
++        await page.waitForFunction(() => window.jelly && pendingFocusWrites === 0);
++        const response = await page.request.post(`${base}/api/jellies/surface/call`, {
++          data:{verb:'focus', args:{name:'escape:map'}, by:'test'}
++        });
++        assert(response.ok(), await response.text());
++        await page.locator('#full').waitFor({state:'visible'});
++        await page.waitForFunction(() => document.querySelector('#full iframe')?.contentWindow.jelly?.name === 'escape:map');
++      }
++      const view = embedded ? page.frameLocator('#full iframe') : page;
++      const comment = embedded ? page.locator('#fcomment') : page.locator('.jf-btn');
++      const chip = view.locator('.crumbs .chip');
++      await view.locator('#t-click').click();
++      await view.locator('[data-step="1"]').click();
++      await view.locator('[data-step="1"]').click();
++      const step = await chip.textContent();
++      assert(/^Step 3 of \d+$/.test(step), `${label}: trace advanced to step 3`);
++      await comment.click();
++      // Hover confirms the iframe received comment mode before sending the key.
++      await view.locator('#n-runtime').hover();
++      await view.locator('#n-runtime.jf-hover, #n-runtime .jf-hover').waitFor({state:'visible'});
++      assert(await comment.textContent() === (embedded ? 'Click a part · Esc' : 'Click a part to comment · Esc'), `${label}: Comment advertises Escape`);
++      await view.locator('body').evaluate(() => document.activeElement.blur());
++      await page.keyboard.press('Escape');
++      await comment.filter({hasText:/^Comment$/}).waitFor({state:'visible'});
++      assert(await chip.count() === 1 && await chip.textContent() === step, `${label}: cancelling comment mode preserves trace step 3`);
++      if (embedded) assert(await page.locator('#full').isVisible(), 'embedded: cancelling comment mode preserves full view');
++
++      await comment.click();
++      await view.locator('#n-runtime').hover();
++      await view.locator('#n-runtime.jf-hover, #n-runtime .jf-hover').waitFor({state:'visible'});
++      await view.locator('#n-runtime').click();
++      await view.locator('.jf-pop textarea').press('Escape');
++      assert(await view.locator('.jf-pop').count() === 0, `${label}: Escape cancels the comment editor`);
++      assert(await chip.textContent() === step, `${label}: cancelling the editor preserves the step`);
++      if (embedded) assert(await page.locator('#full').isVisible(), 'embedded: cancelling the editor preserves full view');
++
++      // Keep evidence in the parent: ordinary iframe Escape may remove the frame.
++      await view.locator('body').evaluate(() => {
++        document.activeElement.blur();
++        document.addEventListener('keydown', e => {
++          if (e.key === 'Escape') window.parent.document.body.dataset.escapeTraceDismissed = String(!document.querySelector('.crumbs .chip'));
++        }, {once:true});
++      });
++      await page.keyboard.press('Escape');
++      await page.waitForFunction(() => document.body.dataset.escapeTraceDismissed === 'true');
++    } catch (error) {
++      failures.push(`${label}: ${error.message}`);
++    }
++  }
++  assert(failures.length === 0, failures.join('\n'));
++  return {passed:true, checked:['standalone', 'embedded', 'comment editor', 'ordinary Escape']};
++}

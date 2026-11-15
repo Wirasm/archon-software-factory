@@ -1,0 +1,27 @@
+diff --git a/tests/closed_pipe.rs b/tests/closed_pipe.rs
+index 0bb8875..59a6627 100644
+--- a/tests/closed_pipe.rs
++++ b/tests/closed_pipe.rs
+@@ -66,6 +66,9 @@ struct Request {
+ }
+ impl Request {
+     fn read(stream: TcpStream) -> Self {
++        // On macOS the accepted stream inherits the listener's nonblocking mode,
++        // and a read timeout does not clear it.
++        stream.set_nonblocking(false).unwrap();
+         stream.set_read_timeout(Some(LIMIT)).unwrap();
+         stream.set_write_timeout(Some(LIMIT)).unwrap();
+         let mut input = BufReader::new(stream);
+diff --git a/tests/pull.rs b/tests/pull.rs
+index 576c636..930311f 100644
+--- a/tests/pull.rs
++++ b/tests/pull.rs
+@@ -161,6 +161,8 @@ fn pull_reports_inventory_and_download_failures() {
+                         Err(e) => panic!("accept: {e}"),
+                     }
+                 };
++                // The accepted stream inherits nonblocking mode on macOS.
++                stream.set_nonblocking(false).unwrap();
+                 stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+                 stream.set_write_timeout(Some(Duration::from_secs(5))).unwrap();
+                 let mut input = BufReader::new(&stream);

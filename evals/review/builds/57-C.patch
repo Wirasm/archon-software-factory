@@ -1,0 +1,161 @@
+diff --git a/src/server.rs b/src/server.rs
+index ee20649..338ab71 100644
+--- a/src/server.rs
++++ b/src/server.rs
+@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
+ use serde_json::{json, Value};
+ use std::convert::Infallible;
+ use std::fs::File;
+-use std::io::{BufRead, BufReader};
++use std::io::{BufRead, BufReader, Write};
+ use std::sync::{Arc, Mutex};
+ use std::time::Duration;
+ use tokio::sync::broadcast;
+@@ -145,7 +145,8 @@ pub async fn serve(store: Store, listener: tokio::net::TcpListener) -> std::io::
+     });
+ 
+     let port = listener.local_addr()?.port();
+-    eprintln!("jelly on http://127.0.0.1:{port}");
++    // A closed stderr must not stop the daemon; the sweep test starts it this way.
++    let _ = writeln!(std::io::stderr().lock(), "jelly on http://127.0.0.1:{port}");
+     axum::serve(listener, router(app)).await
+ }
+ 
+diff --git a/src/store.rs b/src/store.rs
+index b24a452..5d6f0f7 100644
+--- a/src/store.rs
++++ b/src/store.rs
+@@ -807,7 +807,7 @@ impl Store {
+             .collect();
+         stale.iter().filter_map(|n| match self.set_archived(n, true, "jelly") {
+             Ok(ev) => Some(ev),
+-            Err(e) => { eprintln!("could not archive {n}: {e}"); None }
++            Err(e) => { let _ = writeln!(std::io::stderr().lock(), "could not archive {n}: {e}"); None }
+         }).collect()
+     }
+ 
+diff --git a/tests/sweep.rs b/tests/sweep.rs
+new file mode 100644
+index 0000000..68526f7
+--- /dev/null
++++ b/tests/sweep.rs
+@@ -0,0 +1,119 @@
++use serde_json::{json, Value};
++use std::net::TcpListener;
++use std::process::{Child, Command, Stdio};
++use std::time::{Duration, Instant};
++
++const LIMIT: Duration = Duration::from_secs(10);
++
++struct Daemon(Child);
++
++impl Drop for Daemon {
++    fn drop(&mut self) {
++        let _ = self.0.kill();
++        let _ = self.0.wait();
++    }
++}
++
++fn start(home: &std::path::Path, stderr: Stdio) -> (Daemon, String) {
++    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
++    let port = listener.local_addr().unwrap().port();
++    drop(listener);
++    let daemon = Daemon(
++        Command::new(env!("CARGO_BIN_EXE_jelly"))
++            .args(["serve", "--port", &port.to_string(), "--home"])
++            .arg(home)
++            .stdout(Stdio::null())
++            .stderr(stderr)
++            .spawn()
++            .unwrap(),
++    );
++    (daemon, format!("http://127.0.0.1:{port}"))
++}
++
++fn wait_for_start(daemon: &mut Daemon, agent: &ureq::Agent, url: &str) -> Value {
++    let deadline = Instant::now() + LIMIT;
++    loop {
++        if let Ok(response) = agent.get(&format!("{url}/api/jellies")).call() {
++            return response.into_json().unwrap();
++        }
++        assert!(
++            daemon.0.try_wait().unwrap().is_none(),
++            "daemon exited during startup"
++        );
++        assert!(Instant::now() < deadline, "daemon did not start");
++        std::thread::sleep(Duration::from_millis(20));
++    }
++}
++
++fn sweep_failure(closed_stderr: bool) {
++    let home = tempfile::tempdir().unwrap();
++    let agent = ureq::AgentBuilder::new().timeout(LIMIT).build();
++    let (mut daemon, url) = start(home.path(), Stdio::null());
++    wait_for_start(&mut daemon, &agent, &url);
++    agent
++        .post(&format!("{url}/api/jellies"))
++        .send_json(json!({
++            "name": "old", "project": "test", "view": "<p>counter</p>",
++            "verbs": "const verbs = {increment(s) { s.count += 1; }};",
++            "state": {"count": 0}, "by": "test"
++        }))
++        .unwrap();
++    drop(daemon);
++
++    let jelly = home.path().join("jellies/test:old.json");
++    let mut saved: Value = serde_json::from_slice(&std::fs::read(&jelly).unwrap()).unwrap();
++    saved["jelly"]["updated_ms"] = json!(0);
++    std::fs::write(&jelly, serde_json::to_vec(&saved).unwrap()).unwrap();
++    let blocked = jelly.with_extension("json.tmp");
++    std::fs::create_dir(&blocked).unwrap();
++
++    let warnings = home.path().join("stderr.txt");
++    let stderr = if closed_stderr {
++        let (reader, writer) = std::io::pipe().unwrap();
++        drop(reader);
++        writer.into()
++    } else {
++        std::fs::File::create(&warnings).unwrap().into()
++    };
++    let (mut daemon, url) = start(home.path(), stderr);
++    let listed = wait_for_start(&mut daemon, &agent, &url);
++    assert_eq!(listed[0]["name"], "test:old");
++    assert_eq!(listed[0]["archived"], false);
++    if closed_stderr {
++        // Give the startup sweep time to run before removing the write obstruction.
++        std::thread::sleep(Duration::from_secs(1));
++    } else {
++        let deadline = Instant::now() + LIMIT;
++        while !std::fs::read_to_string(&warnings)
++            .unwrap()
++            .contains("could not archive test:old: ")
++        {
++            assert!(
++                daemon.0.try_wait().unwrap().is_none(),
++                "daemon exited during sweep"
++            );
++            assert!(Instant::now() < deadline, "archive warning did not appear");
++            std::thread::sleep(Duration::from_millis(20));
++        }
++    }
++    std::fs::remove_dir(blocked).unwrap();
++    let event: Value = agent
++        .post(&format!("{url}/api/jellies/test:old/call"))
++        .send_json(json!({"verb": "increment", "args": {}, "by": "test"}))
++        .unwrap()
++        .into_json()
++        .unwrap();
++    assert_eq!(event["state"], json!({"count": 1}));
++    wait_for_start(&mut daemon, &agent, &url);
++    assert!(daemon.0.try_wait().unwrap().is_none());
++}
++
++#[test]
++fn archive_failure_with_closed_stderr_keeps_store_usable() {
++    sweep_failure(true);
++}
++
++#[test]
++fn archive_failure_with_writable_stderr_still_warns() {
++    sweep_failure(false);
++}

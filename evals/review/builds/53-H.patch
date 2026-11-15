@@ -1,0 +1,118 @@
+diff --git a/assets/runtime.js b/assets/runtime.js
+index 6cdfab3..5db24aa 100644
+--- a/assets/runtime.js
++++ b/assets/runtime.js
+@@ -895,9 +895,15 @@
+   });
+   subs.push(() => setTimeout(drawMarkers, 0));
+   btn.onclick = (e) => { e.stopPropagation(); setMode(!commenting); };
++  // Escape cancels comment mode before the view can handle it.
++  addEventListener("keydown", (e) => {
++    if (e.key !== "Escape" || !commenting) return;
++    e.stopImmediatePropagation();
++    setMode(false);
++  }, true);
+   addEventListener("keydown", (e) => {
+     if (e.key !== "Escape") return;
+-    // Esc inside a jelly closes the comment mode first, then reaches the jelly page.
++    // Forward Escape to the jelly page when no comment editor is open.
+     const inPop = e.target.closest?.(".jf-pop");
+     if (embedded && !commenting && !inPop && !pop?.isConnected) parent.postMessage({ type: "jelly:escape", name: boot.name }, location.origin);
+     setMode(false);
+diff --git a/tests/README.md b/tests/README.md
+index 92e0aee..06ee935 100644
+--- a/tests/README.md
++++ b/tests/README.md
+@@ -138,3 +138,28 @@ Stop the daemon afterward with Ctrl-C. Existing homes retain their stored jelly
+ page; use a fresh home to test the newly built bundled view. To explicitly update
+ a stored page, use `jelly --url http://127.0.0.1:17850 reshape surface --view assets/surface.html`
+ from the checkout, merging these changes into any customized view first.
++
++# Comment Escape browser check
++
++Requires Cargo, Chrome and `playwright-cli`. From the checkout, build and start a
++fresh throwaway daemon, then create the map fixture in another terminal:
++
++```sh
++cargo build --locked --target-dir /tmp/jelly-escape-target
++/tmp/jelly-escape-target/debug/jelly serve --port 17883 --home /tmp/jelly-escape-home
++# In another terminal, from the checkout:
++/tmp/jelly-escape-target/debug/jelly --url http://127.0.0.1:17883 new escape:map \
++  --view skill/recipes/map/view.html --verbs skill/recipes/map/verbs.js --state skill/recipes/map/state.json
++```
++
++Run from a scratch directory with the absolute path to the script:
++
++```sh
++playwright-cli -s=escape open http://127.0.0.1:17883/
++playwright-cli -s=escape run-code --filename=/path/to/jelly/tests/comment-escape.js
++playwright-cli -s=escape close
++```
++
++The check exercises Escape in standalone and embedded maps, including comment
++editor cancellation and ordinary trace dismissal. It fails with the pre-fix
++runtime. Stop the throwaway daemon afterward; use a fresh home for each run.
+diff --git a/tests/comment-escape.js b/tests/comment-escape.js
+new file mode 100644
+index 0000000..e332e1f
+--- /dev/null
++++ b/tests/comment-escape.js
+@@ -0,0 +1,58 @@
++async page => {
++  const base = new URL(page.url()).origin;
++  const name = 'escape:map';
++  const failures = [];
++  const assert = (ok, message) => { if (!ok) throw Error(message); };
++  const start = async view => {
++    await view.locator('#t-click').click();
++    await view.locator('[data-step="1"]').click();
++    await view.locator('[data-step="1"]').click();
++    assert((await view.locator('.crumbs .chip').textContent()).startsWith('Step 3 of '), 'trace starts at step 3');
++  };
++  const stepPreserved = async (view, label) => {
++    const chip = view.locator('.crumbs .chip');
++    assert(await chip.count() === 1 && (await chip.textContent()).startsWith('Step 3 of '), `${label}: Escape must preserve step 3`);
++  };
++  try {
++    await page.goto(`${base}/j/${name}/`);
++    await start(page);
++    await page.getByRole('button', {name:'Comment', exact:true}).click();
++    await page.getByRole('button', {name:'Click a part to comment · Esc', exact:true}).waitFor();
++    await page.evaluate(() => document.activeElement.blur());
++    await page.keyboard.press('Escape');
++    await page.getByRole('button', {name:'Comment', exact:true}).waitFor();
++    await stepPreserved(page, 'standalone');
++    await page.keyboard.press('Escape');
++    assert(await page.locator('.crumbs .chip').count() === 0, 'standalone: second Escape dismisses trace');
++
++    await start(page);
++    await page.getByRole('button', {name:'Comment', exact:true}).click();
++    await page.locator('.node').first().click();
++    await page.locator('.jf-pop textarea').press('Escape');
++    assert(await page.locator('.jf-pop').count() === 0, 'Escape closes comment editor');
++    await stepPreserved(page, 'comment editor');
++  } catch (e) { failures.push(e.message); }
++
++  try {
++    await page.goto(`${base}/`);
++    await page.waitForFunction(() => window.jelly && pendingFocusWrites === 0);
++    const response = await page.request.post(`${base}/api/jellies/surface/call`, {data:{verb:'focus', args:{name}, by:'test'}});
++    if (!response.ok()) throw Error(await response.text());
++    await page.locator('#full').waitFor({state:'visible'});
++    await page.waitForFunction(name => document.querySelector('#full iframe')?.contentWindow.jelly?.name === name, name);
++    const frame = page.frameLocator('#full iframe');
++    await start(frame);
++    await page.locator('#fcomment').click();
++    await frame.locator('.node').first().hover();
++    await page.waitForFunction(() => document.querySelector('#full iframe').contentDocument.querySelector('.jf-hover'));
++    await page.keyboard.press('Escape');
++    await page.waitForFunction(() => document.querySelector('#full').hidden || !document.querySelector('#fcomment').classList.contains('on'));
++    assert(await page.locator('#full').isVisible(), 'embedded: Escape must preserve the full view and step 3');
++    await stepPreserved(frame, 'embedded');
++    await page.keyboard.press('Escape');
++    // The existing embedded Escape may also close the full view.
++    await page.waitForFunction(() => document.querySelector('#full').hidden || !document.querySelector('#full iframe').contentDocument.querySelector('.crumbs .chip'));
++  } catch (e) { failures.push(e.message); }
++  if (failures.length) throw Error(failures.join('\n'));
++  return {passed:true};
++}

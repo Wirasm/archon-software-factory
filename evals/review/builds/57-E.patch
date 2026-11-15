@@ -1,0 +1,48 @@
+diff --git a/src/store.rs b/src/store.rs
+index b24a452..d9a72ad 100644
+--- a/src/store.rs
++++ b/src/store.rs
+@@ -807,7 +807,11 @@ impl Store {
+             .collect();
+         stale.iter().filter_map(|n| match self.set_archived(n, true, "jelly") {
+             Ok(ev) => Some(ev),
+-            Err(e) => { eprintln!("could not archive {n}: {e}"); None }
++            Err(e) => {
++                // The caller holds the store lock; a failed diagnostic write must not panic and poison it.
++                let _ = writeln!(std::io::stderr().lock(), "could not archive {n}: {e}");
++                None
++            }
+         }).collect()
+     }
+ 
+@@ -2100,6 +2104,30 @@ mod tests {
+         assert!(!s.get("old").unwrap().archived, "a change brings it back");
+     }
+ 
++    /// A failed archive warns on stderr; with stderr closed that write must not panic
++    /// (the sweeper holds the store lock). Runs the check in a child with a closed stderr pipe.
++    #[test]
++    fn failed_archive_with_closed_stderr_does_not_panic() {
++        const TEST: &str = "store::tests::failed_archive_with_closed_stderr_does_not_panic";
++        if std::env::var_os("JELLY_SWEEP_CHILD").is_some() {
++            let (_d, mut s) = store();
++            s.create("old", "".into(), VERBS.into(), json!({}), "agent", false, "", "").unwrap();
++            fs::remove_file(s.events_path()).unwrap();
++            fs::create_dir(s.events_path()).unwrap();
++            assert!(s.sweep(0).is_empty());
++            return;
++        }
++        let mut child = std::process::Command::new(std::env::current_exe().unwrap())
++            .args([TEST, "--exact", "--nocapture"])
++            .env("JELLY_SWEEP_CHILD", "1")
++            .stdout(std::process::Stdio::null())
++            .stderr(std::process::Stdio::piped())
++            .spawn()
++            .unwrap();
++        drop(child.stderr.take());
++        assert!(child.wait().unwrap().success(), "sweep panicked with stderr closed");
++    }
++
+     #[test]
+     fn replies_thread_under_a_comment() {
+         let (_d, mut s) = store();

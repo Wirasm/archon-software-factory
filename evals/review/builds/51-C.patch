@@ -1,0 +1,209 @@
+diff --git a/src/store.rs b/src/store.rs
+index b24a452..e373dd1 100644
+--- a/src/store.rs
++++ b/src/store.rs
+@@ -530,12 +530,20 @@ pub struct Store {
+     seq: u64,
+     recent: BTreeMap<String, RecentEvents>,
+     timestamps: TimestampIndex,
++    /// Bytes of events.jsonl this store has read or appended. A shorter or missing
++    /// log has lost history, and appending to it would let an inbox reader commit
++    /// past events it never saw.
++    log_len: u64,
+     /// The element behind the verb call being committed; taken by the next event.
+     source: Option<Value>,
+     #[cfg(test)]
+     pub log_failure: Option<(u64, usize)>,
+ }
+ 
++fn missing_history() -> std::io::Error {
++    std::io::Error::other("event history is missing: events.jsonl is shorter than the events recorded; restore it before retrying")
++}
++
+ #[derive(Default)]
+ struct RecentEvents {
+     last: Option<Event>,
+@@ -556,7 +564,7 @@ impl RecentEvents {
+ 
+ type TimestampIndex = BTreeMap<(u64, u64), (u64, usize)>;
+ 
+-fn read_event_history(path: &Path) -> std::io::Result<(u64, BTreeMap<String, RecentEvents>, TimestampIndex)> {
++fn read_event_history(path: &Path) -> std::io::Result<(u64, BTreeMap<String, RecentEvents>, TimestampIndex, u64)> {
+     let log = read_optional(path)?;
+     if !log.is_empty() && !log.ends_with('\n') {
+         return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "event log is missing its final newline"));
+@@ -572,7 +580,7 @@ fn read_event_history(path: &Path) -> std::io::Result<(u64, BTreeMap<String, Rec
+         seq = seq.max(event.seq);
+         recent.entry(event.jelly.clone()).or_default().push(event);
+     }
+-    Ok((seq, recent, timestamps))
++    Ok((seq, recent, timestamps, offset))
+ }
+ 
+ impl Store {
+@@ -596,8 +604,8 @@ impl Store {
+             }
+         }
+         // Sequence numbers continue across restarts, so an event's seq is unique.
+-        let (seq, recent, timestamps) = read_event_history(&dir.join("events.jsonl"))?;
+-        Ok(Store { dir: dir.to_path_buf(), jellies, seq, recent, timestamps, source: None, #[cfg(test)] log_failure: None })
++        let (seq, recent, timestamps, log_len) = read_event_history(&dir.join("events.jsonl"))?;
++        Ok(Store { dir: dir.to_path_buf(), jellies, seq, recent, timestamps, log_len, source: None, #[cfg(test)] log_failure: None })
+     }
+ 
+     pub fn list(&self) -> impl Iterator<Item = &Jelly> {
+@@ -1078,8 +1086,13 @@ impl Store {
+ 
+     fn log(&mut self, ev: &Event) -> Result<(), Error> {
+         let append = || -> std::io::Result<(u64, usize)> {
+-            let mut file = fs::OpenOptions::new().create(true).read(true).append(true).open(self.events_path())?;
++            // Only a store with no recorded history may create the log.
++            let mut file = fs::OpenOptions::new().create(self.log_len == 0).read(true).append(true).open(self.events_path())
++                .map_err(|e| if e.kind() == std::io::ErrorKind::NotFound && self.log_len > 0 { missing_history() } else { e })?;
+             let len = file.metadata()?.len();
++            if len < self.log_len {
++                return Err(missing_history());
++            }
+             if len > 0 {
+                 file.seek(SeekFrom::End(-1))?;
+                 let mut last = [0];
+@@ -1104,6 +1117,7 @@ impl Store {
+             Ok((len, line.len()))
+         };
+         let (offset, length) = append().map_err(|e| Error::Invalid(format!("could not record event for {}: {e}", ev.jelly)))?;
++        self.log_len = offset + length as u64;
+         self.timestamps.insert((ev.at_ms, ev.seq), (offset, length));
+         self.recent.entry(ev.jelly.clone()).or_default().push(ev.clone());
+         if offset + length as u64 > LOG_LIMIT {
+@@ -1120,9 +1134,10 @@ impl Store {
+ 
+     pub(crate) fn trim_events(&mut self, keep: usize, carry: usize) -> std::io::Result<()> {
+         trim_log(&self.events_path(), keep, carry)?;
+-        let (_, recent, timestamps) = read_event_history(&self.events_path())?;
++        let (_, recent, timestamps, log_len) = read_event_history(&self.events_path())?;
+         self.recent = recent;
+         self.timestamps = timestamps;
++        self.log_len = log_len;
+         Ok(())
+     }
+ 
+@@ -1138,12 +1153,17 @@ impl Store {
+     pub fn events_since(&self, since: u64) -> std::io::Result<Vec<Event>> {
+         let mut file = match fs::File::open(self.events_path()) {
+             Ok(file) => file,
+-            Err(e) if e.kind() == std::io::ErrorKind::NotFound && self.timestamps.is_empty() => return Ok(Vec::new()),
++            Err(e) if e.kind() == std::io::ErrorKind::NotFound && self.log_len == 0 => return Ok(Vec::new()),
++            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err(missing_history()),
+             Err(e) => return Err(e),
+         };
+-        if !file.metadata()?.is_file() {
++        let metadata = file.metadata()?;
++        if !metadata.is_file() {
+             return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "event log is not a file"));
+         }
++        if metadata.len() < self.log_len {
++            return Err(missing_history());
++        }
+         let mut events = Vec::new();
+         for (&(at_ms, seq), &(offset, length)) in self.timestamps.range((std::ops::Bound::Excluded((since, u64::MAX)), std::ops::Bound::Unbounded)) {
+             file.seek(SeekFrom::Start(offset))?;
+@@ -1168,12 +1188,16 @@ impl Store {
+     pub fn events_back(&self, mut visit: impl FnMut(&str) -> std::io::Result<bool>) -> std::io::Result<()> {
+         let mut file = match fs::File::open(self.events_path()) {
+             Ok(f) => f,
+-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
++            Err(e) if e.kind() == std::io::ErrorKind::NotFound && self.log_len == 0 => return Ok(()),
++            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err(missing_history()),
+             Err(e) => return Err(e),
+         };
+         // The start of a line whose beginning is in an earlier chunk.
+         let mut pending = Vec::new();
+         let mut end = file.metadata()?.len();
++        if end < self.log_len {
++            return Err(missing_history());
++        }
+         let mut newest = true;
+         while end > 0 {
+             let start = end.saturating_sub(LOG_CHUNK);
+@@ -1849,9 +1873,10 @@ mod tests {
+         consume_inbox(&mut s, "p", reader.clone()).unwrap();
+         let event = s.call("p:sample", "label", json!({"id": "b", "value": "y"}), PERSON).unwrap();
+         // Lines older than the position are never parsed, so damage there goes unread.
++        // The damage keeps the line's length: shorter history is missing history, not damage.
+         let log = fs::read_to_string(s.events_path()).unwrap();
+-        let rest = log.split_once('\n').unwrap().1;
+-        fs::write(s.events_path(), format!("malformed\n{rest}")).unwrap();
++        let (first, rest) = log.split_once('\n').unwrap();
++        fs::write(s.events_path(), format!("{}\n{rest}", "x".repeat(first.len()))).unwrap();
+         assert_eq!(consume_inbox(&mut s, "p", reader).unwrap().iter().map(|e| e.seq).collect::<Vec<_>>(), [event.seq]);
+     }
+ 
+@@ -1869,8 +1894,8 @@ mod tests {
+         let path = dir.path().join("inbox-readers.json");
+         let saved = fs::read(&path).unwrap();
+         let log = fs::read_to_string(s.events_path()).unwrap();
+-        let mut lines: Vec<_> = log.lines().collect();
+-        lines[1] = "malformed";
++        let mut lines: Vec<String> = log.lines().map(String::from).collect();
++        lines[1] = "x".repeat(lines[1].len());
+         fs::write(s.events_path(), lines.join("\n") + "\n").unwrap();
+         for project in ["p", ""] {
+             for reader in [&existing, &new] {
+@@ -1920,6 +1945,57 @@ mod tests {
+         assert_eq!(consume_inbox(&mut s, "p", reader).unwrap().len(), 1);
+     }
+ 
++    #[test]
++    fn inbox_lost_history_is_refused_until_restored() {
++        for lose in ["moved", "emptied"] {
++            let (dir, mut s) = store();
++            s.create("sample", "".into(), VERBS.into(), json!({"labels": {}}), "agent", false, "", "p").unwrap();
++            let reader = InboxReader::Named { name: "a".into() };
++            consume_inbox(&mut s, "p", reader.clone()).unwrap();
++            let unread =s.call("p:sample", "label", json!({"id": "a", "value": "x"}), PERSON).unwrap();
++            let path = s.events_path();
++            let history = fs::read(&path).unwrap();
++            let cursors = fs::read(dir.path().join("inbox-readers.json")).unwrap();
++            fs::write(dir.path().join("aside.jsonl"), &history).unwrap();
++            if lose == "moved" {
++                fs::remove_file(&path).unwrap();
++            } else {
++                fs::write(&path, "").unwrap();
++            }
++
++            let error = s.call("p:sample", "label", json!({"id": "b", "value": "y"}), PERSON).unwrap_err();
++            assert!(error.to_string().contains("event history is missing"), "{lose}: {error}");
++            assert!(s.get("p:sample").unwrap().state.pointer("/labels/b").is_none());
++            if lose == "moved" {
++                assert!(!path.exists());
++            } else {
++                assert!(fs::read(&path).unwrap().is_empty());
++            }
++
++            let error = s.read_inbox("p", &reader).err().unwrap();
++            assert!(error.to_string().contains("event history is missing"), "{lose}: {error}");
++            assert_eq!(fs::read(dir.path().join("inbox-readers.json")).unwrap(), cursors);
++
++            fs::write(&path, &history).unwrap();
++            assert_eq!(consume_inbox(&mut s, "p", reader.clone()).unwrap().iter().map(|e| e.seq).collect::<Vec<_>>(), [unread.seq]);
++            let next = s.call("p:sample", "label", json!({"id": "c", "value": "z"}), PERSON).unwrap();
++            assert!(next.seq > unread.seq);
++            assert_eq!(consume_inbox(&mut s, "p", reader.clone()).unwrap().iter().map(|e| e.seq).collect::<Vec<_>>(), [next.seq]);
++            assert!(consume_inbox(&mut s, "p", reader).unwrap().is_empty());
++        }
++    }
++
++    #[test]
++    fn fresh_home_creates_history_and_delivers_to_new_readers() {
++        let (_dir, mut s) = store();
++        assert!(!s.events_path().exists());
++        s.create("sample", "".into(), VERBS.into(), json!({"labels": {}}), "agent", false, "", "p").unwrap();
++        assert!(s.events_path().exists());
++        let event = s.call("p:sample", "label", json!({"id": "a", "value": "x"}), PERSON).unwrap();
++        let reader = InboxReader::Named { name: "new".into() };
++        assert_eq!(consume_inbox(&mut s, "p", reader.clone()).unwrap().iter().map(|e| e.seq).collect::<Vec<_>>(), [event.seq]);
++    }
++
+     #[test]
+     fn diff_names_changed_pointers() {
+         let mut out = Vec::new();

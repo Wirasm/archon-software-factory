@@ -1,0 +1,60 @@
+diff --git a/src/server.rs b/src/server.rs
+index ee20649..56f8101 100644
+--- a/src/server.rs
++++ b/src/server.rs
+@@ -475,6 +475,19 @@ fn open_history(store: &Store) -> Result<Option<BufReader<File>>, Error> {
+     }
+ }
+ 
++/// True when the file at the log's path is no longer the one `reader` holds.
++#[cfg(unix)]
++fn history_replaced(reader: &BufReader<File>, store: &Store) -> bool {
++    use std::os::unix::fs::MetadataExt;
++    match (reader.get_ref().metadata(), std::fs::metadata(store.events_path())) {
++        (Ok(held), Ok(now)) => (held.dev(), held.ino()) != (now.dev(), now.ino()),
++        _ => false,
++    }
++}
++
++#[cfg(not(unix))]
++fn history_replaced(_: &BufReader<File>, _: &Store) -> bool { false }
++
+ async fn wait_since(app: &App, q: &WaitQ) -> Result<Option<Event>, Error> {
+     wait_since_at_handoff(app, q, |_| {}).await
+ }
+@@ -543,6 +556,10 @@ async fn wait_for_record(
+         // Commits are ordered under the store lock; broadcasts happen after it
+         // is released, so notifications only wake the reader, never choose a result.
+         let store = app.store.lock().expect("store lock");
++        // A trim replaces the file by rename, so an open reader would keep reading the
++        // unlinked old one. Reopen and rescan: events already scanned did not match
++        // (a match would have returned), and unread ones are kept by the trim.
++        if reader.as_ref().is_some_and(|r| history_replaced(r, &store)) { *reader = None; }
+         if reader.is_none() { *reader = open_history(&store)?; }
+         if let Some(reader) = reader {
+             if let Some(ev) = recorded_change(reader, q)? { return Ok(Some(ev)); }
+@@ -1746,6 +1763,24 @@ mod wait_tests {
+         assert_eq!(result.seq, first.seq);
+     }
+ 
++    #[tokio::test]
++    async fn open_wait_hears_events_after_the_log_is_trimmed() {
++        let (_dir, app) = fixture(8);
++        let rx = app.events.subscribe();
++        let q = query(Some("j"), 0);
++        let mut reader = BufReader::new(File::open(app.store.lock().unwrap().events_path()).unwrap());
++        assert!(recorded_change(&mut reader, &q).unwrap().is_none());
++        let answer = {
++            let mut s = app.store.lock().unwrap();
++            s.note("j", "before", "agent").unwrap();
++            s.trim_events(2, 0).unwrap();
++            s.note("j", "answer", "person").unwrap()
++        };
++        app.events.send(answer.clone()).unwrap();
++        let result = wait_for_record(&app, &q, &mut Some(reader), rx, None).await.unwrap().unwrap();
++        assert_eq!(result.seq, answer.seq);
++    }
++
+     #[tokio::test]
+     async fn ignored_activity_stays_pending_until_an_eligible_change() {
+         let (_dir, app) = fixture(8);
