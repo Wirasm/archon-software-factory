@@ -139,6 +139,8 @@ While it works, an agent sees things outside its scope: something odd, a questio
 
 A real defect counts highest. The drain ranks what it files, and a defect in behaviour that matters goes ahead of everything else on the list: dead code, a wrong comment and a question come after it.
 
+The drain is a taste-driven outer loop. Its policy is where the project's taste is written: its direction and what its maintainers hold code to. Carrying that taste into what gets filed is what the policy is for.
+
 Reading the list at once is the point. Ten agents noticing the same thing is one entry with a count, and a pattern across entries is visible in a way it never is one at a time.
 
 What the old pack shows: its discoveries filed 429 issues on Archon and 296 were closed by a merged change, with a median change of about 390 lines. The source is strong. The cost came from building nearly all of it, each one filed and worked without this judgment.
