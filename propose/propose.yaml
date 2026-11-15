@@ -1,0 +1,29 @@
+name: propose
+description: |
+  Write the title and description one change is proposed with, from the
+  builder's account and the checks' verdict. Reads no code, changes nothing.
+
+model: ['@proposer', small]
+
+inputs:
+  item:
+    description: The work item as text.
+  build:
+    description: What build concluded, as its result, from the last build round.
+  verdict:
+    description: The checks' reports put together, as the verdict stage's result.
+
+returns: propose
+
+nodes:
+  - id: propose
+    command: propose
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, description: 'One sentence about what is now true.' }
+        description: { type: string, description: 'The description, as text ready to post.' }
+        notes: { type: string, description: 'Anything worth saying that has no field here.' }
+      required: [title, description, notes]

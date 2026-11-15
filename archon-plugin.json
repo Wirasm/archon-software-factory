@@ -15,6 +15,7 @@
     "validate": "validate/validate.yaml",
     "land": "land/land.yaml",
     "docs": "docs-stage/docs.yaml",
-    "verdict": "verdict/verdict.yaml"
+    "verdict": "verdict/verdict.yaml",
+    "propose": "propose/propose.yaml"
   }
 }
