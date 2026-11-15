@@ -57,6 +57,15 @@ What it rests on and what would test it:
 - Open risks: a reviewer that keeps its session may defend its earlier findings; a long item grows a long session; a session is tied to one provider and model, so an item whose model changes between rounds (Archon issue 5592) cannot carry it; two runs of one role on one item must not write to one session.
 - First test: a check or review result that arrives after the deliver run ended. Fix it once in the builder's item session and once in a fresh session that is told, on the same cases, and compare the fix and the cost.
 
+
+**The workflow author chooses (Rasmus, 2026-11-15, hypothesis).** The engine does not decide that a role's session is the item's. It offers the choice per node, and the author makes it:
+
+- fresh, as today's default;
+- continued from a named node in the same run, as `context: { resume: <node> }` does today;
+- a named session kept on the item, which any workflow on that item can continue by the same name. A build workflow and a later merge workflow can then share "the builder of this item", or not, as their author writes.
+
+The factory pack's own choices (builder on the item; planner and reviewers likely) are the pack's policy, to be measured, not engine behavior. The name is scoped to the pack so two packs on one item do not share a session by accident.
+
 ## Who holds the state
 
 The factory holds what the factory derived. The tracker holds what its authors wrote. An author can be an operator or anyone else who files there, and is as likely an agent as a person. There is never a two-way sync.
