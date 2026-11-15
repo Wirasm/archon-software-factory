@@ -16,6 +16,8 @@ Judge the tests this change adds or edits. Find out, do not assume: break the be
 
 You are not looking for tests that are missing. A change with few tests, or none, is not a finding, and you never ask for a test because some behaviour has none. There is one exception: something the item itself asks for (an outcome, something that must hold, an acceptance line) that this change touches and that nothing would catch if it broke. Name it only when you have shown that it breaks unnoticed.
 
+When finishing needs a decision that is not yours, leave an ask. Read `$PACK_DIR/.shared/ask.md` first: it says when to use one, what we expect in it, and what happens after.
+
 End in one of two outcomes:
 
 - **sound**: every test this change leaves behind earns its place.

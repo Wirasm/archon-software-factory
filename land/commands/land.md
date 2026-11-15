@@ -25,6 +25,8 @@ What must hold:
 - Never move a branch that is checked out in another working tree. If the landing branch is, stop and say so.
 - Push nothing.
 
+When finishing needs a decision that is not yours, leave an ask. Read `$PACK_DIR/.shared/ask.md` first: it says when to use one, what we expect in it, and what happens after.
+
 End in one of three outcomes:
 
 - **landed**: the landing branch now points at the checked tree.

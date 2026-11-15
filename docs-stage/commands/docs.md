@@ -14,6 +14,8 @@ Change documentation only. Write as the surrounding text is written. Do not docu
 
 Commit what you changed on the same branch. Push nothing.
 
+When finishing needs a decision that is not yours, leave an ask. Read `$PACK_DIR/.shared/ask.md` first: it says when to use one, what we expect in it, and what happens after.
+
 End in one of two outcomes:
 
 - **in line**: the docs are true for this change. Say what you changed, or that nothing needed changing.

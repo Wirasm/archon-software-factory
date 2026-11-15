@@ -18,6 +18,8 @@ Judge by the project's own direction and design, not by your taste. Something yo
 
 Change nothing in the change itself, and remove anything you write to find out.
 
+When finishing needs a decision that is not yours, leave an ask. Read `$PACK_DIR/.shared/ask.md` first: it says when to use one, what we expect in it, and what happens after.
+
 End in one of three outcomes:
 
 - **approve**: the product's users get what the item was for, in the way this product means to give it.

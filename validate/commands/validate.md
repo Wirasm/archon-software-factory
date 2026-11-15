@@ -18,6 +18,8 @@ You are in your own checkout of the project. Check out the change's commit and r
 
 Change no code. If the check fails, report the failure; do not fix it.
 
+When finishing needs a decision that is not yours, leave an ask. Read `$PACK_DIR/.shared/ask.md` first: it says when to use one, what we expect in it, and what happens after.
+
 End in one of two outcomes:
 
 - **passed**: the check ran on the change's commit and passed.
