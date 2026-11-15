@@ -14,7 +14,7 @@ Each finding says what must change, where, and the evidence. Take the evidence s
 
 When you run the project's own software, give it scratch data and a scratch home of its own. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
 
-Fix the findings and nothing else. Commit on the same branch. The change is already proposed as a draft; leave its title and description alone.
+Fix the findings and nothing else. Commit on the same branch. The change is already proposed as a draft. Where your fix makes its description untrue, correct the description; otherwise leave it and the title alone.
 
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
