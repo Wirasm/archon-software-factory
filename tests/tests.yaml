@@ -1,0 +1,65 @@
+name: tests
+description: |
+  Check the tests one change adds or edits: does each earn its place in the
+  suite. Does not look for missing tests. Changes nothing in the change.
+
+model: ['@test-checker', large]
+
+inputs:
+  item:
+    description: The work item as text.
+  base:
+    description: The commit the change was built on.
+
+returns: tests
+
+nodes:
+  - id: tests
+    command: tests
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        outcome: { type: string, enum: [sound, return] }
+        summary: { type: string, description: 'For a maintainer deciding whether to land it.' }
+        findings:
+          type: array
+          description: 'With return: each test that does not earn its place. Empty with sound.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              test: { type: string, description: 'The test, by file and name.' }
+              fault: { type: string, enum: [cannot_fail, fails_for_other_reasons, guards_nothing_that_matters, already_guarded] }
+              evidence: { type: string, description: 'What you ran and what it showed.' }
+              do: { type: string, enum: [remove, simplify, repair] }
+              how: { type: string }
+            required: [test, fault, evidence, do, how]
+        checked:
+          type: array
+          items: { type: string }
+          description: 'Each thing you ran or read to decide, and what it showed.'
+        asks:
+          type: array
+          description: 'Each decision that belongs to a maintainer. Empty when there is none.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              question: { type: string }
+              context: { type: string }
+              options:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    id: { type: string }
+                    does: { type: string }
+                    cost: { type: string }
+                  required: [id, does, cost]
+              recommend: { type: string }
+              why: { type: string }
+            required: [question, context, options, recommend, why]
+        notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
+      required: [outcome, summary, findings, checked, asks, notes]

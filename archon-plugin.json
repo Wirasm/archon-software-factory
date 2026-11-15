@@ -9,6 +9,7 @@
     "link": "link/link.yaml",
     "plan": "plan/plan.yaml",
     "build": "build/build.yaml",
-    "review": "review/review.yaml"
+    "review": "review/review.yaml",
+    "tests": "tests/tests.yaml"
   }
 }
