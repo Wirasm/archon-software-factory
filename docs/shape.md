@@ -206,6 +206,8 @@ Attention, its watch, its events and the permission to answer are keyed on a run
 5. Links between items, and holding an item until what it depends on has landed.
 6. Retention by item.
 
+The earlier queue PRD (Archon issue 5561, closed 2026-11-15) put the queue first and stored an item's state. Its measurements still stand as evidence: the 2026-11-12 dogfood numbers and the count of hand-off code in the old pack.
+
 Until slice 4 exists, two stages run in one parent run only where they belong to the same moment for the same item, as judging and linking do. A hand-off between stages with different capacity waits for slice 4; a node that fires the next stage itself is the workaround this factory does not use.
 
 ## Where a stage's inputs come from
