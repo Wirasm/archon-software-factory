@@ -37,8 +37,7 @@ nodes:
       base: $start.output
 
   # One round: the builder fixes what the last round returned (never on the first
-  # round), then the checks look again, each with a fresh context. They share the
-  # run's checkout and so run one after the other.
+  # round), then the three checks look again side by side, each with a fresh context.
   - id: rounds
     depends_on: [docs]
     loop_group:
@@ -75,7 +74,8 @@ nodes:
 
         - id: tests
           include: tests
-          depends_on: [review]
+          depends_on: [fix]
+          trigger_rule: all_done
           with:
             item: $INPUTS.item
             base: $start.output
@@ -83,7 +83,8 @@ nodes:
 
         - id: product
           include: product
-          depends_on: [tests]
+          depends_on: [fix]
+          trigger_rule: all_done
           with:
             item: $INPUTS.item
             base: $start.output
@@ -91,7 +92,7 @@ nodes:
 
         - id: verdict
           include: verdict
-          depends_on: [product]
+          depends_on: [review, tests, product]
           with:
             item: $INPUTS.item
             reports: |

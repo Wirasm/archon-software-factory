@@ -12,7 +12,7 @@ The change is the commit checked out in front of you, against the commit it was 
 
 The test policy is what this project's maintainers hold its tests to. Read the pack's default at `$PACK_DIR/.shared/policy/tests.md`. Then read the project's own at `$INPUTS.test_policy`, when one is named there. Where they differ, the project's wins.
 
-Judge the tests this change adds or edits. Find out, do not assume: break the behaviour and see whether the test fails; run a test again and again to see whether it fails on its own. Change nothing in the change itself, and remove anything you write to find out.
+Judge the tests this change adds or edits. Find out, do not assume: break the behaviour and see whether the test fails; run a test again and again to see whether it fails on its own. Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit, and remove the copy when you are done. Change nothing in the change itself.
 
 You are not looking for tests that are missing. A change with few tests, or none, is not a finding, and you never ask for a test because some behaviour has none. There is one exception: something the item itself asks for (an outcome, something that must hold, an acceptance line) that this change touches and that nothing would catch if it broke. Name it only when you have shown that it breaks unnoticed.
 

@@ -14,7 +14,9 @@ Judge the change against the item: what it is for, what must hold, and how it is
 
 A change is usually right in the lines it touches. Where it goes wrong is in what those lines now disagree with: another member of the same set, another way in to the same thing, the reader of what it writes. Leave the diff and check those. A finding names both sides.
 
-Where the change could be wrong in a way its own tests do not show, find out by running something. Say for each thing you report whether you ran it or read it. Change nothing in the change itself, and remove anything you write to find out.
+Where the change could be wrong in a way its own tests do not show, find out by running something. Say for each thing you report whether you ran it or read it.
+
+Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit, and remove the copy when you are done. Change nothing in the change itself.
 
 Something wrong that this change did not cause is not a finding against it. Report it as noticed.
 
