@@ -1,0 +1,70 @@
+name: discoveries
+description: |
+  Drain what agents noticed outside their scope: read the whole list, verify
+  what is worth filing against the code, and decide what becomes a work item.
+  Changes nothing.
+
+model: ['@manager', large]
+
+inputs:
+  discoveries:
+    description: What agents noticed, each entry with where it came from.
+  open_items:
+    default: "None listed."
+    description: The project's open items, as a short index.
+
+returns: drain
+
+nodes:
+  - id: drain
+    command: discoveries
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        summary: { type: string, description: 'For the operator: what was on the list and what you decided.' }
+        filed:
+          type: array
+          description: 'Most valuable first.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              title: { type: string }
+              kind: { type: string, enum: [defect, cleanup, question, other] }
+              item: { type: string, description: 'The work item as text.' }
+              seen_by: { type: array, items: { type: string }, description: 'The entries this came from.' }
+              verified: { type: string, description: 'What you ran or read to confirm it, and what it showed.' }
+            required: [title, kind, item, seen_by, verified]
+        folded:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              into: { type: string }
+              what: { type: string }
+              adds: { type: string }
+            required: [into, what, adds]
+        held:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              what: { type: string }
+              until: { type: string }
+            required: [what, until]
+        dropped:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              what: { type: string }
+              why: { type: string }
+            required: [what, why]
+        left_out: { type: string, description: 'How many entries were caveats about an agent'"'"'s own work, in a sentence.' }
+        notes: { type: string, description: 'Anything worth saying that has no field here.' }
+      required: [summary, filed, folded, held, dropped, left_out, notes]
