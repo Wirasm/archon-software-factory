@@ -16,31 +16,19 @@ inputs:
 returns: rounds
 
 nodes:
-  # The commit the change is built on, so every check compares against the same base.
-  - id: start
-    bash: git rev-parse HEAD
-
   - id: build
     include: build
-    depends_on: [start]
     with:
       item: $INPUTS.item
       plan: $INPUTS.plan
       answers: $INPUTS.answers
       build_policy: $INPUTS.build_policy
 
-  - id: docs
-    include: docs
-    depends_on: [build]
-    with:
-      item: $INPUTS.item
-      base: $start.output
-
   # One round: the builder fixes what the last round returned (never on the first
   # round), then the three checks look again side by side, each with a fresh context and told
   # what was returned last round and what the builder says it did about it.
   - id: rounds
-    depends_on: [docs]
+    depends_on: [build]
     loop_group:
       max_iterations: 3
       fresh_context: true
@@ -65,35 +53,39 @@ nodes:
               for_next: { type: string, description: 'Anything the engineer who checks this again needs from you that has no field here. Write it to them.' }
             required: [outcome, summary, disputed, commit, for_next]
 
-        - id: review
-          include: review
+        # The commit this change sits on, read after the builder's last commit: a builder
+        # may move its branch onto newer work, and the checks must compare against that.
+        - id: base
           depends_on: [fix]
           trigger_rule: all_done
+          bash: git merge-base HEAD "origin/$BASE_BRANCH" 2>/dev/null || git merge-base HEAD "$BASE_BRANCH"
+
+        - id: review
+          include: review
+          depends_on: [base]
           with:
             item: $INPUTS.item
-            base: $start.output
+            base: $base.output
             review_policy: $INPUTS.review_policy
             returned_before: $LOOP_PREV.verdict.output
             builder_reply: $fix.output
 
         - id: tests
           include: tests
-          depends_on: [fix]
-          trigger_rule: all_done
+          depends_on: [base]
           with:
             item: $INPUTS.item
-            base: $start.output
+            base: $base.output
             test_policy: $INPUTS.test_policy
             returned_before: $LOOP_PREV.verdict.output
             builder_reply: $fix.output
 
         - id: product
           include: product
-          depends_on: [fix]
-          trigger_rule: all_done
+          depends_on: [base]
           with:
             item: $INPUTS.item
-            base: $start.output
+            base: $base.output
             product_policy: $INPUTS.product_policy
 
         - id: verdict
