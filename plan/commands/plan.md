@@ -14,7 +14,9 @@ What had to land before it:
 
 $INPUTS.links
 
-The plan policy is what this project's maintainers hold a design to. Read the pack's default at `$PACK_DIR/.shared/policy/plan.md`. Then read the project's own at `$INPUTS.plan_policy`, when one is named there. Where they differ, the project's wins.
+The plan policy is what this project's maintainers hold a design to. Read the pack's default at `$PACK_DIR/.shared/policy/plan.md`. Then read the project's own at `$INPUTS.plan_policy`, when one is named there. Where they differ, the project's wins. A policy that names documents means you read them before you choose an option; say which one decided something.
+
+When the item gives a way to reproduce what it describes, run it before you plan.
 
 You are in a checkout of the project.
 
