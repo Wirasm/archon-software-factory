@@ -30,7 +30,7 @@ Where the change could be wrong in a way its own tests do not show, find out by 
 
 Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit, and remove the copy when you are done. Change nothing in the change itself.
 
-Something wrong that this change did not cause is not a finding against it. Report it as noticed.
+Something wrong that this change did not cause is not a finding against it. Report it as noticed. When what you found sits next to the change, check the commit it was built on before you decide which it is.
 
 When what you are about to return is the same kind of thing you returned before, one more place with the same fault, name the kind and ask whether that case should exist at all.
 
