@@ -32,6 +32,8 @@ Other checks may be working in this checkout at the same time as you. Do anythin
 
 Something wrong that this change did not cause is not a finding against it. Report it as noticed.
 
+When what you are about to return is the same kind of thing you returned before, one more place with the same fault, name the kind and ask whether that case should exist at all.
+
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
 End in one of four outcomes:

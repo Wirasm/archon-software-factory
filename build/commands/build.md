@@ -22,6 +22,8 @@ You are in your own checkout of the project, on your own branch. Commit your wor
 
 Then open the change for review as a draft, the way this project proposes changes. Write its title and description for the maintainers: you know why the change is shaped as it is, where you left the plan and what you are unsure of, and nobody after you will. Where the project has nowhere to propose a change, leave the branch as it is and say so.
 
+A decision you see and choose not to make is an ask, not a note in your report.
+
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
 End in one of three outcomes:
