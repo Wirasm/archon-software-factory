@@ -20,20 +20,45 @@ nodes:
       type: object
       additionalProperties: false
       properties:
-        outcome: { type: string, enum: [approve, return] }
+        outcome: { type: string, enum: [approve, return, replan, ask] }
         summary: { type: string, description: 'For a maintainer deciding whether to land it.' }
+        item_lines:
+          type: array
+          description: 'One entry for each thing the item asks for: an outcome, something that must hold, an acceptance line.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              line: { type: string, description: 'What the item asks for, in its words.' }
+              verdict: { type: string, enum: [met, not_met, not_checked] }
+              how: { type: string, description: 'How you know, or why it was not checked.' }
+              evidence: { type: string, enum: [ran, read, none] }
+            required: [line, verdict, how, evidence]
         findings:
           type: array
-          description: 'With return: each thing that must change. Empty with approve.'
+          description: 'With return or replan: each thing that must change. Empty otherwise.'
           items:
             type: object
             additionalProperties: false
             properties:
               what: { type: string }
               where: { type: string }
-              evidence: { type: string }
+              disagrees_with: { type: string, description: 'The other side: what the changed code now disagrees with, and where. Empty when the fault is within the changed lines.' }
+              evidence: { type: string, description: 'What you ran or read, and what it showed.' }
+              evidence_kind: { type: string, enum: [ran, read] }
               cost_to_leave: { type: string }
-            required: [what, where, evidence, cost_to_leave]
+            required: [what, where, disagrees_with, evidence, evidence_kind, cost_to_leave]
+        noticed:
+          type: array
+          description: 'Things wrong or odd that this change did not cause. Each is a report for the project, not a finding against the change.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              what: { type: string }
+              where: { type: string }
+              kind: { type: string, enum: [defect, odd] }
+            required: [what, where, kind]
         checked:
           type: array
           items: { type: string }
@@ -61,4 +86,4 @@ nodes:
               why: { type: string }
             required: [question, context, options, recommend, why]
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
-      required: [outcome, summary, findings, checked, asks, notes]
+      required: [outcome, summary, item_lines, findings, noticed, checked, asks, notes]

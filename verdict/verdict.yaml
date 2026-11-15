@@ -1,0 +1,77 @@
+name: verdict
+description: |
+  Put the reports several checks made on one change into one report and one
+  outcome. Trusts the reports; checks nothing again and reads no code.
+
+model: ['@verdict', small]
+
+inputs:
+  item:
+    description: The work item as text.
+  reports:
+    description: Each check's result, labelled with the check it came from.
+
+returns: verdict
+
+nodes:
+  - id: verdict
+    command: verdict
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        outcome: { type: string, enum: [approve, return, replan, ask] }
+        summary: { type: string, description: 'Three lines for a maintainer deciding whether to land it.' }
+        findings:
+          type: array
+          description: 'Everything that must change, each once.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              what: { type: string }
+              where: { type: string }
+              evidence: { type: string }
+              cost_to_leave: { type: string }
+              reported_by: { type: array, items: { type: string }, description: 'Every check that reported it.' }
+            required: [what, where, evidence, cost_to_leave, reported_by]
+        disagreements:
+          type: array
+          items: { type: string }
+          description: 'Where two reports contradict each other. Empty when none do.'
+        noticed:
+          type: array
+          description: 'What the checks noticed that this change did not cause, each once.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              what: { type: string }
+              where: { type: string }
+              reported_by: { type: array, items: { type: string } }
+            required: [what, where, reported_by]
+        asks:
+          type: array
+          description: 'Every ask the reports left, unchanged.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              question: { type: string }
+              context: { type: string }
+              options:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    id: { type: string }
+                    does: { type: string }
+                    cost: { type: string }
+                  required: [id, does, cost]
+              recommend: { type: string }
+              why: { type: string }
+              from: { type: string, description: 'The check that left it.' }
+            required: [question, context, options, recommend, why, from]
+      required: [outcome, summary, findings, disagreements, noticed, asks]

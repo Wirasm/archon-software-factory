@@ -1,7 +1,7 @@
 name: tests
 description: |
   Check the tests one change adds or edits: does each earn its place in the
-  suite. Does not look for missing tests. Changes nothing in the change.
+  suite. Asks for a test only where the item itself names a behaviour that nothing guards. Changes nothing in the change.
 
 model: ['@test-checker', large]
 
@@ -29,10 +29,10 @@ nodes:
             type: object
             additionalProperties: false
             properties:
-              test: { type: string, description: 'The test, by file and name.' }
-              fault: { type: string, enum: [cannot_fail, fails_for_other_reasons, guards_nothing_that_matters, already_guarded] }
+              test: { type: string, description: 'The test, by file and name. For something the item asks for that nothing guards: the line of the item.' }
+              fault: { type: string, enum: [cannot_fail, fails_for_other_reasons, guards_nothing_that_matters, already_guarded, item_asks_unguarded] }
               evidence: { type: string, description: 'What you ran and what it showed.' }
-              do: { type: string, enum: [remove, simplify, repair] }
+              do: { type: string, enum: [remove, simplify, repair, add] }
               how: { type: string }
             required: [test, fault, evidence, do, how]
         checked:
