@@ -16,6 +16,7 @@
     "land": "land/land.yaml",
     "docs": "docs-stage/docs.yaml",
     "verdict": "verdict/verdict.yaml",
-    "revise": "revise/revise.yaml"
+    "revise": "revise/revise.yaml",
+    "product": "product/product.yaml"
   }
 }
