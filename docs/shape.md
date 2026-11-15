@@ -137,6 +137,8 @@ While it works, an agent sees things outside its scope: something odd, a questio
 - **Internal tracking.** A discovery stays in the factory. It is not an issue and not an item, and nobody outside sees it yet.
 - **A periodic drain.** A scheduled stage reads the whole list at once, as a principled engineering manager would: it judges the entries against the project's policy and decides what gets filed. What it files becomes an item like any other. The rest is dropped or held, with the reason.
 
+A real defect counts highest. The drain ranks what it files, and a defect in behaviour that matters goes ahead of everything else on the list: dead code, a wrong comment and a question come after it.
+
 Reading the list at once is the point. Ten agents noticing the same thing is one entry with a count, and a pattern across entries is visible in a way it never is one at a time.
 
 What the old pack shows: its discoveries filed 429 issues on Archon and 296 were closed by a merged change, with a median change of about 390 lines. The source is strong. The cost came from building nearly all of it, each one filed and worked without this judgment.
