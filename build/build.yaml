@@ -1,6 +1,6 @@
 name: build
 description: |
-  Make one planned change in its own checkout and commit it. Pushes nothing.
+  Make one planned change in its own checkout, commit it, and open it for review as a draft.
 
 model: ['@builder', large]
 
@@ -33,6 +33,9 @@ nodes:
           items: { type: string }
           description: 'Each thing you ran to check your work, and what it showed.'
         commit: { type: string, description: 'The commit that holds the change. Empty when there is none.' }
+        proposed: { type: string, description: 'Where the draft was opened: its address. Empty when the project has nowhere to propose a change.' }
+        title: { type: string, description: 'The title you proposed it with.' }
+        description: { type: string, description: 'The description you proposed it with, as text.' }
         asks:
           type: array
           description: 'Each decision that belongs to a maintainer. Empty when there is none.'
@@ -57,4 +60,4 @@ nodes:
             required: [question, context, options, recommend, why]
         stop: { type: string, description: 'Why it could not be built, and what you recommend. Empty otherwise.' }
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
-      required: [outcome, summary, changed, checked, commit, asks, stop, notes]
+      required: [outcome, summary, changed, checked, commit, proposed, title, description, asks, stop, notes]

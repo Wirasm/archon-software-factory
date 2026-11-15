@@ -1,23 +1,23 @@
-name: propose
+name: revise
 description: |
-  Write the title and description one change is proposed with, from the
-  builder's account and the checks' verdict. Reads no code, changes nothing.
+  Bring the title and description of a proposed change up to date with what
+  the checks found. Reads no code, changes nothing in the change.
 
-model: ['@proposer', small]
+model: ['@reviser', small]
 
 inputs:
   item:
     description: The work item as text.
-  build:
-    description: What build concluded, as its result, from the last build round.
+  proposal:
+    description: The title and description the builder proposed the change with.
   verdict:
     description: The checks' reports put together, as the verdict stage's result.
 
-returns: propose
+returns: revise
 
 nodes:
-  - id: propose
-    command: propose
+  - id: revise
+    command: revise
     mutates_checkout: false
     output_format:
       type: object
@@ -25,5 +25,6 @@ nodes:
       properties:
         title: { type: string, description: 'One sentence about what is now true.' }
         description: { type: string, description: 'The description, as text ready to post.' }
+        ready: { type: boolean, description: 'True when the checks approve and the change can be marked ready for a maintainer.' }
         notes: { type: string, description: 'Anything worth saying that has no field here.' }
-      required: [title, description, notes]
+      required: [title, description, ready, notes]

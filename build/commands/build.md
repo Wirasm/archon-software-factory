@@ -16,7 +16,9 @@ $INPUTS.answers
 
 The build policy is what this project's maintainers hold the code of a change to. Read the pack's default at `$PACK_DIR/.shared/policy/build.md`. Then read the project's own at `$INPUTS.build_policy`, when one is named there. Where they differ, the project's wins.
 
-You are in your own checkout of the project, on your own branch. Commit your work there. Push nothing.
+You are in your own checkout of the project, on your own branch. Commit your work there.
+
+Then open the change for review as a draft, the way this project proposes changes. Write its title and description for the maintainers: you know why the change is shaped as it is, where you left the plan and what you are unsure of, and nobody after you will. Where the project has nowhere to propose a change, leave the branch as it is and say so.
 
 End in one of two outcomes:
 
