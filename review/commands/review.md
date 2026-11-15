@@ -18,7 +18,7 @@ Where the change could be wrong in a way its own tests do not show, find out by 
 
 Something wrong that this change did not cause is not a finding against it. Report it as noticed.
 
-When finishing needs a decision that is not yours, leave an ask. Read `$PACK_DIR/.shared/ask.md` first: it says when to use one, what we expect in it, and what happens after.
+Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
 End in one of four outcomes:
 

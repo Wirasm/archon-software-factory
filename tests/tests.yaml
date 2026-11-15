@@ -20,7 +20,7 @@ nodes:
       type: object
       additionalProperties: false
       properties:
-        outcome: { type: string, enum: [sound, return] }
+        outcome: { type: string, enum: [sound, return, ask] }
         summary: { type: string, description: 'For a maintainer deciding whether to land it.' }
         findings:
           type: array

@@ -20,7 +20,7 @@ nodes:
       type: object
       additionalProperties: false
       properties:
-        outcome: { type: string, enum: [passed, failed] }
+        outcome: { type: string, enum: [passed, failed, ask] }
         summary: { type: string, description: 'For a maintainer deciding whether to land it.' }
         commit: { type: string, description: 'The commit the check ran on.' }
         command: { type: string, description: 'The exact command that ran.' }

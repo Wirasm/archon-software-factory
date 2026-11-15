@@ -13,6 +13,7 @@ Use it when finishing your work needs a decision that is not yours to make:
 ## When not to use it
 
 - **You can decide it.** A choice between two ways to write the same thing is yours. Make it and say why in your notes.
+- **The project already answered it.** Read the policy you were given and the documents it points to before you ask. A decision they make is made; an ask that repeats it wastes a round and the operator's attention.
 - **You can find it out.** If reading the code or running something would answer it, do that.
 - **It is a doubt, not a decision.** "I did not run the full suite" or "this might be slow" goes in your notes.
 - **It is something wrong that you did not cause.** That is something you noticed, not a question.

@@ -16,9 +16,10 @@ Judge the tests this change adds or edits. Find out, do not assume: break the be
 
 You are not looking for tests that are missing. A change with few tests, or none, is not a finding, and you never ask for a test because some behaviour has none. There is one exception: something the item itself asks for (an outcome, something that must hold, an acceptance line) that this change touches and that nothing would catch if it broke. Name it only when you have shown that it breaks unnoticed.
 
-When finishing needs a decision that is not yours, leave an ask. Read `$PACK_DIR/.shared/ask.md` first: it says when to use one, what we expect in it, and what happens after.
+Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
-End in one of two outcomes:
+End in one of three outcomes:
 
 - **sound**: every test this change leaves behind earns its place.
 - **return**: one or more do not. For each, say which it is: it cannot fail, it fails for other reasons, it guards nothing that matters, or another test already guards the same thing. Show what you ran. Say whether to remove it, simplify it or repair it. For something the item asks for that nothing guards, say what you broke and that nothing failed.
+- **ask**: finishing needs a decision that is not yours. Leave it as an ask and end here; nothing that follows your work starts until it is answered, and then this work runs again.

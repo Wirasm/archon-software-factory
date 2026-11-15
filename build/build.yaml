@@ -22,7 +22,7 @@ nodes:
       type: object
       additionalProperties: false
       properties:
-        outcome: { type: string, enum: [built, stop] }
+        outcome: { type: string, enum: [built, ask, stop] }
         summary: { type: string, description: 'For a maintainer who has not read the plan.' }
         changed:
           type: array

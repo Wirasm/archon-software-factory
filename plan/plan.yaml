@@ -24,6 +24,7 @@ nodes:
       type: object
       additionalProperties: false
       properties:
+        outcome: { type: string, enum: [planned, ask, stop] }
         options:
           type: array
           items:
@@ -67,4 +68,4 @@ nodes:
             required: [question, context, options, recommend, why]
         stop: { type: string, description: 'Why it cannot be planned, and what has to happen first. Empty otherwise.' }
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
-      required: [options, recommend, why, plan, proves, asks, stop, notes]
+      required: [outcome, options, recommend, why, plan, proves, asks, stop, notes]

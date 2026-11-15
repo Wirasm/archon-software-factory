@@ -23,7 +23,7 @@ nodes:
       type: object
       additionalProperties: false
       properties:
-        outcome: { type: string, enum: [landed, returned, stop] }
+        outcome: { type: string, enum: [landed, returned, stop, ask] }
         summary: { type: string, description: 'For a maintainer who has not followed the item.' }
         landing_branch: { type: string, description: 'The branch it landed on, or would have.' }
         from: { type: string, description: 'The commit the landing branch pointed at when you started.' }

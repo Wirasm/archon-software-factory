@@ -20,6 +20,10 @@ You are in a checkout of the project.
 
 Lay out the ways this could be built: the smallest change that does what the item asks, the most complete version, and a third when there is a different way to build it. For each, say what it builds on, how big it is and what it costs. Recommend one, and say in a line why. Then write the plan for the one you recommend, so a builder can make it without redoing your thinking.
 
-When finishing needs a decision that is not yours, leave an ask. Read `$PACK_DIR/.shared/ask.md` first: it says when to use one, what we expect in it, and what happens after.
+Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
-If it cannot be built as stated, or something else has to exist first, stop and say what.
+End in one of three outcomes:
+
+- **planned**: the plan is written and a builder can make it.
+- **ask**: finishing needs a decision that is not yours. Leave it as an ask and end here; nothing that follows your work starts until it is answered, and then this work runs again.
+- **stop**: it cannot be built as stated, or something else has to exist first. Say what.

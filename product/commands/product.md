@@ -18,7 +18,7 @@ Judge by the project's own direction and design, not by your taste. Something yo
 
 Change nothing in the change itself, and remove anything you write to find out.
 
-When finishing needs a decision that is not yours, leave an ask. Read `$PACK_DIR/.shared/ask.md` first: it says when to use one, what we expect in it, and what happens after.
+Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
 End in one of three outcomes:
 
