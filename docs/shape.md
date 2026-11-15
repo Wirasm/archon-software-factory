@@ -127,6 +127,26 @@ Three kinds, each stored with a direction. Only accepted links are stored.
 - A link that stops being true is ended by a second fact, not deleted.
 - Cost: more asks, about one for every three items at first. To be measured, together with how many repeat an answer already given.
 
+## Discoveries
+
+> **Hypothesis, not a decision.** From 2026-11-15. Nothing is built on it yet.
+
+While it works, an agent sees things outside its scope: something odd, a question, dead code, a wrong comment. Reporting one must be cheap, and the factory picks it up.
+
+- **Reporting.** A stage's result carries what it noticed: what, where, and why it looked off. The agent does not verify it, fix it or chase it.
+- **Internal tracking.** A discovery stays in the factory. It is not an issue and not an item, and nobody outside sees it yet.
+- **A periodic drain.** A scheduled stage reads the whole list at once, as a principled engineering manager would: it judges the entries against the project's policy and decides what gets filed. What it files becomes an item like any other. The rest is dropped or held, with the reason.
+
+Reading the list at once is the point. Ten agents noticing the same thing is one entry with a count, and a pattern across entries is visible in a way it never is one at a time.
+
+What the old pack shows: its discoveries filed 429 issues on Archon and 296 were closed by a merged change, with a median change of about 390 lines. The source is strong. The cost came from building nearly all of it, each one filed and worked without this judgment.
+
+Open:
+
+- Where the list lives. It is derived from run results (reported, minus what a drain already decided). That needs the reader slice 4 adds, of results across runs. A pack that keeps a state document for it is an engine finding.
+- What the drain may do without an operator: file, fold into an existing item, drop. Whether filing is an ask.
+- How often it runs, and what it costs when the list is long.
+
 ## Asks
 
 - A run leaves asks as part of its outcome. The engine validates them and opens them in the same write that completes the run.
