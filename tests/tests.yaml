@@ -13,6 +13,12 @@ inputs:
   test_policy:
     default: ""
     description: The pack setting of the same name, declared here so a workflow that includes this stage can pass it through.
+  returned_before:
+    default: "Nothing. This is the first time this change is checked."
+    description: What the checks returned the last time this change was checked.
+  builder_reply:
+    default: "Nothing."
+    description: What the builder says it did about what was returned.
 
 returns: tests
 

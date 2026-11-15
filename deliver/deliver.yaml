@@ -37,7 +37,8 @@ nodes:
       base: $start.output
 
   # One round: the builder fixes what the last round returned (never on the first
-  # round), then the three checks look again side by side, each with a fresh context.
+  # round), then the three checks look again side by side, each with a fresh context and told
+  # what was returned last round and what the builder says it did about it.
   - id: rounds
     depends_on: [docs]
     loop_group:
@@ -71,6 +72,8 @@ nodes:
             item: $INPUTS.item
             base: $start.output
             review_policy: $INPUTS.review_policy
+            returned_before: $LOOP_PREV.verdict.output
+            builder_reply: $fix.output
 
         - id: tests
           include: tests
@@ -80,6 +83,8 @@ nodes:
             item: $INPUTS.item
             base: $start.output
             test_policy: $INPUTS.test_policy
+            returned_before: $LOOP_PREV.verdict.output
+            builder_reply: $fix.output
 
         - id: product
           include: product

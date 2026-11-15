@@ -10,6 +10,16 @@ The change is the commit checked out in front of you, against the commit it was 
 
 The review policy is what this project's maintainers hold a change to. Read the pack's default at `$PACK_DIR/.shared/policy/review.md`. Then read the project's own at `$INPUTS.review_policy`, when one is named there. Where they differ, the project's wins.
 
+This change may have been checked before. What was returned then:
+
+$INPUTS.returned_before
+
+What the builder says it did about that:
+
+$INPUTS.builder_reply
+
+When something was returned before, the builder's account of the fix is a claim. First find out whether each thing returned is fixed. Then look at the change as it now stands, including what the fix itself changed, as if you had not seen it before.
+
 Judge the change against the item: what it is for, what must hold, and how it is accepted. For each of those, say whether the change meets it and how you know.
 
 A change is usually right in the lines it touches. Where it goes wrong is in what those lines now disagree with: another member of the same set, another way in to the same thing, the reader of what it writes. Leave the diff and check those. A finding names both sides.
