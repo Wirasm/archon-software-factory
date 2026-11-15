@@ -62,4 +62,5 @@ nodes:
               why: { type: string }
             required: [question, context, options, recommend, why]
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
-      required: [outcome, summary, findings, checked, asks, notes]
+        for_next: { type: string, description: 'Anything the engineer who fixes the tests you returned needs from you that has no field here. Write it to them.' }
+      required: [outcome, summary, findings, checked, asks, notes, for_next]

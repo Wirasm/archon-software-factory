@@ -67,4 +67,5 @@ nodes:
             required: [what, why]
         left_out: { type: string, description: 'How many entries were caveats about the reporting agent own work, in a sentence.' }
         notes: { type: string, description: 'Anything worth saying that has no field here.' }
-      required: [summary, filed, folded, held, dropped, left_out, notes]
+        for_next: { type: string, description: 'Anything the operator who owns the backlog needs from you that has no field here. Write it to them.' }
+      required: [summary, filed, folded, held, dropped, left_out, notes, for_next]

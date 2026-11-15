@@ -74,4 +74,5 @@ nodes:
               why: { type: string }
               from: { type: string, description: 'The check that left it.' }
             required: [question, context, options, recommend, why, from]
-      required: [outcome, summary, findings, disagreements, noticed, asks]
+        for_next: { type: string, description: 'Anything the maintainer deciding on this change needs from you that has no field here. Write it to them.' }
+      required: [outcome, summary, findings, disagreements, noticed, asks, for_next]

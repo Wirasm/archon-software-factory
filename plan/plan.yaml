@@ -68,4 +68,5 @@ nodes:
             required: [question, context, options, recommend, why]
         stop: { type: string, description: 'Why it cannot be planned, and what has to happen first. Empty otherwise.' }
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
-      required: [outcome, options, recommend, why, plan, proves, asks, stop, notes]
+        for_next: { type: string, description: 'Anything the engineer who builds this needs from you that has no field here. Write it to them.' }
+      required: [outcome, options, recommend, why, plan, proves, asks, stop, notes, for_next]

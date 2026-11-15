@@ -47,4 +47,5 @@ nodes:
           items: { type: string }
           description: 'What the result rests on: files, docs, commits, other items.'
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
-      required: [recommend, why, options, summary, size, cites, notes]
+        for_next: { type: string, description: 'Anything the engineer who plans this item needs from you that has no field here. Write it to them.' }
+      required: [recommend, why, options, summary, size, cites, notes, for_next]

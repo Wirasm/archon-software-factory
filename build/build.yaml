@@ -60,4 +60,5 @@ nodes:
             required: [question, context, options, recommend, why]
         stop: { type: string, description: 'Why it could not be built, and what you recommend. Empty otherwise.' }
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
-      required: [outcome, summary, changed, checked, commit, proposed, title, description, asks, stop, notes]
+        for_next: { type: string, description: 'Anything the maintainer who reads this change, and the engineer who continues it if it comes back needs from you that has no field here. Write it to them.' }
+      required: [outcome, summary, changed, checked, commit, proposed, title, description, asks, stop, notes, for_next]
