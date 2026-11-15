@@ -1,6 +1,6 @@
 # ask
 
-Hands one decision to an operator and lets you finish your work.
+Hands a decision to an operator. It is one of the ways your work can end.
 
 ## When to use it
 
@@ -34,11 +34,17 @@ The operator reads the ask on its own, later, without your run open. They may be
 
 ## What happens after
 
-You are not waiting. Finish your work and end your run; the ask goes to the operator when your run ends.
+An ask is how your run ends. Your result is the asks, and nothing that follows your work starts while they are open.
 
-Until it is answered, treat the question as open. Do the part of your work that does not depend on it. For the part that does, say in your result that it rests on your recommendation, so whoever reads it knows what to revisit if the answer is different.
+When they are answered, this same work runs again with the answers as decisions already made. That run finishes what yours could not.
 
-The answer reaches whoever continues the work as a decision already made. When you are given decisions already made, they are settled: build on them, and do not raise them again.
+So before you end:
+
+- **Find every decision you need, not only the first.** The operator answers them as a set, and each further round costs a full run.
+- **Do not build on your own recommendation.** What depends on an open decision waits for the answer.
+- **Leave what you did find.** Work that holds whichever way the answer goes is worth keeping, and what you learned belongs in your result, so the next run does not start from nothing.
+
+When you are given decisions already made, they are settled: build on them, and do not raise them again.
 
 ## A good one and a bad one
 
