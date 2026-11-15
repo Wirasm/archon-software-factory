@@ -1,0 +1,105 @@
+name: deliver
+description: |
+  Take one planned item to a change that is ready for a maintainer: build it,
+  check it, and send what the checks return back to the same builder until
+  they approve or the rounds run out. One run, so the builder keeps its context.
+
+inputs:
+  item:
+    description: The work item as text.
+  plan:
+    description: What plan concluded, as its result.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
+
+returns: rounds
+
+nodes:
+  # The commit the change is built on, so every check compares against the same base.
+  - id: start
+    bash: git rev-parse HEAD
+
+  - id: build
+    include: build
+    depends_on: [start]
+    with:
+      item: $INPUTS.item
+      plan: $INPUTS.plan
+      answers: $INPUTS.answers
+      build_policy: $INPUTS.build_policy
+
+  - id: docs
+    include: docs
+    depends_on: [build]
+    with:
+      item: $INPUTS.item
+      base: $start.output
+
+  # One round: the builder fixes what the last round returned (never on the first
+  # round), then the checks look again, each with a fresh context. They share the
+  # run's checkout and so run one after the other.
+  - id: rounds
+    depends_on: [docs]
+    loop_group:
+      max_iterations: 3
+      fresh_context: true
+      until_bash: outcome=$verdict.output.outcome; test "$outcome" != return
+      nodes:
+        - id: fix
+          command: fix
+          context: { resume: build }
+          when: "$LOOP_PREV.verdict.output.outcome == 'return'"
+          output_format:
+            type: object
+            additionalProperties: false
+            properties:
+              outcome: { type: string, enum: [fixed, ask, stop] }
+              summary: { type: string, description: 'What you fixed, one line per finding.' }
+              disputed:
+                type: array
+                items: { type: string }
+                description: 'Each finding you did not fix because you think it is wrong, with what you ran.'
+              commit: { type: string, description: 'The commit that holds the fix. Empty when there is none.' }
+              for_next: { type: string, description: 'Anything the engineer who checks this again needs from you that has no field here. Write it to them.' }
+            required: [outcome, summary, disputed, commit, for_next]
+
+        - id: review
+          include: review
+          depends_on: [fix]
+          trigger_rule: all_done
+          with:
+            item: $INPUTS.item
+            base: $start.output
+            review_policy: $INPUTS.review_policy
+
+        - id: tests
+          include: tests
+          depends_on: [review]
+          with:
+            item: $INPUTS.item
+            base: $start.output
+            test_policy: $INPUTS.test_policy
+
+        - id: product
+          include: product
+          depends_on: [tests]
+          with:
+            item: $INPUTS.item
+            base: $start.output
+            product_policy: $INPUTS.product_policy
+
+        - id: verdict
+          include: verdict
+          depends_on: [product]
+          with:
+            item: $INPUTS.item
+            reports: |
+              ## From the review (is the change right against the item)
+              $review.output
+
+              ## From the test check (do the tests the change adds or edits earn their place)
+              $tests.output
+
+              ## From the product review (is the change right for the product's users)
+              $product.output

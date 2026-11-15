@@ -11,6 +11,9 @@ inputs:
     description: The work item as text.
   base:
     description: The commit the change was built on.
+  product_policy:
+    default: ""
+    description: The pack setting of the same name, declared here so a workflow that includes this stage can pass it through.
 
 returns: product
 
