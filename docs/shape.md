@@ -48,7 +48,14 @@ The run is what is resumed. The item is what an operator names.
 - **An operator says "carry on with this item".** The engine resolves that: an interrupted run on the item is resumed, and otherwise what follows is a new run on the item. Naming a run id stays the exact form.
 - **The engine does not choose between runs.** When an item has more than one interrupted run, resuming by item refuses and lists them.
 
-Open: whether an agent session belongs to the run or to the item. Today deliver is one run so the builder keeps its context across fix rounds. If the session were the item's, an answer could run a stage again as a fresh run and keep that context, and resume would matter only after a failure. This needs a measurement.
+**Bet (Rasmus, 2026-11-15): an agent's session belongs to the item.** The builder's for certain, the planner's and each reviewer's very likely. One session per item and role, so a role picks up what it already knows about the item whichever run it is in. Not measured; a bet.
+
+What it rests on and what would test it:
+
+- The engine already keeps sessions across runs: `persist_session` keys them by workflow, node, scope and provider, and the scope is the chat a run was started from. A run started from the CLI has no scope, so today these sessions never apply to the factory. Making the item a scope is an addition to that key, not a new mechanism.
+- Measured so far (three cases, one reviewer model): a second review in the same context and a fresh one that is told what was returned both beat a fresh one that is told nothing. Same context versus told is not separated yet.
+- Open risks: a reviewer that keeps its session may defend its earlier findings; a long item grows a long session; a session is tied to one provider and model, so an item whose model changes between rounds (Archon issue 5592) cannot carry it; two runs of one role on one item must not write to one session.
+- First test: a check or review result that arrives after the deliver run ended. Fix it once in the builder's item session and once in a fresh session that is told, on the same cases, and compare the fix and the cost.
 
 ## Who holds the state
 
