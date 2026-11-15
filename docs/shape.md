@@ -58,45 +58,13 @@ What it rests on and what would test it:
 - First test: a check or review result that arrives after the deliver run ended. Fix it once in the builder's item session and once in a fresh session that is told, on the same cases, and compare the fix and the cost.
 
 
-**The workflow author chooses (Rasmus, 2026-11-15, hypothesis).** The engine does not decide that a role's session is the item's. It offers the choice per node, and the author makes it:
+**The workflow author chooses fresh or same (Rasmus, 2026-11-15, hypothesis).** For work on an item, a node either starts fresh or continues in the same context it had the last time it worked this item. That is the whole choice, and the author makes it per node; the engine does not decide it.
 
-- fresh, as today's default;
-- continued from a named node in the same run, as `context: { resume: <node> }` does today;
-- a named session kept on the item, which any workflow on that item can continue by the same name. A build workflow and a later merge workflow can then share "the builder of this item", or not, as their author writes.
+- Fresh is the default, as today.
+- Same means the session this node last had on this item, in whichever run that was. On the item's first run there is none, so it starts fresh.
+- The factory pack's own choices (builder same; planner and reviewers likely same) are the pack's policy, to be measured.
 
-The factory pack's own choices (builder on the item; planner and reviewers likely) are the pack's policy, to be measured, not engine behavior. The name is scoped to the pack so two packs on one item do not share a session by accident.
-
-## Who holds the state
-
-The factory holds what the factory derived. The tracker holds what its authors wrote. An author can be an operator or anyone else who files there, and is as likely an agent as a person. There is never a two-way sync.
-
-| Fact | Written by | Lives in | The other side |
-|---|---|---|---|
-| The item's text and its discussion | The tracker's authors | Tracker | The engine keeps a reference and a version |
-| Priority, cycle, a relation someone set | The tracker's authors | Tracker | The engine reads it as input |
-| Bucket, size, proposed links | The factory | Engine | Shown in the tracker as a label, a comment or a native relation |
-| Asks, answers, run history | The factory and the operator | Engine | A ruling is written back so it can be seen |
-
-- The factory acts only on items it has admitted. Before intake, an item is just a thing in someone's tracker.
-- Tracker to factory: an edit changes the item's version, so judging or linking runs again and the graph is derived again.
-- Factory to tracker: the engine writes its outcome back through the tracker seam.
-- A proposed link that is accepted is a ruling. It is written to the tracker as its author's, and from then on it is input like any other.
-- The engine's graph is the one delivery waits on. Because the engine owns it, any surface can draw it.
-
-## How a pack shapes an item's state
-
-An item's state is not a document. It is what a reader folds from the facts recorded on the item, and a workflow writer shapes it by declaring types, in three places.
-
-| Place | What the writer declares | Status |
-|---|---|---|
-| What a stage writes | The stage's result type. A plan stage that returns `size` and `plan` has added both to the item. | Exists: `returns:` with an output format |
-| What a stage reads | A binding maps the latest result of an earlier stage on the same item, and the item's answered asks, into the stage's inputs. | Slice 4 |
-| What comes from outside | A fact no run produced (the tracker closed the item, a change was merged by hand) arrives as an event on the item with a payload, through the same door as "an item arrives". | Slice 4 |
-
-- A fact is written once and never edited. The latest one wins and the history stays.
-- No node sets a status or a position, and there is no per-item document a workflow can overwrite. Two writers on one field is where the old pack's state drifted, and a run that dies mid-way would leave it half-updated.
-- A pack that reaches for a state document to hold item state is an engine finding.
-- To be tested on validate and land: a fact that changes often and that no stage owns, such as the current head of a change while checks come in. If an event per update is too heavy there, this section is wrong and gets reshaped.
+Not in this: one session shared by differently named nodes or by two workflows, such as a build workflow and a merge workflow continuing one builder. Add a way to name the session only when a real case needs it.
 
 ## Work orders
 
