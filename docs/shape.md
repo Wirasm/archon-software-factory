@@ -38,6 +38,18 @@ If this run died now, what must the next run know? That is the item's. What shou
 
 Where an item stands is never stored. It is its last outcome plus its open asks. Evidence stays on the run and is looked up by item and head.
 
+### Resume
+
+> **Hypothesis, not a decision.** Shaping from 2026-11-15, after the first deliver trial was interrupted and Archon issue 5699 was filed.
+
+The run is what is resumed. The item is what an operator names.
+
+- **Resume repairs one execution.** Its completed nodes, its workflow source, its session and its checkout are the run's, so only a run can be resumed. An item never has a resumable state of its own.
+- **An operator says "carry on with this item".** The engine resolves that: an interrupted run on the item is resumed, and otherwise what follows is a new run on the item. Naming a run id stays the exact form.
+- **The engine does not choose between runs.** When an item has more than one interrupted run, resuming by item refuses and lists them.
+
+Open: whether an agent session belongs to the run or to the item. Today deliver is one run so the builder keeps its context across fix rounds. If the session were the item's, an answer could run a stage again as a fresh run and keep that context, and resume would matter only after a failure. This needs a measurement.
+
 ## Who holds the state
 
 The factory holds what the factory derived. The tracker holds what its authors wrote. An author can be an operator or anyone else who files there, and is as likely an agent as a person. There is never a two-way sync.
