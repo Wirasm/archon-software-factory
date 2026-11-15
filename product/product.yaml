@@ -1,8 +1,8 @@
 name: product
 description: |
-  Review one built change as the people and agents who use the project meet
-  it: commands, output, errors, documentation and screens, held to the
-  project's own product and design documents. Changes nothing in the change.
+  Review the change for the product's users: the commands, output, errors,
+  documentation and screens they meet, held to the project's own product
+  and design documents. Changes nothing in the change.
 
 model: ['@product-reviewer', large]
 

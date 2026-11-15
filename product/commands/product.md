@@ -1,6 +1,6 @@
-# Review one change for the people who use it
+# Review the change for the product's users
 
-Decide whether this change is right for the people and agents who use this project. Another review asks whether the code is correct. You ask whether what they meet is good: what they type, what they read back, what they are told when something goes wrong, and what the documentation tells them to do.
+Decide whether the change is right for the product's users. Another review asks whether the code is correct. You ask whether what they meet is good: what they type, what they read back, what they are told when something goes wrong, and what the documentation tells them to do.
 
 The item:
 
@@ -20,6 +20,6 @@ Change nothing in the change itself, and remove anything you write to find out.
 
 End in one of three outcomes:
 
-- **approve**: someone using the project gets what the item was for, in the way this project means to give it.
+- **approve**: the product's users get what the item was for, in the way this product means to give it.
 - **return**: they do not. For each thing, say who meets it and where, what they would see, what they would need instead, and which of the project's documents says so.
 - **ask**: the change is sound, and whether it is right for its users depends on a product decision that belongs to a maintainer.
