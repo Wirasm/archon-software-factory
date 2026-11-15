@@ -10,9 +10,11 @@ Reproduce it first. Make it happen in front of you, in the smallest way you can,
 
 Then get to the root. Each time you find why something happened, ask why that was so, until you reach something that could have been different: a wrong assumption, a missing check, two things that were meant to agree and do not. The line that throws is rarely the cause.
 
-Prove it. Show that removing the cause removes the symptom, and that the symptom does not appear without it. An explanation you have not tested is a guess, and you say so.
+Prove it. Make the change that removes the cause, in a copy of the checkout, and watch the symptom go away; then put the cause back and watch it return. A cause you have not removed and restored is a guess, and you say so.
 
-Change nothing in the project, and remove anything you write to find out.
+When a test is what fails, do not assume the test is what is wrong. Work out what a real caller of the code gets in the same situation: if they get the wrong thing too, the code is wrong and the test was right to fail.
+
+Change nothing in the project itself, and remove the copy and anything else you write to find out.
 
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
