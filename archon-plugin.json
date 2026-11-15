@@ -17,6 +17,7 @@
     "docs": "docs-stage/docs.yaml",
     "verdict": "verdict/verdict.yaml",
     "revise": "revise/revise.yaml",
-    "product": "product/product.yaml"
+    "product": "product/product.yaml",
+    "investigate": "investigate/investigate.yaml"
   }
 }
