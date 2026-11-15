@@ -1,5 +1,15 @@
 # Overrule log
 
+## 2026-11-15: chat readers of the outcome left for a follow-up
+
+- **Item and change:** Archon issue 5660, PR 5698. Base `d5d99c9bb`, head `9b89b7f97`.
+- **Run:** `review`, run `d0f69ab8-5a07-4705-85c6-4458565a38ec`, `codex/gpt-6.1-sol`, round 5, told. 2m46s, 1,028,811 input and 5,652 output tokens. Stage prompt `review.md` hash `e76bb5c73519`. The test check in the same round returned `sound`.
+- **What the stage returned:** `return`. "Carry named completed outcomes through chat notifications. Both terminal attention notices and live terminal events silently drop them, and the chat contract cannot represent them."
+- **What was done instead, and by whom:** Claude, acting for the operator, did not send it back. The gap was filed as Archon issue 5708, written into the pull request under "Left for a follow-up", and the pull request went to CI and the operator's read.
+- **Why:** The finding is true and was already decided. In round 2 the builder was told: "chat events, the attention notice and the watch's terminal line can stay on the boolean form and be listed in the pull request as not yet reading the new column." The change was already XL (+1,212/-732 over 124 files). The reviewer was never shown that decision, and the pull request did not list it until now.
+- **Kind:** `scope`.
+- **What it says about the stage:** This overrule was caused by the runner, not the reviewer. A scope decision made for the builder never reached the reviewer, so the reviewer found the gap again and correctly called it drift. Hypothesis: decisions on an item (what is deliberately left out, and where it is tracked) belong to the item and go to every stage that judges the change; and the builder's first draft description must carry them.
+
 ## 2026-11-15: load check for command-file references split off the loop fix
 
 - **Item and change:** Archon issue 5696, PR 5700. Base `6bfa11271`, head `0e035c5f5`.
