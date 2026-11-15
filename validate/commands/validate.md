@@ -14,6 +14,8 @@ The project's check, as its maintainers declared it:
 
 $INPUTS.validate_command
 
+When you run the project's own software, give it scratch data and a scratch home of its own. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
+
 You are in your own checkout of the project. Check out the change's commit and run the check on exactly that tree. When a check is declared above, run exactly that command. When none is declared, find the check the maintainers use, run it, and propose it as an ask so they can declare it.
 
 Change no code. If the check fails, report the failure; do not fix it.

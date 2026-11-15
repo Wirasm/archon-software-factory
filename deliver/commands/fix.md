@@ -12,6 +12,8 @@ $LOOP_PREV.verdict.output
 
 Each finding says what must change, where, and the evidence. Take the evidence seriously: a check that ran something and saw it fail is right until you have run the same thing and seen otherwise. Where you disagree with a finding, do not fix around it: say so in your result, with what you ran.
 
+When you run the project's own software, give it scratch data and a scratch home of its own. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
+
 Fix the findings and nothing else. Commit on the same branch. The change is already proposed as a draft; leave its title and description alone.
 
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.

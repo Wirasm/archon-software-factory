@@ -6,6 +6,8 @@ The item:
 
 $INPUTS.item
 
+When you run the project's own software, give it scratch data and a scratch home of its own. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
+
 Reproduce it first. Make it happen in front of you, in the smallest way you can, and keep what reproduces it. If you cannot make it happen, say what you tried and what you saw instead.
 
 Then get to the root. Each time you find why something happened, ask why that was so, until you reach something that could have been different: a wrong assumption, a missing check, two things that were meant to agree and do not. The line that throws is rarely the cause.

@@ -10,6 +10,8 @@ The change is the commit checked out in front of you, against the commit it was 
 
 The product policy says what this project is for, who uses it and how it wants to feel to them. Read the pack's default at `$PACK_DIR/.shared/policy/product.md`. Then read the project's own at `$INPUTS.product_policy`, when one is named there, and the product and design documents it points to. Where they differ, the project's wins.
 
+When you run the project's own software, give it scratch data and a scratch home of its own. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
+
 Use what the change touches the way its users would. Run the command and read what it prints. Trigger the error and read the message as someone who has never seen the code. Follow the changed documentation step by step and see whether it works. Where the change has a screen and a browser is available, look at it. Say for each thing you report whether you used it or only read it.
 
 Prose is in scope. A sentence in the docs, a help text or an error that is true and still leaves its reader unable to act is a finding.
