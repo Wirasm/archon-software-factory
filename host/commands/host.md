@@ -22,7 +22,7 @@ Use `archon forge` to read the host; run `archon forge --help` once to see what 
 
 A draft is often not checked or reviewed. When the change is still a draft, take it out of draft first.
 
-Checks and reviews take time. Look, and when checks are still running or a review this project usually gets has not arrived, wait a few minutes and look again. Give up waiting after about forty minutes, and say what you were still waiting for.
+Checks and reviews take time. Look at one or two changes this project merged recently to see which checks and reviews it usually gets. Then look, and when checks are still running or a review this project usually gets has not arrived, wait a few minutes and look again. Give up waiting after about forty minutes, and say what you were still waiting for.
 
 Then judge what is there:
 
