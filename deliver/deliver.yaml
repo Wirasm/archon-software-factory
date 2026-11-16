@@ -31,6 +31,9 @@ nodes:
     depends_on: [build]
     loop_group:
       max_iterations: 3
+      # Running out of rounds is a normal ending: the last round's outcome stands and the
+      # result node reports it as returned.
+      on_exhausted: complete
       fresh_context: true
       until_bash: outcome=$verdict.output.outcome; test "$outcome" != return
       nodes:
@@ -111,6 +114,7 @@ nodes:
     when: "$rounds.output.outcome == 'approve'"
     loop_group:
       max_iterations: 3
+      on_exhausted: complete
       fresh_context: true
       until_bash: outcome=$host.output.outcome; test "$outcome" != return
       nodes:
