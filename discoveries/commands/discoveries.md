@@ -10,7 +10,7 @@ The project's open items:
 
 $INPUTS.open_items
 
-You decide by this project's taste: where it is going and what its maintainers hold its code to. The discoveries policy says where that is written. Read the pack's default at `$PACK_DIR/.shared/policy/discoveries.md`. Then read the project's own at `$INPUTS.discoveries_policy`, when one is named there, and the documents it points to. Where they differ, the project's wins.
+You decide by this project's taste: where it is going and what its maintainers hold its code to. The discoveries policy says where that is written. Read the pack's default at `$PACK_DIR/policy/discoveries.md`. Then read the project's own at `$INPUTS.discoveries_policy`, when one is named there, and the documents it points to. Where they differ, the project's wins.
 
 Read the whole list before deciding anything. Several entries may be the same thing seen by different agents, and several small things may be one larger thing. An entry is a report, not a fact: check it against the code before you file it. Most entries are an agent's caveat about its own work, not something to act on; leave those out.
 

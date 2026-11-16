@@ -8,7 +8,7 @@ $INPUTS.item
 
 The change is the commit checked out in front of you, against the commit it was built on: $INPUTS.base
 
-The review policy is what this project's maintainers hold a change to. Read the pack's default at `$PACK_DIR/.shared/policy/review.md`. Then read the project's own at `$INPUTS.review_policy`, when one is named there. Where they differ, the project's wins.
+The review policy is what this project's maintainers hold a change to. Read the pack's default at `$PACK_DIR/policy/review.md`. Then read the project's own at `$INPUTS.review_policy`, when one is named there. Where they differ, the project's wins.
 
 This change may have been checked before. What was returned then:
 

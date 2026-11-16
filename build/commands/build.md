@@ -14,7 +14,7 @@ Decisions already made:
 
 $INPUTS.answers
 
-The build policy is what this project's maintainers hold the code of a change to. Read the pack's default at `$PACK_DIR/.shared/policy/build.md`. Then read the project's own at `$INPUTS.build_policy`, when one is named there. Where they differ, the project's wins.
+The build policy is what this project's maintainers hold the code of a change to. Read the pack's default at `$PACK_DIR/policy/build.md`. Then read the project's own at `$INPUTS.build_policy`, when one is named there. Where they differ, the project's wins.
 
 When you run the project's own software, give it scratch data and a scratch home of its own. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
 

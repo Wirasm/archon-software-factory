@@ -14,7 +14,7 @@ What the checks found:
 
 $INPUTS.verdict
 
-The propose policy is how this project's maintainers want a change presented. Read the pack's default at `$PACK_DIR/.shared/policy/propose.md`. Then read the project's own at `$INPUTS.propose_policy`, when one is named there. Where they differ, the project's wins.
+The propose policy is how this project's maintainers want a change presented. Read the pack's default at `$PACK_DIR/policy/propose.md`. Then read the project's own at `$INPUTS.propose_policy`, when one is named there. Where they differ, the project's wins.
 
 Keep what the builder said about why the change is shaped as it is: that is theirs and you cannot improve on it. Add what was verified, and what a check returned and a later round fixed. Correct anything the checks showed to be wrong. Keep the two apart, so a reader can tell what the builder says from what a check verified.
 

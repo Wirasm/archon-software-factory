@@ -8,7 +8,7 @@ $INPUTS.item
 
 The change is the commit checked out in front of you, against the commit it was built on: $INPUTS.base
 
-The product policy says what this project is for, who uses it and how it wants to feel to them. Read the pack's default at `$PACK_DIR/.shared/policy/product.md`. Then read the project's own at `$INPUTS.product_policy`, when one is named there, and the product and design documents it points to. Where they differ, the project's wins.
+The product policy says what this project is for, who uses it and how it wants to feel to them. Read the pack's default at `$PACK_DIR/policy/product.md`. Then read the project's own at `$INPUTS.product_policy`, when one is named there, and the product and design documents it points to. Where they differ, the project's wins.
 
 When you run the project's own software, give it scratch data and a scratch home of its own. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
 

@@ -26,3 +26,7 @@ Someone installs Archon, points it at their forge and their CI, and work flows f
 ## License
 
 MIT
+
+## Policy
+
+What a stage holds a change to is not in its prompt. Each stage reads the pack's default in [`policy/`](policy/) first, then the project's own file when the project names one, and the project's line wins where they differ. The defaults are short on purpose: a project with no policy of its own is held to its own guidance. A project names its files, and the command that proves a change, in `.archon/packs/Wirasm.archon-software-factory.yaml` under `settings:` (see [`.pack/pack.yaml`](.pack/pack.yaml)).
