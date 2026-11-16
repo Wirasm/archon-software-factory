@@ -79,3 +79,13 @@
 - **Why:** The pack's own trial rule since 11-16: an excess test or assertion is a note, never a return by itself. Fifteen other tests in the file were judged to earn their place.
 - **Kind:** `stage broke its own rule`.
 - **What it says about the stage:** The `noted` tier did not hold: the stage classified a wording-only assertion as a fault and returned on it alone. Second time seen. Hypothesis: the outcome rule has to say it in the outcome list itself (return only when a behaviour the item asks for is unguarded or a test cannot fail), not only in the paragraph on notes.
+
+## 2026-11-16: a text-mode check of a refusal message not sent back after three rounds
+
+- **Item and change:** Archon issue 5652 (links between items), draft PR 5810. First item through the wired chain: triage, plan and deliver each started by the engine.
+- **Run:** `deliver`, run `1bc1777d-eb3c-457a-8a8a-e3b8dfa91307`, 78.7 minutes, 8.90 dollars; the `tests` check in round 3 on `claude/haiku`, 10.5 minutes. Pack copy `src8` (factory repo 88682ca). Review and product review approved in the same round.
+- **What the stage returned:** `return`, one finding, `item_asks_unguarded`: the self-link refusal is checked only with `--json`, so emptying its message fails no test. It asked for one text-mode run asserting that stderr names the item, not the wording.
+- **What was done instead, and by whom:** Claude, acting for the operator, did not send it back and started the host stage on the pull request.
+- **Why:** The refusal itself is proven (the JSON path), and the unknown-kind refusal's message is already checked. What is left is whether one message is non-empty. The project's test rulings put error wording outside what tests protect; this is close to that line. The rounds in the run were used up.
+- **Kind:** `not worth the round`.
+- **What it says about the stage:** The finding follows from the item's own acceptance line, which Claude wrote ("refused with a message that says why"). The line asked for a message, so the check asked for its proof. The miss is in the brief: say "is refused", and leave the message to the builder. Third `item_asks_unguarded` return in one day that came from an acceptance line worded more tightly than meant.
