@@ -11,7 +11,7 @@ inputs:
   reports:
     description: Each check's result, labelled with the check it came from.
 
-returns: verdict
+returns: { node: verdict, outcome: outcome }
 
 nodes:
   - id: verdict

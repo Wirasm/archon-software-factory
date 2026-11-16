@@ -20,11 +20,14 @@ inputs:
     default: "Nothing."
     description: What the builder says it did about what was returned.
 
-returns: tests
+returns: { node: tests, outcome: outcome }
 
 nodes:
   - id: tests
     command: tests
+    # A small model sometimes fails to produce a valid report on a large change. A second
+    # attempt starts with a fresh context, which is what gets past it.
+    retry: { max_attempts: 2, on_error: all }
     output_format:
       type: object
       additionalProperties: false

@@ -18,7 +18,7 @@ inputs:
     default: "None recorded."
     description: Relations the tracker already holds for this item.
 
-returns: link
+returns: { node: link, outcome: outcome }
 
 nodes:
   - id: link

@@ -11,7 +11,7 @@ inputs:
   build:
     description: What build concluded, as its result. It holds the commit to check.
 
-returns: validate
+returns: { node: validate, outcome: outcome }
 
 nodes:
   - id: validate

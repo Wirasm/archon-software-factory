@@ -16,7 +16,7 @@ inputs:
     default: ""
     description: The pack setting of the same name, declared here so a workflow that includes this stage can pass it through.
 
-returns: build
+returns: { node: build, outcome: outcome }
 
 nodes:
   - id: build

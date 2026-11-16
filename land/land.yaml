@@ -14,7 +14,7 @@ inputs:
     default: ""
     description: The branch this change lands on. Empty means the project's base branch.
 
-returns: land
+returns: { node: land, outcome: outcome }
 
 nodes:
   - id: land

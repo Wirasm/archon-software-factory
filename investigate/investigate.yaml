@@ -9,7 +9,7 @@ inputs:
   item:
     description: The work item as text.
 
-returns: investigate
+returns: { node: investigate, outcome: outcome }
 
 nodes:
   - id: investigate

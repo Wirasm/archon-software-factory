@@ -13,7 +13,7 @@ inputs:
     default: "None."
     description: Decisions an operator already made on this item.
 
-returns: rounds
+returns: { node: result, outcome: outcome }
 
 nodes:
   - id: build
@@ -142,3 +142,43 @@ nodes:
             change: $build.output.proposed
             returned_before: $LOOP_PREV.host.output
             builder_reply: $hostfix.output
+
+  # What deliver ended with, as one outcome an operator or a later stage reads:
+  # ready (our checks approved and the host is clear), returned (the rounds ran out with
+  # findings open), waiting (the host has not answered yet), replan, or ask.
+  # It computes that from what the two loops ended with and judges nothing.
+  - id: result
+    depends_on: [rounds, hostrounds]
+    trigger_rule: all_done
+    runtime: bun
+    with:
+      checks: $rounds.output
+      host: { from: $hostrounds.output, if_skipped: "" }
+      change: $build.output.proposed
+    script: |
+      const read = (text: string | undefined) => (text ? JSON.parse(text) : null);
+      const checks = read(process.env.INPUTS_CHECKS);
+      const host = read(process.env.INPUTS_HOST);
+      const last = host ?? checks;
+      const hostOutcome: Record<string, string> = { clear: 'ready', none: 'ready', return: 'returned' };
+      const outcome = host
+        ? (hostOutcome[host.outcome] ?? host.outcome)
+        : checks.outcome === 'return' ? 'returned' : checks.outcome;
+      console.log(JSON.stringify({
+        outcome,
+        ended_at: host ? 'host' : 'checks',
+        change: process.env.INPUTS_CHANGE ?? '',
+        summary: last.summary ?? '',
+        asks: last.asks ?? [],
+        for_next: last.for_next ?? '',
+      }));
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [ready, returned, waiting, replan, ask] }
+        ended_at: { type: string, enum: [checks, host] }
+        change: { type: string }
+        summary: { type: string }
+        asks: { type: array }
+        for_next: { type: string }
+      required: [outcome, ended_at, change, summary, asks, for_next]

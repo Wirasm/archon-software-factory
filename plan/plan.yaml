@@ -14,7 +14,7 @@ inputs:
     default: "Nothing."
     description: The items that had to land before this one.
 
-returns: plan
+returns: { node: plan, outcome: outcome }
 
 nodes:
   - id: plan
