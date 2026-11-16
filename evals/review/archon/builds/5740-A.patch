@@ -1,0 +1,348 @@
+diff --git a/packages/docs-web/src/content/docs/reference/workflow-language.md b/packages/docs-web/src/content/docs/reference/workflow-language.md
+index 2a091e44d..49a884d3f 100644
+--- a/packages/docs-web/src/content/docs/reference/workflow-language.md
++++ b/packages/docs-web/src/content/docs/reference/workflow-language.md
+@@ -1842,10 +1842,11 @@ Two consequences worth knowing:
+ - **A composition can span providers.** Parent on Claude, one composed block on Pi, another
+   on Codex, all in one run: each resolves independently. `archon workflow run <name>
+   --dry-run` prints each node's effective provider and model and where the value came from.
+-- **A composed workflow's entry node starts a fresh session**, exactly as it would if you
+-  ran that file on its own, even when the preceding node used the same provider. Set
+-  `context: shared` on the entry node if you deliberately want the caller's thread to
+-  continue into the block.
++- **A composed workflow's first AI node starts a fresh session**, exactly as it would if
++  you ran that file on its own, even when the preceding node used the same provider. That
++  holds when the block starts with a `bash:` or `script:` node too: the first AI node
++  after it is still fresh. Set `context: shared` on that node if you deliberately want the
++  caller's thread to continue into the block.
+ 
+ ### How expansion works
+ 
+diff --git a/packages/workflows/src/compiled-command.ts b/packages/workflows/src/compiled-command.ts
+index 70575d04f..26d25303b 100644
+--- a/packages/workflows/src/compiled-command.ts
++++ b/packages/workflows/src/compiled-command.ts
+@@ -157,9 +157,10 @@ export type ComposedBlockBoundary = ComposedBlockBoundaryBase &
+  *    delivered to its `bash:`/`script:` nodes as `INPUTS_<UPPER_SNAKE>` env vars.
+  *    Write-once for the same reason, and because input names carry no namespace:
+  *    two levels both declaring `plan` have no disambiguator, so the inner one wins.
+- *  - `blockEntry` — this node starts its block. The executor clears the sequential
+- *    session cursor there so a composed workflow begins as coldly as it would
+- *    standalone.
++ *  - `blockSessionStart` — no session-starting node runs before this one inside its
++ *    block. The executor clears the sequential session cursor at it, so the block's
++ *    first AI node begins as coldly as it would standalone, even when the block starts
++ *    with a `bash:` or `script:` node.
+  *  - `boundaries` — caller-level activation predicates for enclosing include instances,
+  *    outermost first. Non-entry descendants enforce them before their local trigger rule.
+  *  - `pack` — the pack the authoring workflow was loaded from, which `$PACK_DIR` names.
+@@ -170,7 +171,7 @@ export interface ComposedNodeMeta {
+   origin: string;
+   pack?: Pick<WorkflowPack, 'source' | 'key'>;
+   inputs?: Record<string, JsonValue>;
+-  blockEntry?: true;
++  blockSessionStart?: true;
+   boundaries?: ComposedBlockBoundary[];
+ }
+ 
+diff --git a/packages/workflows/src/dag/__tests__/composition-execution.ts b/packages/workflows/src/dag/__tests__/composition-execution.ts
+index b794c91e9..57207cbe1 100644
+--- a/packages/workflows/src/dag/__tests__/composition-execution.ts
++++ b/packages/workflows/src/dag/__tests__/composition-execution.ts
+@@ -358,7 +358,7 @@ export function registerAuthoredConfigTests() {
+ export function registerRuntimeBoundariesTests() {
+   // ---------------------------------------------------------------------------
+   // Composition boundaries at run time (#1764):
+-  //   - a composed workflow's entry node starts a session as coldly as it would standalone
++  //   - a composed workflow's first AI node starts a session as coldly as it would standalone
+   //   - a composed workflow's declared inputs reach its shell nodes, named script included
+   // ---------------------------------------------------------------------------
+ 
+@@ -369,9 +369,13 @@ export function registerRuntimeBoundariesTests() {
+       testDir = join(tmpdir(), `dag-comp-rt-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+       await mkdir(testDir, { recursive: true });
+       mockSendQueryDag.mockClear();
++      // Each AI call gets its own session id (session-1, session-2, ...), so a test can
++      // tell which earlier node a resume continues.
++      let sessionCount = 0;
+       mockSendQueryDag.mockImplementation(async function* () {
++        sessionCount += 1;
+         yield { type: 'agent_message_chunk', text: 'response' };
+-        yield { type: 'result', sessionId: 'session-1' };
++        yield { type: 'result', sessionId: `session-${sessionCount}` };
+       });
+     });
+ 
+@@ -561,8 +565,9 @@ export function registerRuntimeBoundariesTests() {
+       // inc__first: the block's entry — cold, exactly as it would be standalone, even
+       // though `lead` just produced a resumable session on the same provider.
+       expect(mockSendQueryDag.mock.calls[1][2]).toBeUndefined();
+-      // inc__second: inside the block, so the block's own thread continues.
+-      expect(mockSendQueryDag.mock.calls[2][2]).toBe('session-1');
++      // inc__second: inside the block, so the block's own thread (inc__first's
++      // session-2) continues, not lead's session-1.
++      expect(mockSendQueryDag.mock.calls[2][2]).toBe('session-2');
+     });
+ 
+     it("AC7 — context: 'shared' on the entry node opts back into the parent's thread", async () => {
+@@ -579,6 +584,59 @@ export function registerRuntimeBoundariesTests() {
+       expect(mockSendQueryDag.mock.calls[1][2]).toBe('session-1');
+     });
+ 
++    it("a block's first AI node starts fresh when the block starts with a bash node (#5740)", async () => {
++      const block = buildWf('bash-entry-blk', [
++        { id: 'prep', bash: 'echo ready' },
++        { id: 'ask', prompt: 'block ask', depends_on: ['prep'] },
++      ]);
++      const parent = buildWf('bash-entry-parent', [
++        { id: 'first', prompt: 'parent first' },
++        { id: 'block', include: 'bash-entry-blk', depends_on: ['first'] },
++      ]);
++
++      await runExpanded([block, parent], 'bash-entry-parent');
++
++      expect(mockSendQueryDag.mock.calls.length).toBe(2);
++      // block__ask: standalone, nothing before it holds a session, so composed it must
++      // not continue `first`'s session-1 either.
++      expect(mockSendQueryDag.mock.calls[1][2]).toBeUndefined();
++    });
++
++    it("context: 'shared' on a first AI node after a bash entry continues the caller's thread", async () => {
++      const block = buildWf('bash-shared-blk', [
++        { id: 'prep', bash: 'echo ready' },
++        { id: 'ask', prompt: 'block ask', depends_on: ['prep'], context: 'shared' },
++      ]);
++      const parent = buildWf('bash-shared-parent', [
++        { id: 'first', prompt: 'parent first' },
++        { id: 'block', include: 'bash-shared-blk', depends_on: ['first'] },
++      ]);
++
++      await runExpanded([block, parent], 'bash-shared-parent');
++
++      expect(mockSendQueryDag.mock.calls[1][2]).toBe('session-1');
++    });
++
++    it("an AI node after the block's own session-starting node keeps the block's thread", async () => {
++      const block = buildWf('mid-bash-blk', [
++        { id: 'a', prompt: 'block a' },
++        { id: 'prep', bash: 'echo ready', depends_on: ['a'] },
++        { id: 'ask', prompt: 'block ask', depends_on: ['prep'] },
++      ]);
++      const parent = buildWf('mid-bash-parent', [
++        { id: 'lead', prompt: 'parent lead' },
++        { id: 'inc', include: 'mid-bash-blk', depends_on: ['lead'] },
++      ]);
++
++      await runExpanded([block, parent], 'mid-bash-parent');
++
++      expect(mockSendQueryDag.mock.calls.length).toBe(3);
++      // inc__a: the block's first AI node, cold.
++      expect(mockSendQueryDag.mock.calls[1][2]).toBeUndefined();
++      // inc__ask: continues inc__a (session-2), as it would standalone.
++      expect(mockSendQueryDag.mock.calls[2][2]).toBe('session-2');
++    });
++
+     it("AC8 — a composed block's declared inputs reach a NAMED script as INPUTS_* env vars", async () => {
+       // The acceptance case the task exists for: a named script file is opaque, so the
+       // load-time `$INPUTS` macro can never reach inside it. Env delivery is its only channel.
+diff --git a/packages/workflows/src/dag/nodes/agent/dispatch.ts b/packages/workflows/src/dag/nodes/agent/dispatch.ts
+index b58806691..9e388a302 100644
+--- a/packages/workflows/src/dag/nodes/agent/dispatch.ts
++++ b/packages/workflows/src/dag/nodes/agent/dispatch.ts
+@@ -259,16 +259,16 @@ function selectSession(
+   // SAME provider — on a provider change the node starts fresh instead of failing
+   // (Claude) or silently cold-falling-back (Codex) on a foreign session id.
+   //
+-  // A composed workflow's ENTRY node is the third fresh case (#1764). Standalone,
+-  // that node runs first and has no cursor to inherit; composed, it would silently
+-  // pick up the session of whatever the parent ran before it — the same file
+-  // behaving differently depending on who composed it. The boundary is where a
++  // The first AI node of a composed workflow is the third fresh case (#1764, #5740).
++  // Standalone, no session exists before that node, so it has no cursor to inherit;
++  // composed, it would silently pick up the session of whatever the parent ran
++  // before it — the same file behaving differently depending on who composed it. The boundary is where a
+   // different file's history begins, so the cursor is cleared for the same reason
+   // a parallel layer clears it. `context: 'shared'` is the individual opt-out for
+   // an author who genuinely wants the parent's thread to continue into the block.
+-  const composedBlockEntry =
+-    readComposedMeta(node)?.blockEntry === true && node.context !== 'shared';
+-  const isFreshSequential = isParallelLayer || node.context === 'fresh' || composedBlockEntry;
++  const composedSessionStart =
++    readComposedMeta(node)?.blockSessionStart === true && node.context !== 'shared';
++  const isFreshSequential = isParallelLayer || node.context === 'fresh' || composedSessionStart;
+   const cursor = ctx.lastSequentialSession;
+   if (isFreshSequential || cursor === undefined) {
+     return { resumeSessionId: undefined, resumeIntent: 'ordinary', named: false };
+diff --git a/packages/workflows/src/dag/run-layers.ts b/packages/workflows/src/dag/run-layers.ts
+index a246b11f5..807eeba1f 100644
+--- a/packages/workflows/src/dag/run-layers.ts
++++ b/packages/workflows/src/dag/run-layers.ts
+@@ -16,6 +16,7 @@ import {
+   nodeUsesPersistedScope,
+   readSubrunMetadata,
+   isNodeContextResume,
++  startsSequentialSession,
+ } from '../schemas';
+ import type { PersistedNodeOutput } from '../store';
+ import type { NodeExecutionResult } from '../node-record-serialization';
+@@ -592,7 +593,7 @@ async function aggregateLayerResults(
+     if (output.state === 'completed' && node?.output_type) {
+       await writeTypedArtifacts(ctx, node, node.output_type, output.output);
+     }
+-    advanceSequentialSession(ctx, result.value, isParallelLayer);
++    advanceSequentialSession(ctx, result.value, node, isParallelLayer);
+     if (output.state === 'failed') layerHadFailure = true;
+   }
+   return layerHadFailure;
+@@ -705,10 +706,14 @@ async function writeTypedArtifacts(
+ function advanceSequentialSession(
+   ctx: RunLayersContext,
+   result: LayerNodeResult,
++  node: DagNode | undefined,
+   isParallelLayer: boolean
+ ): void {
+   const { output } = result;
+   if (output.state !== 'completed' || isParallelLayer || output.sessionId === undefined) return;
++  // Include expansion decides which block nodes start fresh from the same predicate,
++  // so a node kind moves the cursor here only once it is counted there too.
++  if (node === undefined || !startsSequentialSession(node)) return;
+   // Tag the cursor with the provider that created the session (#1992). A session
+   // id from a path that can't attest its provider is never threaded — fail-safe:
+   // a fresh downstream session beats a guaranteed-broken cross-provider resume.
+diff --git a/packages/workflows/src/include/inline.ts b/packages/workflows/src/include/inline.ts
+index 1e0454741..4765d8137 100644
+--- a/packages/workflows/src/include/inline.ts
++++ b/packages/workflows/src/include/inline.ts
+@@ -1,5 +1,5 @@
+ import type { DagNode, IncludeDirective, ResolvedWorkflow } from '../schemas';
+-import { isIncludeDirective, isLoopGroupNode } from '../schemas';
++import { isIncludeDirective, isLoopGroupNode, startsSequentialSession } from '../schemas';
+ import type { JsonValue } from '../output-ref';
+ import { validateDagStructure } from '../loader/dag-structure';
+ import {
+@@ -30,8 +30,8 @@ export interface ExpandedInclude {
+  * Record where a node was authored, and what it was authored with. WRITE-ONCE per
+  * field: the innermost workflow that inlined this node already said the true thing,
+  * and an outer level re-stating it would replace one file's answer with another's.
+- * `blockEntry` is the exception — it is idempotently true, and a node can legitimately
+- * be the entry of two nested blocks at once. `boundaries` is cumulative: each outer
++ * `blockSessionStart` is the exception — it is idempotently true, and a node can
++ * legitimately start the thread of two nested blocks at once. `boundaries` is cumulative: each outer
+  * include prepends its own activation predicate without replacing the inner ones.
+  */
+ function markComposedNode(node: DagNode, patch: ComposedNodeMeta): void {
+@@ -43,14 +43,14 @@ function markComposedNode(node: DagNode, patch: ComposedNodeMeta): void {
+       ...(patch.boundaries !== undefined ? { boundaries: cloneBoundaries(patch.boundaries) } : {}),
+     };
+   } else {
+-    if (patch.blockEntry === true) existing.blockEntry = true;
++    if (patch.blockSessionStart === true) existing.blockSessionStart = true;
+     if (patch.boundaries !== undefined) {
+       existing.boundaries = [...cloneBoundaries(patch.boundaries), ...(existing.boundaries ?? [])];
+     }
+   }
+   // A loop_group body node was authored in the same file and reads the same inputs, so
+-  // it carries the same record — minus `blockEntry`, which is a position in the OUTER
+-  // graph and means nothing inside a body. A body node is likewise never the entry of an
++  // it carries the same record — minus `blockSessionStart`, which is a position in the
++  // OUTER graph and means nothing inside a body (a body's first iteration starts fresh). A body node is likewise never the entry of an
+   // enclosing outer-graph include, though it still inherits that boundary.
+   if (isLoopGroupNode(node)) {
+     const inherited = bodyComposedMeta(patch);
+@@ -91,6 +91,8 @@ interface InlineScope {
+   prefix: string;
+   includeId: string;
+   childTopLevelIds: ReadonlySet<string>;
++  /** Original ids of child nodes no session-starting child node runs before. */
++  sessionColdIds: ReadonlySet<string>;
+   rename: (id: string) => string;
+   parentDeps: string[];
+   entryTriggerRules: ComposedBlockBoundary['entryTriggerRules'];
+@@ -204,6 +206,7 @@ function inlineScope(
+     commandContents,
+     prefix,
+     childTopLevelIds,
++    sessionColdIds: sessionColdIds(child.nodes),
+     rename: id => (childTopLevelIds.has(id) ? prefix + id : id),
+     parentDeps,
+     entryTriggerRules: [firstEntryTriggerRule, ...remainingEntryTriggerRules],
+@@ -213,6 +216,36 @@ function inlineScope(
+   };
+ }
+ 
++/**
++ * The child nodes that, run standalone, would find no session to continue: no node
++ * before them inside the child puts a session on the sequential cursor. Composed, the
++ * cursor at these nodes may hold the caller's session, so they are marked to start
++ * fresh (#5740). Marking only `depends_on`-free nodes missed a first AI node that
++ * follows an entry `bash:`/`script:` node. The child already passed
++ * `validateDagStructure`, so the walk terminates.
++ */
++function sessionColdIds(nodes: readonly DagNode[]): ReadonlySet<string> {
++  const byId = new Map(nodes.map(n => [n.id, n]));
++  const warm = new Map<string, boolean>();
++  // True when `id` or any node before it inside the child starts a session.
++  const startsOrFollowsSession = (id: string): boolean => {
++    const known = warm.get(id);
++    if (known !== undefined) return known;
++    const node = byId.get(id);
++    const result =
++      node !== undefined &&
++      (startsSequentialSession(node) ||
++        (node.depends_on ?? []).some(dep => byId.has(dep) && startsOrFollowsSession(dep)));
++    warm.set(id, result);
++    return result;
++  };
++  return new Set(
++    nodes
++      .filter(n => !(n.depends_on ?? []).some(dep => byId.has(dep) && startsOrFollowsSession(dep)))
++      .map(n => n.id)
++  );
++}
++
+ function inlineChildNode(scope: InlineScope, cn: DagNode): DagNode {
+   const { includeNode, rename } = scope;
+   const clone = materializeBlockCommandPrompts(
+@@ -262,7 +295,7 @@ function composedMeta(scope: InlineScope, cn: DagNode, wasEntry: boolean): Compo
+     origin: scope.child.name,
+     ...(pack !== undefined ? { pack: { source: pack.source, key: pack.key } } : {}),
+     ...(Object.keys(resolvedInputs).length > 0 ? { inputs: { ...resolvedInputs } } : {}),
+-    ...(wasEntry ? { blockEntry: true as const } : {}),
++    ...(scope.sessionColdIds.has(cn.id) ? { blockSessionStart: true as const } : {}),
+     ...(scope.hasActivationBoundary ? { boundaries: [blockBoundary(scope, cn, wasEntry)] } : {}),
+   };
+ }
+diff --git a/packages/workflows/src/schemas/index.ts b/packages/workflows/src/schemas/index.ts
+index c556f0fff..9a326673a 100644
+--- a/packages/workflows/src/schemas/index.ts
++++ b/packages/workflows/src/schemas/index.ts
+@@ -147,6 +147,7 @@ export {
+   isWorkflowNode,
+   isComposeFanOutNode,
+   isIncludeDirective,
++  startsSequentialSession,
+ } from './node-guards';
+ export {
+   collectLoopBodyNodeIds,
+diff --git a/packages/workflows/src/schemas/node-guards.ts b/packages/workflows/src/schemas/node-guards.ts
+index c5ff0c7f9..1df8b0bfb 100644
+--- a/packages/workflows/src/schemas/node-guards.ts
++++ b/packages/workflows/src/schemas/node-guards.ts
+@@ -38,6 +38,17 @@ export function isLoopNode(node: DagNode): node is LoopNode {
+   return node.kind === 'loop';
+ }
+ 
++/**
++ * The one definition of which node kinds put their session on the sequential session
++ * cursor that the next sequential AI node continues. The executor advances the cursor
++ * only for these kinds, and include expansion uses the same set to find the AI nodes
++ * that start a composed block's thread. A `loop_group` is not one: its iterations keep
++ * their own thread and never move the outer cursor.
++ */
++export function startsSequentialSession(node: DagNode): node is AgentNode | LoopNode {
++  return isAgentNode(node) || isLoopNode(node);
++}
++
+ /** Type guard: check if a DAG node is a loop_group (cross-node iterative subgraph) node */
+ export function isLoopGroupNode(node: DagNode): node is LoopGroupNode {
+   return node.kind === 'loop_group';

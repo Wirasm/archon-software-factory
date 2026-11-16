@@ -85,6 +85,18 @@
    "why": "The reference's new workaround for carrying a skip fallback across an include tells the author to bind with `if_skipped` in a bridge `script:` node, and omits that the bridge needs `trigger_rule: all_done`; with the default rule the bridge is skipped with its source and the include gets no value. Every other `if_skipped` example in the same reference sets it. Docs-only defect in a change whose code is right.",
    "built_by": "opus",
    "from_plan": true
+  },
+  {
+   "id": "5740-A",
+   "item": "items/5740.md",
+   "patch": "builds/5740-A.patch",
+   "base": "100e3bdbb7875a167f6bbd948ca6a9b3004da553",
+   "commit": "26b4032408979787ca6003a504507c276628f5dd",
+   "expect": "return",
+   "evidence": "ran",
+   "why": "The change decides at load time which block nodes start fresh (no agent or loop node before them in the block) and never checks at run time whether the earlier AI node ran. So when an AI node ahead of the first one that runs is skipped by `when:`, or fails ahead of a `trigger_rule: all_done` node, the node that runs first continues the caller's session, where standalone it is fresh. Probed with a mocked provider that records which session each node resumed. The pack's three checks, the project's CI and an outside review all passed this change; it merged as PR 5750. Found a day later by rebuilding the item three ways and probing each (issue 5786). The hardest case in the set: every acceptance line of the item is met, and the defect is the item's own complaint one case further out.",
+   "built_by": "opus",
+   "from_plan": true
   }
  ]
 }
