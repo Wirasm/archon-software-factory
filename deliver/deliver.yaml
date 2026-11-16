@@ -106,6 +106,9 @@ nodes:
               ## From the product review (is the change right for the product's users)
               $product.output
 
+              ## From the builder (what it did about what was returned last round; empty in the first round)
+              $fix.output
+
   # What the place the change is proposed says about it: the project's own checks and any
   # review left there. Runs only on a change our checks approved. A finding goes to the same
   # builder, which pushes its fix, and the host is read again.
