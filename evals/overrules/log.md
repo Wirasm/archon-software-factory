@@ -1,5 +1,15 @@
 # Overrule log
 
+## 2026-11-16: a hand start takes a free slot; the stage recommended keeping FIFO
+
+- **Item and change:** Archon issue 5688 (a stage starts when a run on the item ends), draft PR 5744. Head `fb12fc6e2`.
+- **Run:** `deliver`, run `0ab1df97-56a3-4b44-8cc1-fc27d0e87d14`, round 3 of 3 (rounds used up). The ask came from the test check (`claude/haiku`, told) and was carried by the verdict (`claude/haiku`). Whole run: 92.9 min, 69,073,934 input and 447,600 output tokens, 17.61 USD recorded. Pack copy `src6` (repo commit `6f76e41`); `tests.md` hash `d5db34b6`.
+- **What the stage returned:** an ask with two options and the recommendation `keep-fifo`: "The queued start waits for its own host, and free-slot-first lets a hand start skip work that is not blocked by a slot. Would change if acceptance line 4 is meant literally, which the review and product review both read it as."
+- **What was done instead, and by whom:** Claude, acting for the operator, ruled `free-slot-first`: order holds among starts waiting for a slot; a start waiting only for its own host holds no slot and blocks none. The other two asks were ruled as recommended (the ending process starts what its completion caused; recovery after a kill between admission and spawn is explicit). Rulings are on the issue and went to the builder.
+- **Why:** Acceptance line 4 is meant literally. It was written from a measured backlog (issue 5665) where starts sat queued or were refused with every slot free. The stage itself named this as the condition that would change its answer, and two of three checks read the line that way.
+- **Kind:** `better fix`.
+- **What it says about the stage:** The ask was the right outcome: three checks disagreed on what meets the item, and the test check asked instead of picking. The recommendation leaned on the code as it is (FIFO exists) over the item's stated line. Not a prompt gap yet; one case. Separate finding from the same run: with the rounds used up and asks open, the run could not take the rulings. The findings and rulings went to a fresh builder by hand, losing the builder's context on a 2,000-line change. Rulings on the item (engine PR 5730) read at each round would have kept the same run going.
+
 ## 2026-11-16: resume of a run with no completed node split off the resume change
 
 - **Item and change:** Archon issue 5699, branch `factory/5699`. Base `9ea33a98d`, head `845bd0972`.
