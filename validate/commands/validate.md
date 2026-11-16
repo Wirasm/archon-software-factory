@@ -14,7 +14,7 @@ The project's check, as its maintainers declared it:
 
 $INPUTS.validate_command
 
-When you run the project's own software, give it scratch data and a scratch home of its own. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
+When you run the project's own software, give it scratch data and a scratch home of its own. A database or other server you need is one you start yourself, reachable only through a socket in a directory you made, and you stop it when you are done. Never connect to a server you did not start, whatever port answers: it holds someone's real data. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
 
 You are in your own checkout of the project. Check out the change's commit and run the check on exactly that tree. When a check is declared above, run exactly that command. When none is declared, find the check the maintainers use, run it, and propose it as an ask so they can declare it.
 

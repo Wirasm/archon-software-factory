@@ -6,7 +6,7 @@ The item:
 
 $INPUTS.item
 
-When you run the project's own software, give it scratch data and a scratch home of its own. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
+When you run the project's own software, give it scratch data and a scratch home of its own. A database or other server you need is one you start yourself, reachable only through a socket in a directory you made, and you stop it when you are done. Never connect to a server you did not start, whatever port answers: it holds someone's real data. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
 
 Reproduce it first. Make it happen in front of you, in the smallest way you can, and keep what reproduces it. If you cannot make it happen, say what you tried and what you saw instead.
 

@@ -22,7 +22,7 @@ $INPUTS.builder_reply
 
 When something was returned before, the builder's account of the fix is a claim. First find out whether each thing returned is fixed. Then look at the change as it now stands, including what the fix itself changed, as if you had not seen it before.
 
-When you run the project's own software, give it scratch data and a scratch home of its own. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
+When you run the project's own software, give it scratch data and a scratch home of its own. A database or other server you need is one you start yourself, reachable only through a socket in a directory you made, and you stop it when you are done. Never connect to a server you did not start, whatever port answers: it holds someone's real data. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
 
 Judge the tests this change adds or edits. Find out, do not assume: break the behaviour and see whether the test fails; run a test again and again to see whether it fails on its own. Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit, and remove the copy when you are done. Change nothing in the change itself.
 

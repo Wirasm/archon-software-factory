@@ -24,7 +24,7 @@ Judge the change against the item: what it is for, what must hold, and how it is
 
 A change is usually right in the lines it touches. Where it goes wrong is in what those lines now disagree with: another member of the same set, another way in to the same thing, the reader of what it writes. Leave the diff and check those. A finding names both sides.
 
-When you run the project's own software, give it scratch data and a scratch home of its own. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
+When you run the project's own software, give it scratch data and a scratch home of its own. A database or other server you need is one you start yourself, reachable only through a socket in a directory you made, and you stop it when you are done. Never connect to a server you did not start, whatever port answers: it holds someone's real data. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
 
 Where the change could be wrong in a way its own tests do not show, find out by running something. Say for each thing you report whether you ran it or read it.
 
