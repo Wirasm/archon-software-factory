@@ -30,7 +30,7 @@ nodes:
       additionalProperties: false
       properties:
         outcome: { type: string, enum: [approve, return, replan, ask] }
-        summary: { type: string, description: 'For a maintainer deciding whether to land it.' }
+        summary: { type: string, description: 'For a maintainer deciding whether to land it, who reads only this. First sentence: the decision. Then what must change, or what makes it safe to land. Three or four sentences.' }
         item_lines:
           type: array
           description: 'One entry for each thing the item asks for: an outcome, something that must hold, an acceptance line.'
@@ -94,6 +94,10 @@ nodes:
               recommend: { type: string }
               why: { type: string }
             required: [question, context, options, recommend, why]
-        notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
+        not_checked:
+          type: array
+          items: { type: string }
+          description: 'Each thing a maintainer would expect you to have run or read that you did not, and why: a suite, a platform, a check the project requires before a change is proposed. Empty when there is none.'
+        notes: { type: string, description: 'Anything worth saying that has no field here: doubts, things noticed.' }
         for_next: { type: string, description: 'Anything the engineer who fixes what you returned, or the maintainer who lands it needs from you that has no field here. Write it to them.' }
-      required: [outcome, summary, item_lines, findings, noticed, checked, asks, notes, for_next]
+      required: [outcome, summary, item_lines, findings, noticed, checked, not_checked, asks, notes, for_next]
