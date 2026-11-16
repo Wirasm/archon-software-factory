@@ -47,6 +47,10 @@ nodes:
               do: { type: string, enum: [remove, simplify, repair, add] }
               how: { type: string }
             required: [test, fault, evidence, do, how]
+        noted:
+          type: array
+          items: { type: string }
+          description: 'Each thing about a test that you would mention and not return the change for: more than the change needs, could be simpler, a name that misleads. A note returns nothing. Empty when there is none.'
         checked:
           type: array
           items: { type: string }
@@ -75,4 +79,4 @@ nodes:
             required: [question, context, options, recommend, why]
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
         for_next: { type: string, description: 'Anything the engineer who fixes the tests you returned needs from you that has no field here. Write it to them.' }
-      required: [outcome, summary, findings, checked, asks, notes, for_next]
+      required: [outcome, summary, findings, noted, checked, asks, notes, for_next]

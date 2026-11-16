@@ -56,7 +56,8 @@ nodes:
               evidence: { type: string, description: 'What you ran or read, and what it showed.' }
               evidence_kind: { type: string, enum: [ran, read] }
               cost_to_leave: { type: string }
-            required: [what, where, disagrees_with, evidence, evidence_kind, cost_to_leave]
+              if_wrong: { type: string, description: 'What you would expect to see if this finding is wrong, for example the same fault on the base commit, and whether you looked.' }
+            required: [what, where, disagrees_with, evidence, evidence_kind, cost_to_leave, if_wrong]
         noticed:
           type: array
           description: 'Things wrong or odd that this change did not cause. Each is a report for the project, not a finding against the change.'
@@ -94,10 +95,16 @@ nodes:
               recommend: { type: string }
               why: { type: string }
             required: [question, context, options, recommend, why]
+        least_sure:
+          type: string
+          description: 'The part of this change you are least sure of, and what you did about it. Answer it on an approve too.'
+        safety_net:
+          type: string
+          description: "If you missed something in this change, what in the project's own checks would catch it: a test, a type, a lint or structural (AST) rule, a check in CI. Name what exists and whether it was run on this change. Where nothing would catch a mistake of this kind, say so and name the check that would; that is a suggestion for the project, not a finding against the change."
         not_checked:
           type: array
           items: { type: string }
           description: 'Each thing a maintainer would expect you to have run or read that you did not, and why: a suite, a platform, a check the project requires before a change is proposed. Empty when there is none.'
         notes: { type: string, description: 'Anything worth saying that has no field here: doubts, things noticed.' }
         for_next: { type: string, description: 'Anything the engineer who fixes what you returned, or the maintainer who lands it needs from you that has no field here. Write it to them.' }
-      required: [outcome, summary, item_lines, findings, noticed, checked, not_checked, asks, notes, for_next]
+      required: [outcome, summary, item_lines, findings, noticed, checked, least_sure, safety_net, not_checked, asks, notes, for_next]
