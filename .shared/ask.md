@@ -29,9 +29,8 @@ The operator reads the ask on its own, later, without your run open. They may be
 |---|---|
 | `question` | One sentence that can be answered by picking an option. Name the thing: the file, the command, the behaviour. |
 | `context` | What is at stake and why it came up, in a few sentences. What you found, not how you found it. |
-| `options` | Two to four real choices. For each: what it `does`, and what it `cost`s: what is given up, what breaks, what has to follow. An option nobody would pick is not an option. |
-| `recommend` | The option you would take. Always one. |
-| `why` | Why that one, in a sentence or two. If you are not sure, say what would change your mind. |
+| `options` | Two to four real choices. For each: a short `id` in kebab-case such as `keep-the-flag`, what it `does`, and what it `cost`s: what is given up, what breaks, what has to follow. An option nobody would pick is not an option. |
+| `recommendation` | The `option` you would take, by its id, and `why` in a sentence or two. Always one. If you are not sure, say what would change your mind. |
 
 ## What happens after
 
@@ -53,7 +52,7 @@ Good:
 
 > **question:** Does "never force-delete" allow a compare-and-delete (`git update-ref -d <ref> <start-point>`), or does it mean literally `git branch -d`?
 > **options:** compare-and-delete: Git refuses if the branch moved, so there is no window between checking and deleting; it is not the command the issue names. `git branch -d`: the command as written; it checks against the current branch, not the start point, so it can refuse an unused branch or accept a moved one.
-> **recommend:** compare-and-delete, because it enforces the rule the issue is protecting.
+> **recommendation:** `compare-and-delete`, because it enforces the rule the issue is protecting.
 
 Bad:
 

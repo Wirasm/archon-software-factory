@@ -13,7 +13,9 @@ inputs:
     default: "None."
     description: Decisions an operator already made on this item.
 
-returns: { node: result, outcome: outcome }
+# The engine defines the `asks` property of the result and opens what a completed run leaves
+# there on the item, so `result` does not declare it in its output format.
+returns: { node: result, outcome: outcome, asks: asks }
 
 nodes:
   - id: build
@@ -171,12 +173,34 @@ nodes:
       const outcome = host
         ? (hostOutcome[host.outcome] ?? host.outcome)
         : checks.outcome === 'return' ? 'returned' : checks.outcome;
+      // The engine refuses a run whose asks do not hold together, and that would lose the
+      // run at its last step. So an option id is made the token the engine wants, and a
+      // recommendation that names no option falls back to the first one, saying so.
+      const token = (id: unknown) =>
+        String(id ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'option';
+      const asks = (last.asks ?? []).map((ask: any) => {
+        const options = (ask.options ?? []).map((o: any) => ({ id: token(o.id), does: String(o.does ?? ''), cost: String(o.cost ?? '') }));
+        // The engine wants at least two options; a stage that left one gets "hold" beside it.
+        if (options.length < 2) options.push({ id: 'hold', does: 'Hold the item until an operator says what to do.', cost: 'The item waits.' });
+        const wanted = token(ask.recommendation?.option);
+        const named = options.some((o: { id: string }) => o.id === wanted);
+        const why = String(ask.recommendation?.why ?? '');
+        return {
+          question: String(ask.question ?? ''),
+          context: ask.from ? `${ask.context ?? ''} (Left by: ${ask.from}.)` : String(ask.context ?? ''),
+          options,
+          recommendation: named
+            ? { option: wanted, why }
+            : { option: options[0]?.id ?? 'option', why: `The stage's recommendation named no option ("${ask.recommendation?.option ?? ''}"). ${why}` },
+          artifacts: [],
+        };
+      });
       console.log(JSON.stringify({
         outcome,
         ended_at: host ? 'host' : 'checks',
         change: process.env.INPUTS_CHANGE ?? '',
         summary: last.summary ?? '',
-        asks: last.asks ?? [],
+        asks,
         for_next: last.for_next ?? '',
         noticed: checks?.noticed ?? [],
       }));
@@ -187,7 +211,6 @@ nodes:
         ended_at: { type: string, enum: [checks, host] }
         change: { type: string }
         summary: { type: string }
-        asks: { type: array }
         for_next: { type: string }
         noticed: { type: array, description: 'What the checks noticed that this change did not cause. A discoveries stage can start from it.' }
-      required: [outcome, ended_at, change, summary, asks, for_next, noticed]
+      required: [outcome, ended_at, change, summary, for_next, noticed]

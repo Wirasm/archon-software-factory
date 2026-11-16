@@ -46,13 +46,18 @@ nodes:
                   type: object
                   additionalProperties: false
                   properties:
-                    id: { type: string }
+                    id: { type: string, description: 'kebab-case, one token, such as keep-the-flag. The answer names it.' }
                     does: { type: string }
                     cost: { type: string }
                   required: [id, does, cost]
-              recommend: { type: string }
-              why: { type: string }
-            required: [question, context, options, recommend, why]
+              recommendation:
+                type: object
+                additionalProperties: false
+                properties:
+                  option: { type: string, description: 'The id of the option you would take. It is one of the options above.' }
+                  why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind.' }
+                required: [option, why]
+            required: [question, context, options, recommendation]
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
         for_next: { type: string, description: 'Anything whoever works on this project next needs from you that has no field here. Write it to them.' }
       required: [outcome, summary, landing_branch, from, to, checked, returned, stop, asks, notes, for_next]

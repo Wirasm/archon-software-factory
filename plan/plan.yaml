@@ -14,7 +14,9 @@ inputs:
     default: "Nothing."
     description: The items that had to land before this one.
 
-returns: { node: plan, outcome: outcome }
+# The engine defines the `asks` property, adds it to the plan node's output and opens what a
+# completed run leaves there on the item. So the node below does not declare it.
+returns: { node: plan, outcome: outcome, asks: asks }
 
 nodes:
   - id: plan
@@ -44,29 +46,7 @@ nodes:
           type: array
           items: { type: string }
           description: 'For each thing the item asks for, how the change will be shown to do it.'
-        asks:
-          type: array
-          description: 'Each decision that belongs to a maintainer. Empty when there is none.'
-          items:
-            type: object
-            additionalProperties: false
-            properties:
-              question: { type: string }
-              context: { type: string }
-              options:
-                type: array
-                items:
-                  type: object
-                  additionalProperties: false
-                  properties:
-                    id: { type: string }
-                    does: { type: string }
-                    cost: { type: string }
-                  required: [id, does, cost]
-              recommend: { type: string }
-              why: { type: string }
-            required: [question, context, options, recommend, why]
         stop: { type: string, description: 'Why it cannot be planned, and what has to happen first. Empty otherwise.' }
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
         for_next: { type: string, description: 'Anything the engineer who builds this needs from you that has no field here. Write it to them.' }
-      required: [outcome, options, recommend, why, plan, proves, asks, stop, notes, for_next]
+      required: [outcome, options, recommend, why, plan, proves, stop, notes, for_next]
