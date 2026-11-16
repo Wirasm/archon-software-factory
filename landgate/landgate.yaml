@@ -1,0 +1,65 @@
+name: landgate
+description: |
+  Shadow measurement, since 2026-11-16: may this ready change land without an
+  operator being asked? It reads the change's state on the host and the
+  project's land policy, and says what it would do. It lands nothing, writes
+  nothing, and nothing acts on its result.
+
+model: ['@judge', medium]
+
+inputs:
+  item:
+    description: The work item as text.
+  change:
+    description: Where the change is proposed.
+  delivered:
+    description: What deliver ended with, as its result.
+
+returns: gate
+
+nodes:
+  - id: gate
+    command: landgate
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        land: { type: string, enum: [auto, ask] }
+        criterion: { type: string, description: 'The line of the policy that decided it, or: all hold. When there is no policy: no policy.' }
+        why: { type: string, description: 'One or two sentences.' }
+        facts:
+          type: object
+          additionalProperties: false
+          description: 'What you read on the host, not what you were told.'
+          properties:
+            checks: { type: string, description: 'The state of the project checks at the head commit.' }
+            head: { type: string, description: 'The head commit you read them at.' }
+            merges: { type: string, description: 'Whether it merges with the branch it targets.' }
+            size: { type: string, description: 'Lines added and removed, and how many files.' }
+            protected: { type: string, description: 'Protected paths the change touches, or none.' }
+          required: [checks, head, merges, size, protected]
+        asks:
+          type: array
+          description: 'When it is an ask: the one question you would put to the operator. Empty when auto.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              question: { type: string }
+              context: { type: string }
+              options:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    id: { type: string }
+                    does: { type: string }
+                    cost: { type: string }
+                  required: [id, does, cost]
+              recommend: { type: string }
+              why: { type: string }
+            required: [question, context, options, recommend, why]
+        sure: { type: string, enum: [high, medium, low] }
+      required: [land, criterion, why, facts, asks, sure]

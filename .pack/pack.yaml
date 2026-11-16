@@ -38,6 +38,13 @@ inputs:
       may start without an operator being asked. Relative to the project, or
       absolute. Empty means the project has none. Shadow only for now: the
       judgment is recorded and nothing acts on it.
+  land_policy:
+    default: ""
+    description: >-
+      Path to the project's own land policy, a document that says which ready
+      changes may land without an operator being asked. Relative to the
+      project, or absolute. Empty means the project has none. Shadow only for
+      now: the judgment is recorded and nothing acts on it.
   discoveries_policy:
     default: ""
     description: >-

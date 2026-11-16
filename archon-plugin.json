@@ -14,6 +14,7 @@
     "discoveries": "discoveries/discoveries.yaml",
     "validate": "validate/validate.yaml",
     "land": "land/land.yaml",
+    "landgate": "landgate/landgate.yaml",
     "verdict": "verdict/verdict.yaml",
     "product": "product/product.yaml",
     "investigate": "investigate/investigate.yaml",
