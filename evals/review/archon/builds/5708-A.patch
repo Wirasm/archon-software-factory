@@ -1,0 +1,989 @@
+diff --git a/packages/chat-contract/README.md b/packages/chat-contract/README.md
+index c29d9ddd1..ba6abed2f 100644
+--- a/packages/chat-contract/README.md
++++ b/packages/chat-contract/README.md
+@@ -42,8 +42,12 @@ only `user` and `unidentified`; it is a host type, never a plugin-supplied actor
+ Plugin message persistence is always owned by core.
+ 
+ `ChatRunEvent` is a presentation projection: workflow start, node state, approval
+-pending (including authored decisions, pause identity and the persisted authored
+-outcome), and terminal status with authored outcome and cost. Engine events and database rows stay on the host.
++pending (including authored decisions and pause identity), and terminal status with
++outcome and cost. Engine events and database rows stay on the host.
++A terminal event or notice of a run that completed with a declared outcome carries
++`completedOutcome`: `succeeded` or `failed` for a boolean outcome, or the value of a
++named one. `authoredOutcome` carries the boolean form only, for plugins that predate
++`completedOutcome`. A paused run has no outcome, so `approval_pending` carries none.
+ The host routes events only to the plugin owning the run's conversation.
+ 
+ `ChatAttentionNotice` goes to an install-level route the operator configured, not to
+diff --git a/packages/chat-contract/schema/chat-contract.schema.json b/packages/chat-contract/schema/chat-contract.schema.json
+index 44c56f3dc..f38f99c32 100644
+--- a/packages/chat-contract/schema/chat-contract.schema.json
++++ b/packages/chat-contract/schema/chat-contract.schema.json
+@@ -619,6 +619,10 @@
+             "error": {
+               "type": "string"
+             },
++            "completedOutcome": {
++              "type": "string",
++              "minLength": 1
++            },
+             "authoredOutcome": {
+               "type": "string",
+               "enum": [
+@@ -807,6 +811,10 @@
+                 "cancelled"
+               ]
+             },
++            "completedOutcome": {
++              "type": "string",
++              "minLength": 1
++            },
+             "authoredOutcome": {
+               "type": "string",
+               "enum": [
+diff --git a/packages/chat-contract/src/attention-notices.ts b/packages/chat-contract/src/attention-notices.ts
+index 074d38023..3901cfa0e 100644
+--- a/packages/chat-contract/src/attention-notices.ts
++++ b/packages/chat-contract/src/attention-notices.ts
+@@ -1,5 +1,9 @@
+ import { z } from 'zod';
+-import { chatApprovalDecisionSchema, chatAuthoredOutcomeSchema } from './run-events';
++import {
++  chatApprovalDecisionSchema,
++  chatAuthoredOutcomeSchema,
++  chatCompletedOutcomeSchema,
++} from './run-events';
+ 
+ const id = z.string().min(1);
+ /** An attention option: a decision plus what choosing it does, which a plugin may show. */
+@@ -41,6 +45,7 @@ export const chatAttentionNoticeSchema = z.discriminatedUnion('type', [
+     runId: id,
+     workflowName: id,
+     status: z.enum(['completed', 'failed', 'cancelled']),
++    completedOutcome: chatCompletedOutcomeSchema.optional(),
+     authoredOutcome: chatAuthoredOutcomeSchema.optional(),
+     totalCostUsd: z.number().nonnegative().optional(),
+   }),
+diff --git a/packages/chat-contract/src/compat.test.ts b/packages/chat-contract/src/compat.test.ts
+index 3b82ae78c..995b854c0 100644
+--- a/packages/chat-contract/src/compat.test.ts
++++ b/packages/chat-contract/src/compat.test.ts
+@@ -64,6 +64,7 @@ const runEvents: ChatRunEvent[] = [
+     runId: 'run',
+     status: 'failed',
+     error: 'failed',
++    completedOutcome: 'failed',
+     authoredOutcome: 'failed',
+     totalCostUsd: 0.5,
+   },
+@@ -103,6 +104,7 @@ const notices: ChatAttentionNoticeRequest[] = [
+       runId: 'run',
+       workflowName: 'nightly',
+       status: 'completed',
++      completedOutcome: 'succeeded',
+       authoredOutcome: 'succeeded',
+       totalCostUsd: 0.5,
+     },
+diff --git a/packages/chat-contract/src/run-events.ts b/packages/chat-contract/src/run-events.ts
+index aeb312423..7f1de7091 100644
+--- a/packages/chat-contract/src/run-events.ts
++++ b/packages/chat-contract/src/run-events.ts
+@@ -1,7 +1,13 @@
+ import { z } from 'zod';
+ 
+ const id = z.string().min(1);
++/** The boolean form of a run's outcome. A named outcome travels as `completedOutcome`. */
+ export const chatAuthoredOutcomeSchema = z.enum(['succeeded', 'failed', 'unavailable']);
++/**
++ * The outcome a run completed with: `succeeded` or `failed` for a boolean outcome, or the
++ * value of a named one such as `built`. Set only on a completed run that declared one.
++ */
++export const chatCompletedOutcomeSchema = z.string().min(1);
+ export const chatApprovalDecisionSchema = z.object({ id, label: z.string().optional() });
+ export const chatRunEventSchema = z.discriminatedUnion('type', [
+   z.object({
+@@ -26,6 +32,7 @@ export const chatRunEventSchema = z.discriminatedUnion('type', [
+     message: z.string(),
+     decisions: z.array(chatApprovalDecisionSchema),
+     pauseId: id.optional(),
++    /** Kept for archon-chat/1; a paused run has no outcome, so the host never sets it. */
+     authoredOutcome: chatAuthoredOutcomeSchema.optional(),
+   }),
+   z.object({
+@@ -33,6 +40,7 @@ export const chatRunEventSchema = z.discriminatedUnion('type', [
+     runId: id,
+     status: z.enum(['completed', 'failed', 'cancelled']),
+     error: z.string().optional(),
++    completedOutcome: chatCompletedOutcomeSchema.optional(),
+     authoredOutcome: chatAuthoredOutcomeSchema.optional(),
+     totalCostUsd: z.number().nonnegative().optional(),
+   }),
+diff --git a/packages/chat-contract/src/schema.test.ts b/packages/chat-contract/src/schema.test.ts
+index d89f01fdb..1bdfad8fb 100644
+--- a/packages/chat-contract/src/schema.test.ts
++++ b/packages/chat-contract/src/schema.test.ts
+@@ -55,6 +55,9 @@ test('generated schema and runtime agree on actor and action constraints', () =>
+         authoredOutcome: 'invalid',
+       },
+       { type: 'terminal', runId: 'r', status: 'completed', authoredOutcome: 'succeeded' },
++      { type: 'terminal', runId: 'r', status: 'completed', completedOutcome: 'built' },
++      { type: 'terminal', runId: 'r', status: 'completed', completedOutcome: '' },
++      { type: 'terminal', runId: 'r', status: 'completed', authoredOutcome: 'built' },
+     ],
+   };
+   for (const name of Object.keys(chatWireSchemas) as (keyof typeof chatWireSchemas)[]) {
+@@ -65,3 +68,19 @@ test('generated schema and runtime agree on actor and action constraints', () =>
+     }
+   }
+ });
++
++test('a named outcome travels as completedOutcome, not authoredOutcome', () => {
++  const event = { type: 'terminal', runId: 'r', status: 'completed' } as const;
++  const notice = { ...event, workflowName: 'w' } as const;
++  expect(chatWireSchemas.ChatRunEvent.parse({ ...event, completedOutcome: 'built' })).toMatchObject(
++    {
++      completedOutcome: 'built',
++    }
++  );
++  expect(
++    chatWireSchemas.ChatAttentionNotice.parse({ ...notice, completedOutcome: 'built' })
++  ).toMatchObject({ completedOutcome: 'built' });
++  expect(
++    chatWireSchemas.ChatRunEvent.safeParse({ ...event, authoredOutcome: 'built' }).success
++  ).toBe(false);
++});
+diff --git a/packages/chat-slack/src/attention.test.ts b/packages/chat-slack/src/attention.test.ts
+index c031c0478..2b8bb17c3 100644
+--- a/packages/chat-slack/src/attention.test.ts
++++ b/packages/chat-slack/src/attention.test.ts
+@@ -265,10 +265,25 @@ test('a destination thread hosts the notice, and the follow-up closes it in that
+       runId: 'run-1',
+       workflowName: 'deploy',
+       status: 'completed',
++      completedOutcome: 'built',
+       totalCostUsd: 0.5,
+     },
+   });
+   expect(slack.posts[1]).toMatchObject({ channel: 'C9', thread_ts: '100.1' });
++  expect(JSON.stringify(blocksOf(1))).toContain('authored outcome: built');
++  await plugin.attentionNotice({
++    destination: 'C9:100.1',
++    conversationId,
++    notice: {
++      type: 'terminal',
++      runId: 'run-2',
++      workflowName: 'deploy',
++      status: 'completed',
++      completedOutcome: 'unavailable',
++    },
++  });
++  expect(JSON.stringify(blocksOf(2))).toContain('authored outcome: unavailable');
++  expect(JSON.stringify(blocksOf(2))).not.toContain('failed to read');
+   expect(JSON.stringify(blocksOf(1))).toContain('total cost: $0.5000');
+   expect(slack.updates).toEqual([
+     expect.objectContaining({
+@@ -279,6 +294,30 @@ test('a destination thread hosts the notice, and the follow-up closes it in that
+   ]);
+ });
+ 
++test.each([
++  ['a named outcome', { completedOutcome: 'return' }, ' · authored outcome: return'],
++  [
++    'a boolean outcome',
++    { completedOutcome: 'failed', authoredOutcome: 'failed' },
++    ' · authored outcome: failed',
++  ],
++  ['no declared outcome', {}, ''],
++] as const)('a terminal notice posts %s in its text', async (_, fields, suffix) => {
++  await plugin.attentionNotice({
++    destination: 'C9',
++    notice: {
++      type: 'terminal',
++      runId: 'run-1',
++      workflowName: 'deploy',
++      status: 'completed',
++      ...fields,
++    },
++  });
++  expect(slack.posts[0]).toMatchObject({
++    text: `:white_check_mark: Workflow completed (deploy)${suffix}`,
++  });
++});
++
+ test('a failed terminal post still closes the run notices, and the failure surfaces', async () => {
+   await notify(wait('select', [{ id: 'eu' }]));
+   slack.failPost = new Error('channel_not_found');
+diff --git a/packages/chat-slack/src/blocks.test.ts b/packages/chat-slack/src/blocks.test.ts
+index 8dbd4298d..4fd7bf2c0 100644
+--- a/packages/chat-slack/src/blocks.test.ts
++++ b/packages/chat-slack/src/blocks.test.ts
+@@ -284,7 +284,7 @@ describe('buildStatusBlocks', () => {
+     const { blocks, fallbackText } = buildStatusBlocks(
+       snapshot({
+         status: 'completed',
+-        authoredOutcome: 'failed',
++        outcome: { kind: 'value', value: 'failed' },
+       }),
+       startedAt + 1000
+     );
+@@ -294,26 +294,22 @@ describe('buildStatusBlocks', () => {
+     expect(fallbackText).toContain('authored outcome: failed');
+   });
+ 
+-  test('paused snapshot labels execution and authored outcome separately', () => {
++  test('terminal snapshot shows a named outcome', () => {
+     const { blocks, fallbackText } = buildStatusBlocks(
+-      snapshot({
+-        status: 'paused',
+-        authoredOutcome: 'succeeded',
+-      }),
++      snapshot({ status: 'completed', outcome: { kind: 'value', value: 'built' } }),
+       startedAt + 1000
+     );
+-    const header = (blocks[0] as { text: { text: string } }).text.text;
+-    expect(header).toContain('Workflow paused');
+-    expect(header).toContain('*Execution status:* `paused`');
+-    expect(header).toContain('*Authored outcome:* `succeeded`');
+-    expect(fallbackText).toContain('authored outcome: succeeded');
++    expect((blocks[0] as { text: { text: string } }).text.text).toContain(
++      '*Authored outcome:* `built`'
++    );
++    expect(fallbackText).toContain('authored outcome: built');
+   });
+ 
+   test('distinguishes an unavailable authored outcome from an undeclared outcome', () => {
+     const { blocks, fallbackText } = buildStatusBlocks(
+       snapshot({
+         status: 'completed',
+-        authoredOutcome: 'unavailable',
++        outcome: { kind: 'read_failed' },
+       }),
+       startedAt + 1000
+     );
+diff --git a/packages/chat-slack/src/blocks.ts b/packages/chat-slack/src/blocks.ts
+index e5499efe0..bedce3beb 100644
+--- a/packages/chat-slack/src/blocks.ts
++++ b/packages/chat-slack/src/blocks.ts
+@@ -25,13 +25,20 @@ export interface NodeSnapshot {
+   error?: string;
+ }
+ 
++/**
++ * An outcome to show. `read_failed` is only the legacy `authoredOutcome: 'unavailable'`;
++ * a completed outcome is always shown as its value, even a named value `unavailable`.
++ */
++export type ShownOutcome = { kind: 'value'; value: string } | { kind: 'read_failed' };
++
+ export interface RunSnapshot {
+   runId: string;
+   workflowName: string;
+   startedAt: number;
+   nodes: NodeSnapshot[];
+   status: 'running' | 'paused' | RunTerminalStatus;
+-  authoredOutcome?: TerminalEvent['authoredOutcome'];
++  /** The outcome the run completed with, named or boolean; see `shownOutcome`. */
++  outcome?: ShownOutcome;
+   totalCostUsd?: number;
+   failureReason?: string;
+   approvalDeliveryFailed?: boolean;
+@@ -302,16 +309,36 @@ export function buildStatusBlocks(
+   };
+ }
+ 
++/**
++ * The outcome to show for a terminal event or notice. An archon-chat/1 host from before
++ * `completedOutcome` sends only the boolean `authoredOutcome`.
++ */
++export function shownOutcome(
++  message: Pick<TerminalEvent, 'completedOutcome' | 'authoredOutcome'>
++): ShownOutcome | undefined {
++  if (message.completedOutcome !== undefined)
++    return { kind: 'value', value: message.completedOutcome };
++  if (message.authoredOutcome === 'unavailable') return { kind: 'read_failed' };
++  if (message.authoredOutcome !== undefined)
++    return { kind: 'value', value: message.authoredOutcome };
++  return undefined;
++}
++
++const READ_FAILED_TEXT = 'unavailable — failed to read persisted run';
++
++function outcomeText(outcome: ShownOutcome): string {
++  return outcome.kind === 'read_failed' ? READ_FAILED_TEXT : outcome.value;
++}
++
+ function buildStatusHeader(snapshot: RunSnapshot, header: string, elapsed: string): KnownBlock {
+-  const authoredOutcomeLabel =
+-    snapshot.authoredOutcome === 'unavailable'
+-      ? 'unavailable — failed to read persisted run'
+-      : snapshot.authoredOutcome === undefined
+-        ? undefined
+-        : `\`${snapshot.authoredOutcome}\``;
+-  const runFacts = authoredOutcomeLabel
+-    ? `\n*Execution status:* \`${snapshot.status}\` · *Authored outcome:* ${authoredOutcomeLabel}`
+-    : '';
++  const runFacts =
++    snapshot.outcome === undefined
++      ? ''
++      : `\n*Execution status:* \`${snapshot.status}\` · *Authored outcome:* ${
++          snapshot.outcome.kind === 'read_failed'
++            ? READ_FAILED_TEXT
++            : `\`${snapshot.outcome.value}\``
++        }`;
+   return {
+     type: 'section',
+     text: {
+@@ -353,9 +380,7 @@ function statusFallbackText(
+         ? `Workflow ${snapshot.workflowName} paused`
+         : `Workflow ${snapshot.workflowName} running`
+   }${
+-    snapshot.authoredOutcome
+-      ? ` · authored outcome: ${snapshot.authoredOutcome === 'unavailable' ? 'unavailable — failed to read persisted run' : snapshot.authoredOutcome}`
+-      : ''
++    snapshot.outcome ? ` · authored outcome: ${outcomeText(snapshot.outcome)}` : ''
+   }${approvalRecovery ? ` · ${approvalRecovery}` : ''}`;
+ }
+ 
+@@ -570,10 +595,8 @@ export function buildNoticeTerminalBlocks(notice: TerminalNotice): {
+   fallbackText: string;
+ } {
+   const facts: string[] = [];
+-  if (notice.authoredOutcome)
+-    facts.push(
+-      `authored outcome: ${notice.authoredOutcome === 'unavailable' ? 'unavailable — failed to read persisted run' : notice.authoredOutcome}`
+-    );
++  const outcome = shownOutcome(notice);
++  if (outcome) facts.push(`authored outcome: ${outcomeText(outcome)}`);
+   if (notice.totalCostUsd !== undefined)
+     facts.push(`total cost: $${notice.totalCostUsd.toFixed(4)}`);
+   const blocks: KnownBlock[] = [
+@@ -589,7 +612,9 @@ export function buildNoticeTerminalBlocks(notice: TerminalNotice): {
+     });
+   return {
+     blocks,
+-    fallbackText: `${TERMINAL_HEADER[notice.status]} (${notice.workflowName})`,
++    fallbackText: `${TERMINAL_HEADER[notice.status]} (${notice.workflowName})${
++      outcome ? ` · authored outcome: ${outcomeText(outcome)}` : ''
++    }`,
+   };
+ }
+ 
+diff --git a/packages/chat-slack/src/workflow-bridge.test.ts b/packages/chat-slack/src/workflow-bridge.test.ts
+index 43bfb422c..cf990b762 100644
+--- a/packages/chat-slack/src/workflow-bridge.test.ts
++++ b/packages/chat-slack/src/workflow-bridge.test.ts
+@@ -283,26 +283,44 @@ test('action RPC failure gives a generic note', async () => {
+   expect(JSON.stringify(slack.posts)).toContain('Could not cancel');
+   expect(JSON.stringify(slack.posts)).not.toContain('private details');
+ });
+-test('paused approvals retain their authored outcome during a pending node edit', async () => {
++test('a named outcome is shown without an outcome reaction', async () => {
+   await started();
+   await plugin.onRunEvent({
+-    type: 'node_state',
++    type: 'terminal',
+     runId: 'run',
+-    nodeId: 'review',
+-    nodeName: 'review',
+-    state: 'running',
++    status: 'completed',
++    completedOutcome: 'built',
+   });
+-  await plugin.onRunEvent({
+-    type: 'approval_pending',
+-    runId: 'run',
+-    nodeId: 'review',
+-    message: 'Choose',
+-    decisions: [{ id: 'ship' }],
+-    authoredOutcome: 'succeeded',
+-  });
+-  await new Promise(resolve => setTimeout(resolve, 550));
+-  expect(JSON.stringify(slack.updates.at(-1))).toContain('Workflow paused');
+-  expect(JSON.stringify(slack.updates.at(-1))).toContain('succeeded');
++  expect(rendered()).toContain('built');
++  expect(slack.added.map(reaction => reaction.name)).toEqual([
++    'arrows_counterclockwise',
++    'white_check_mark',
++  ]);
++});
++
++test.each([
++  [
++    'a named outcome unavailable is shown as its value',
++    { completedOutcome: 'unavailable' },
++    '`unavailable`',
++  ],
++  [
++    'a legacy unavailable outcome is a read failure',
++    { authoredOutcome: 'unavailable' },
++    'failed to read persisted run',
++  ],
++] as const)('%s', async (_, fields, expected) => {
++  await started();
++  await plugin.onRunEvent({ type: 'terminal', runId: 'run', status: 'completed', ...fields });
++  expect(rendered()).toContain(expected);
++  if ('completedOutcome' in fields) expect(rendered()).not.toContain('failed to read');
++});
++
++test('a run with no declared outcome shows no outcome', async () => {
++  await started();
++  await plugin.onRunEvent({ type: 'terminal', runId: 'run', status: 'completed' });
++  expect(rendered()).not.toContain('Authored outcome');
++  expect(rendered()).not.toContain('authored outcome');
+ });
+ 
+ test('prior-success replay preserves completed duration and suspended nodes stay running', async () => {
+diff --git a/packages/chat-slack/src/workflow-bridge.ts b/packages/chat-slack/src/workflow-bridge.ts
+index f2755b818..ec315a296 100644
+--- a/packages/chat-slack/src/workflow-bridge.ts
++++ b/packages/chat-slack/src/workflow-bridge.ts
+@@ -10,6 +10,7 @@ import {
+   parseApprovalValue,
+   buildClosedApprovalBlocks,
+   buildStatusBlocks,
++  shownOutcome,
+   type SlackApprovalAction,
+   type NodeSnapshot,
+   type NodeState,
+@@ -34,7 +35,6 @@ interface RunState {
+   startedAt: number;
+   status: 'running' | 'paused';
+   approvalDeliveryFailed?: boolean;
+-  authoredOutcome?: RunSnapshot['authoredOutcome'];
+   nodes: Map<string, NodeSnapshot>;
+   pendingEdit?: ReturnType<typeof setTimeout>;
+   approvals: Map<string, ApprovalMessage>;
+@@ -146,7 +146,7 @@ export class SlackWorkflowBridge {
+     }
+     await this.updateStatusMessage(state, {
+       status: event.status,
+-      authoredOutcome: event.authoredOutcome,
++      outcome: shownOutcome(event),
+       totalCostUsd: event.totalCostUsd,
+       failureReason: event.error,
+     });
+@@ -163,7 +163,6 @@ export class SlackWorkflowBridge {
+       return;
+     }
+     state.status = 'paused';
+-    state.authoredOutcome = event.authoredOutcome;
+     await this.updateStatusMessage(state);
+ 
+     const { blocks, fallbackText } = buildApprovalBlocks({
+@@ -260,7 +259,7 @@ export class SlackWorkflowBridge {
+   private async updateStatusMessage(
+     state: RunState,
+     overlay: Partial<
+-      Pick<RunSnapshot, 'status' | 'authoredOutcome' | 'totalCostUsd' | 'failureReason'>
++      Pick<RunSnapshot, 'status' | 'outcome' | 'totalCostUsd' | 'failureReason'>
+     > = {}
+   ): Promise<boolean> {
+     if (!state.statusMessageTs) return false;
+@@ -286,7 +285,6 @@ export class SlackWorkflowBridge {
+       workflowName: state.workflowName,
+       startedAt: state.startedAt,
+       status: state.status,
+-      authoredOutcome: state.authoredOutcome,
+       approvalDeliveryFailed: state.approvalDeliveryFailed,
+       nodes: [...state.nodes.values()],
+     };
+diff --git a/packages/cli/src/commands/workflow-attention-text.test.ts b/packages/cli/src/commands/workflow-attention-text.test.ts
+index 0c7df82e8..c0ed78d1c 100644
+--- a/packages/cli/src/commands/workflow-attention-text.test.ts
++++ b/packages/cli/src/commands/workflow-attention-text.test.ts
+@@ -117,6 +117,12 @@ test('an unreadable item, a failed run and a lost owner say which run and what s
+   expect(
+     text({ type: 'terminal', ...run, status: 'completed', outcome: null, cause: null })
+   ).not.toContain(more);
++  expect(
++    text({ type: 'terminal', ...run, status: 'completed', outcome: null, cause: null })
++  ).toContain('Run run-1 completed.');
++  expect(
++    text({ type: 'terminal', ...run, status: 'completed', outcome: 'built', cause: null })
++  ).toContain('Run run-1 completed (built).');
+ });
+ 
+ test('the close of an ask is one line that says who answered when that was recorded', () => {
+diff --git a/packages/docs-web/src/content/docs/adapters/slack.md b/packages/docs-web/src/content/docs/adapters/slack.md
+index 4d11f5912..d634443b5 100644
+--- a/packages/docs-web/src/content/docs/adapters/slack.md
++++ b/packages/docs-web/src/content/docs/adapters/slack.md
+@@ -217,7 +217,8 @@ When a workflow runs in a Slack thread, Archon now:
+ 
+ - Adds 🔄 to your triggering message when the run starts, and swaps it for ✅
+   on execution completion or ❌ on execution failure / cancellation. If a declared
+-  authored outcome disagrees, it also adds the outcome reaction, so both facts remain visible
++  boolean outcome disagrees, it also adds the outcome reaction, so both facts remain visible.
++  A named outcome such as `built` gets no reaction; the status message shows it
+ - Posts a single status message in the thread that's edited in place as DAG
+   nodes start, complete, fail, or get skipped
+ - When approval details are available, renders the gate's declared decisions as
+@@ -236,8 +237,9 @@ When a workflow runs in a Slack thread, Archon now:
+ - Appends a small italic cost / token footer after direct-chat replies
+   (e.g. `_cost: $0.0234 · 12.4k tokens · stop: end_turn_`) and on the
+   final status message when a workflow completes
+-- Labels execution status and a non-null authored outcome separately in the final status message;
+-  workflows without an authored outcome retain the existing status-only message
++- Labels execution status and the outcome the run completed with, named or boolean, separately
++  in the final status message; workflows without a declared outcome retain the existing
++  status-only message
+ - Annotates long responses split across multiple Slack messages with
+   `_part i/n_` footers so it's clear they belong together
+ 
+diff --git a/packages/docs-web/src/content/docs/getting-started/operate.md b/packages/docs-web/src/content/docs/getting-started/operate.md
+index e8eb9a084..211e754be 100644
+--- a/packages/docs-web/src/content/docs/getting-started/operate.md
++++ b/packages/docs-web/src/content/docs/getting-started/operate.md
+@@ -382,7 +382,7 @@ A stream starts with one `attention` line per readable open item, with `snapshot
+ | `attention` | An item opened or changed | `cursor`, `snapshot`, `project`, `workflow`, `parentRunId`, `item` |
+ | `resolved` | An item this stream sent closed or was replaced | `cursor`, `project`, `ref`, `runId`, `workflow`, `parentRunId`, `occurrence`, `reason`; with `reason: "answered"`, also `answeredVia`, `answeredBy`, `answeredFromRun` and `answeredAt` |
+ | `unmatched` | A label write moved an open item outside `--label` | `cursor`, `project`, `ref`, `runId`, `workflow`, `parentRunId`, `occurrence`, `revision` |
+-| `terminal` | A run ended | `cursor`, `project`, `runId`, `workflow`, `parentRunId`, `status`, `outcome`, `cause`, and `reason` on a launch failure or failed outcome |
++| `terminal` | A run ended | `cursor`, `project`, `runId`, `workflow`, `parentRunId`, `status`, `outcome` (the outcome a completed run declared: `succeeded`, `failed` or a named value such as `built`; null otherwise), `cause`, and `reason` on a launch failure or failed outcome |
+ | `resumed` | A failed run resumed, an engine-cancelled fan-out child recovered, or a paused run, or a running run whose owner was gone, resumed and cleared a stored error | `cursor`, `project`, `runId`, `workflow`, `parentRunId`, `status: "running"` |
+ | `owner_lost` | A running run's owner process on this host is gone | `cursor`, `project`, `runId`, `workflow`, `parentRunId`, `observedStatus` |
+ | `notice` | A node or the engine [recorded a notice for a run](#notices-what-the-work-did) | `cursor`, `project`, `runId`, `workflow`, `parentRunId`, `at`, `node`, `text`, `labels` |
+diff --git a/packages/docs-web/src/content/docs/reference/workflow-language.md b/packages/docs-web/src/content/docs/reference/workflow-language.md
+index cf6bd3130..ea90ce472 100644
+--- a/packages/docs-web/src/content/docs/reference/workflow-language.md
++++ b/packages/docs-web/src/content/docs/reference/workflow-language.md
+@@ -3081,7 +3081,9 @@ The engine records terminal facts even when failure skips your reporting node. U
+ The record preserves execution status, authored outcome, node states and skip causes,
+ the selected `returns:` value when available, and an artifact manifest. Execution
+ status and authored outcome remain independent; the engine does not infer a delivery
+-verdict from filenames or output prose. Runs created before this support may have no
++verdict from filenames or output prose. `outcome` is the boolean form; `completed_outcome`
++is the outcome the run completed with, named outcomes included, and is absent from records
++written before it existed. Runs created before this support may have no
+ record. Resumed active runs expose `null` until their next terminal transition. The same
+ response's `run.nodes` carries the engine's node states for every run: the record's when it
+ exists, otherwise the same fold over the events recorded so far. Active, resumed, and older
+diff --git a/packages/server/src/chat-host/attention-destination.test.ts b/packages/server/src/chat-host/attention-destination.test.ts
+index 6f805621a..cbcec1698 100644
+--- a/packages/server/src/chat-host/attention-destination.test.ts
++++ b/packages/server/src/chat-host/attention-destination.test.ts
+@@ -28,7 +28,10 @@ function notice(
+   kind: AttentionNotice['kind'],
+   status: WorkflowRun['status'],
+   metadata: Record<string, unknown>,
+-  outcome: WorkflowRun['outcome'] = null
++  outcomes: Pick<WorkflowRun, 'outcome' | 'completed_outcome'> = {
++    outcome: null,
++    completed_outcome: null,
++  }
+ ): AttentionNotice {
+   return {
+     kind,
+@@ -42,8 +45,7 @@ function notice(
+       parent_conversation_id: null,
+       codebase_id: null,
+       status,
+-      outcome,
+-      completed_outcome: outcome,
++      ...outcomes,
+       user_message: 'private input',
+       metadata,
+       active_phase_started_at: null,
+@@ -175,15 +177,31 @@ test('an attention notice carries the recommendation and what options do, never
+   ]);
+ });
+ 
+-test('terminal notices carry status, authored outcome and cost', () => {
++test.each([
++  [
++    'a named outcome',
++    'completed',
++    { outcome: null, completed_outcome: 'built' },
++    { completedOutcome: 'built' },
++  ],
++  [
++    'a boolean outcome',
++    'completed',
++    { outcome: 'failed', completed_outcome: 'failed' },
++    { completedOutcome: 'failed', authoredOutcome: 'failed' },
++  ],
++  ['no declared outcome', 'completed', { outcome: null, completed_outcome: null }, {}],
++  // An older binary may write the legacy outcome while the run runs; it did not complete.
++  ['no outcome for a failed run', 'failed', { outcome: 'succeeded', completed_outcome: null }, {}],
++] as const)('a terminal notice carries status, cost and %s', (_, status, outcomes, expected) => {
+   expect(
+-    chatAttentionNotice(notice('terminal', 'failed', { total_cost_usd: 0.25 }, 'failed'))
++    chatAttentionNotice(notice('terminal', status, { total_cost_usd: 0.25 }, outcomes))
+   ).toEqual({
+     type: 'terminal',
+     runId: 'run',
+     workflowName: 'nightly',
+-    status: 'failed',
+-    authoredOutcome: 'failed',
++    status,
++    ...expected,
+     totalCostUsd: 0.25,
+   });
+ });
+diff --git a/packages/server/src/chat-host/attention-destination.ts b/packages/server/src/chat-host/attention-destination.ts
+index 9cdc82bae..4e340a70a 100644
+--- a/packages/server/src/chat-host/attention-destination.ts
++++ b/packages/server/src/chat-host/attention-destination.ts
+@@ -20,7 +20,7 @@ import {
+   type PushDestinationState,
+ } from '../services/attention-router';
+ import type { ChatPluginState, ChatSupervisor } from './supervisor';
+-import { runTotalCostUsd } from './run-events';
++import { chatRunOutcome, runTotalCostUsd } from './run-events';
+ 
+ function gateNotice(run: WorkflowRun): ChatAttentionNotice {
+   const attention = runAttention(run);
+@@ -84,7 +84,7 @@ function terminalNotice(run: WorkflowRun): ChatAttentionNotice {
+     runId: run.id,
+     workflowName: run.workflow_name,
+     status: run.status,
+-    ...(run.outcome ? { authoredOutcome: run.outcome } : {}),
++    ...chatRunOutcome(run),
+     ...(totalCostUsd !== undefined ? { totalCostUsd } : {}),
+   };
+ }
+diff --git a/packages/server/src/chat-host/run-events.test.ts b/packages/server/src/chat-host/run-events.test.ts
+index 0467f1973..70bd7c651 100644
+--- a/packages/server/src/chat-host/run-events.test.ts
++++ b/packages/server/src/chat-host/run-events.test.ts
+@@ -102,6 +102,7 @@ test.each([false, true])(
+           transcriptPath: '/private/path',
+         });
+         emitter.emit({ type: 'node_started', runId: run.id, nodeId: 'node', nodeName: 'Node' });
++        // An older binary may write the legacy outcome on a running row; a pause shows none.
+         await getDatabase().query(
+           `UPDATE remote_agent_workflow_runs SET outcome = 'succeeded' WHERE id = $1`,
+           [run.id]
+@@ -113,6 +114,11 @@ test.each([false, true])(
+           message: 'Choose',
+         });
+         emitter.unregisterRun(run.id);
++        await getDatabase().query(
++          `UPDATE remote_agent_workflow_runs
++           SET status = 'completed', outcome = NULL, completed_outcome = 'built' WHERE id = $1`,
++          [run.id]
++        );
+         emitter.emit({
+           type: 'workflow_completed',
+           runId: run.id,
+@@ -128,10 +134,13 @@ test.each([false, true])(
+       expect(first.map(event => event.runId)).toEqual(Array(4).fill(runs[0]!.id));
+       expect(second.map(event => event.runId)).toEqual(Array(4).fill(runs[1]!.id));
+       expect(first[0]).toMatchObject({ conversationId: 'thread-fixture-chat' });
+-      expect(first[2]).toMatchObject({ type: 'approval_pending', authoredOutcome: 'succeeded' });
+-      expect(first[3]).toMatchObject({
++      expect(first[2]).toMatchObject({ type: 'approval_pending' });
++      expect(first[2]).not.toHaveProperty('authoredOutcome');
++      expect(first[3]).toEqual({
+         type: 'terminal',
+-        authoredOutcome: 'succeeded',
++        runId: runs[0]!.id,
++        status: 'completed',
++        completedOutcome: 'built',
+         totalCostUsd: 0.25,
+       });
+       expect(JSON.stringify(first)).not.toContain('/private/path');
+diff --git a/packages/server/src/chat-host/run-events.ts b/packages/server/src/chat-host/run-events.ts
+index a4a9347c3..3aca5d813 100644
+--- a/packages/server/src/chat-host/run-events.ts
++++ b/packages/server/src/chat-host/run-events.ts
+@@ -1,5 +1,9 @@
+ import { ChildRunRedirectError } from '@archon/core/operations/workflow-operations';
+-import { isApprovalContext } from '@archon/workflows/schemas/workflow-run';
++import {
++  displayedRunOutcome,
++  isApprovalContext,
++  type WorkflowRun,
++} from '@archon/workflows/schemas/workflow-run';
+ import type { WorkflowCommandSurface } from '@archon/workflows/deps';
+ import { getApprovalDecisions } from '@archon/workflows/schemas/dag-node';
+ import type { ChatRunEvent } from '@archon/chat-contract';
+@@ -7,7 +11,6 @@ import {
+   getWorkflowEventEmitter,
+   type WorkflowEmitterEvent,
+ } from '@archon/workflows/event-emitter';
+-import type { WorkflowRun } from '@archon/workflows/schemas/workflow-run';
+ import * as workflowDb from '@archon/core/db/workflows';
+ import * as conversationDb from '@archon/core/db/conversations';
+ import { createLogger } from '@archon/paths';
+@@ -25,6 +28,19 @@ export function runTotalCostUsd(run: WorkflowRun): number | undefined {
+   return typeof cost === 'number' && Number.isFinite(cost) && cost >= 0 ? cost : undefined;
+ }
+ 
++/**
++ * The outcome fields a chat message carries for a run, from the engine's display rule. A
++ * run that did not complete gets none. `authoredOutcome` is the boolean form, set only
++ * when the run's outcome is boolean, for plugins that read only that field.
++ */
++export function chatRunOutcome(
++  run: Pick<WorkflowRun, 'status' | 'outcome' | 'completed_outcome'>
++): { completedOutcome?: string; authoredOutcome?: NonNullable<WorkflowRun['outcome']> } {
++  const completedOutcome = displayedRunOutcome(run);
++  if (completedOutcome === null) return {};
++  return { completedOutcome, ...(run.outcome !== null ? { authoredOutcome: run.outcome } : {}) };
++}
++
+ export function projectRunEvent(event: WorkflowEmitterEvent): ProjectedRunEvent | undefined {
+   const runId = event.runId;
+   switch (event.type) {
+@@ -109,8 +125,6 @@ function applyRunDetails(
+   platform: string,
+   platforms: ReadonlyMap<string, WorkflowCommandSurface>
+ ): void {
+-  if (routed.type === 'approval_pending' || routed.type === 'terminal')
+-    routed.authoredOutcome = run.outcome ?? undefined;
+   const approval = run.metadata.approval;
+   if (
+     routed.type === 'approval_pending' &&
+@@ -130,6 +144,7 @@ function applyRunDetails(
+     ).messageFor(surface);
+   }
+   if (routed.type === 'terminal') {
++    Object.assign(routed, chatRunOutcome(run));
+     const cost = runTotalCostUsd(run);
+     if (cost !== undefined) routed.totalCostUsd = cost;
+   }
+diff --git a/packages/web/src/lib/api.generated.d.ts b/packages/web/src/lib/api.generated.d.ts
+index f64ed6bce..487963d3d 100644
+--- a/packages/web/src/lib/api.generated.d.ts
++++ b/packages/web/src/lib/api.generated.d.ts
+@@ -7826,8 +7826,7 @@ export interface components {
+           parentRunId: string | null;
+           /** @enum {string} */
+           status: 'completed' | 'failed' | 'cancelled';
+-          /** @enum {string|null} */
+-          outcome: 'succeeded' | 'failed' | null;
++          outcome: string | null;
+           cause: {
+             node: string;
+             /** @enum {string|null} */
+@@ -8108,6 +8107,7 @@ export interface components {
+           status: 'completed' | 'failed' | 'cancelled';
+           /** @enum {string|null} */
+           outcome: 'succeeded' | 'failed' | null;
++          completed_outcome?: string | null;
+           error: string | null;
+           first_failed_node: string | null;
+           nodes: {
+diff --git a/packages/workflows/src/attention-watch-events.ts b/packages/workflows/src/attention-watch-events.ts
+index c519eb74c..f9562a5e5 100644
+--- a/packages/workflows/src/attention-watch-events.ts
++++ b/packages/workflows/src/attention-watch-events.ts
+@@ -8,6 +8,7 @@ import type { WorkflowEventRow } from './schemas/workflow-event';
+ import {
+   attentionAnswererSchema,
+   attentionOccurrence,
++  displayedRunOutcome,
+   gateOccurrence,
+   isApprovalContext,
+   isGateResolved,
+@@ -90,11 +91,19 @@ export function indexAnswers(page: WorkflowEventPage): Map<string, AnswerOrigin>
+ export function terminalFacts(
+   event: WorkflowEventRow,
+   status: RunTerminalStatus
+-): { outcome: 'succeeded' | 'failed' | null; firstFailedNode: string | null; reason: string[] } {
++): { outcome: string | null; firstFailedNode: string | null; reason: string[] } {
+   try {
+     const record = getTerminalRecord(status, [event]);
+     return {
+-      outcome: record?.outcome ?? null,
++      // From the record on this event, not the run row: a replayed earlier terminal event
++      // of a run that later resumed and completed must not show the later outcome.
++      outcome: record
++        ? displayedRunOutcome({
++            status: record.status,
++            outcome: record.outcome,
++            completed_outcome: record.completed_outcome ?? null,
++          })
++        : null,
+       firstFailedNode: record?.first_failed_node ?? null,
+       reason:
+         status === 'failed' && event.data.exit_reason === 'launch_failed'
+diff --git a/packages/workflows/src/attention-watch.test.ts b/packages/workflows/src/attention-watch.test.ts
+index ad909dd25..07e936760 100644
+--- a/packages/workflows/src/attention-watch.test.ts
++++ b/packages/workflows/src/attention-watch.test.ts
+@@ -21,6 +21,7 @@ import {
+   type AttentionStreamLine,
+   type AttentionWatchHost,
+ } from './attention-watch';
++import { terminalFacts } from './attention-watch-events';
+ import type { AttentionWatchOptions } from './engine-port';
+ import { createFileWorkflowStore } from './file-store';
+ import { splitAttentionRead } from './schemas/attention-degraded';
+@@ -959,6 +960,48 @@ describe('watchAttentionQueue', () => {
+     await stream.close();
+   });
+ 
++  test('a terminal line shows the outcome a run completed with, named outcomes included', async () => {
++    const store = await makeStore();
++    const stream = await watch(store);
++    const runId = await running(store);
++    await store.completeWorkflowRun(runId, { duration_ms: 1 }, undefined, {
++      outcome: { kind: 'enum', value: 'built' },
++    });
++    expect(await stream.next(ofRun(runId, 'terminal'))).toMatchObject({ outcome: 'built' });
++    await stream.close();
++  });
++
++  test.each([
++    ['a record from before completed_outcome', 'completed', { outcome: 'failed' }, 'failed'],
++    [
++      'a failed run whose legacy outcome an older binary wrote early',
++      'failed',
++      { outcome: 'succeeded' },
++      null,
++    ],
++  ] as const)('%s shows the engine display rule', (_, status, fields, expected) => {
++    const record = {
++      run_id: 'run',
++      status,
++      error: null,
++      first_failed_node: null,
++      nodes: [],
++      returns: { availability: 'unavailable', node_id: null, reason: 'not_declared' },
++      artifacts: { root: null, files: [], limitations: [] },
++      ...fields,
++    };
++    const event = {
++      id: 'event',
++      workflow_run_id: 'run',
++      event_type: `workflow_${status}`,
++      step_index: null,
++      step_name: null,
++      data: { terminal_record: record },
++      created_at: '2026-11-16T00:00:00.000Z',
++    };
++    expect(terminalFacts(event, status).outcome).toBe(expected);
++  });
++
+   test('a relabel moves an item between label filters by revision, and unmatched is stateless', async () => {
+     const store = await makeStore();
+     const other = await watch(store, { labels: { ci: 'other' } });
+diff --git a/packages/workflows/src/attention-watch.ts b/packages/workflows/src/attention-watch.ts
+index 8ab4eff03..6c3d5db72 100644
+--- a/packages/workflows/src/attention-watch.ts
++++ b/packages/workflows/src/attention-watch.ts
+@@ -49,7 +49,6 @@ import {
+   attentionAnsweringRunSchema,
+   terminalRunStatusForEventType,
+   terminalWorkflowRunStatusSchema,
+-  workflowRunOutcomeSchema,
+   workflowRunStatusSchema,
+   type AttentionAnsweringRun,
+   type WorkflowRun,
+@@ -155,7 +154,11 @@ export const attentionStreamLineSchema = z.discriminatedUnion('type', [
+     type: z.literal('terminal'),
+     ...lineBase,
+     status: terminalWorkflowRunStatusSchema,
+-    outcome: workflowRunOutcomeSchema.nullable(),
++    /**
++     * The outcome the run completed with: `succeeded` or `failed` for a boolean outcome, or
++     * the value of a named one. Null when the run did not complete or declares none.
++     */
++    outcome: z.string().min(1).nullable(),
+     /**
+      * Where a failed run failed: its terminal record's first failed node and the failure
+      * kind that node's `node_failed` event recorded (null when it recorded none). Null
+diff --git a/packages/workflows/src/run-terminal-telemetry.test.ts b/packages/workflows/src/run-terminal-telemetry.test.ts
+index 3224e7531..619092fe4 100644
+--- a/packages/workflows/src/run-terminal-telemetry.test.ts
++++ b/packages/workflows/src/run-terminal-telemetry.test.ts
+@@ -35,7 +35,7 @@ async function failedRunEvents(): Promise<RunTelemetryEvent[]> {
+       created_at: '2026-09-24 10:00:09',
+     },
+   ];
+-  const terminalRun = { ...run, outcome: null, output_root: null };
++  const terminalRun = { ...run, outcome: null, completed_outcome: null, output_root: null };
+   const terminalRecord = buildTerminalRecord({
+     run: terminalRun,
+     events,
+@@ -121,7 +121,12 @@ describe('buildRunTerminalTelemetry', () => {
+         { event_type: 'loop_iteration_completed', data: {}, created_at: '2026-09-24T10:00:06Z' },
+         { event_type: 'loop_iteration_completed', data: {}, created_at: '2026-09-24T10:01:06Z' },
+       ];
+-      const terminalRun = { ...childRun, outcome: null, output_root: null };
++      const terminalRun = {
++        ...childRun,
++        outcome: null,
++        completed_outcome: null,
++        output_root: null,
++      };
+       const terminalRecord = buildTerminalRecord({
+         run: terminalRun,
+         events,
+diff --git a/packages/workflows/src/schemas/terminal-record.ts b/packages/workflows/src/schemas/terminal-record.ts
+index 8d5c217d4..bf3750d31 100644
+--- a/packages/workflows/src/schemas/terminal-record.ts
++++ b/packages/workflows/src/schemas/terminal-record.ts
+@@ -80,6 +80,11 @@ export const terminalRecordSchema = z.object({
+   run_id: z.string(),
+   status: terminalStatusSchema,
+   outcome: workflowRunOutcomeSchema.nullable(),
++  /**
++   * The run's `completed_outcome` when the record was written: the outcome a completed run
++   * completed with, named outcomes included. Absent from records written before it existed.
++   */
++  completed_outcome: z.string().min(1).nullable().optional(),
+   error: z.string().nullable(),
+   first_failed_node: z.string().nullable(),
+   nodes: z.array(runNodeStateSchema),
+diff --git a/packages/workflows/src/store-conformance/gates-and-terminals.ts b/packages/workflows/src/store-conformance/gates-and-terminals.ts
+index 97bddc4fa..104e3c47c 100644
+--- a/packages/workflows/src/store-conformance/gates-and-terminals.ts
++++ b/packages/workflows/src/store-conformance/gates-and-terminals.ts
+@@ -30,7 +30,7 @@ export function describeGatesAndTerminalsConformance(getHarness: () => WorkflowS
+       ['an enum', { kind: 'enum', value: 'built' }, { node_counts: { total: 1 } }, null, 'built'],
+       ['no', undefined, { node_counts: { total: 1 } }, null, null],
+     ] as const)(
+-      'completion writes %s outcome in the write that completes the run (#5660)',
++      'completion writes %s outcome in the write that completes the run, and its terminal record (#5660)',
+       async (_label, outcome, metadata, legacy, completed) => {
+         const run = await running(store);
+         await store.completeWorkflowRun(
+@@ -44,6 +44,11 @@ export function describeGatesAndTerminalsConformance(getHarness: () => WorkflowS
+           outcome: legacy,
+           completed_outcome: completed,
+         });
++        const [event] = await store.listWorkflowEvents(run.id);
++        expect(terminalRecordSchema.parse(event?.data.terminal_record)).toMatchObject({
++          outcome: legacy,
++          completed_outcome: completed,
++        });
+       }
+     );
+     test('gate resolution has one winner and no loser events', async () => {
+diff --git a/packages/workflows/src/terminal-record.test.ts b/packages/workflows/src/terminal-record.test.ts
+index fa5225bdf..8c57e7086 100644
+--- a/packages/workflows/src/terminal-record.test.ts
++++ b/packages/workflows/src/terminal-record.test.ts
+@@ -37,6 +37,7 @@ const run = {
+   id: 'run-1',
+   status: 'failed' as const,
+   outcome: null,
++  completed_outcome: null,
+   output_root: null,
+   checkout_baseline: null,
+   metadata: {
+diff --git a/packages/workflows/src/terminal-record.ts b/packages/workflows/src/terminal-record.ts
+index 4aecfdece..d3ba197e5 100644
+--- a/packages/workflows/src/terminal-record.ts
++++ b/packages/workflows/src/terminal-record.ts
+@@ -325,7 +325,7 @@ export function terminalArtifactsFor(
+ 
+ /** Fold ordered durable events; never reconstruct producer values from artifact contents. */
+ export function buildTerminalRecord(input: {
+-  run: Pick<WorkflowRun, 'id' | 'status' | 'outcome' | 'metadata'>;
++  run: Pick<WorkflowRun, 'id' | 'status' | 'outcome' | 'completed_outcome' | 'metadata'>;
+   events: readonly TerminalRecordEvent[];
+   artifacts: ArtifactManifest;
+ }): TerminalRecord {
+@@ -337,6 +337,7 @@ export function buildTerminalRecord(input: {
+     run_id: run.id,
+     status: terminalStatusSchema.parse(run.status),
+     outcome: run.outcome,
++    completed_outcome: run.completed_outcome,
+     error: typeof run.metadata?.error === 'string' ? run.metadata.error : null,
+     first_failed_node: [...failureOrder].sort((left, right) => left[1] - right[1])[0]?.[0] ?? null,
+     nodes: [...nodes.values()],

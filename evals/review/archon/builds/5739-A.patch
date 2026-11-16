@@ -1,0 +1,491 @@
+diff --git a/packages/docs-web/src/content/docs/guides/script-nodes.md b/packages/docs-web/src/content/docs/guides/script-nodes.md
+index 4950e8006..c22825461 100644
+--- a/packages/docs-web/src/content/docs/guides/script-nodes.md
++++ b/packages/docs-web/src/content/docs/guides/script-nodes.md
+@@ -75,10 +75,14 @@ The file `.archon/scripts/fetch-github-pages.ts` is loaded and executed with
+    below), it's treated as inline code. Otherwise it's treated as a named-script
+    reference.
+ 3. **Dispatch.**
+-   - `runtime: bun` + inline → `bun --no-env-file -e '<code>'`
+-   - `runtime: bun` + named  → `bun --no-env-file run <path>`
+-   - `runtime: uv` + inline  → `uv run [--with dep ...] python -c '<code>'`
+-   - `runtime: uv` + named   → `uv run [--with dep ...] <path>`
++   - `runtime: bun` + inline → `bun --no-env-file --preload=<file> -` (code on stdin)
++   - `runtime: bun` + named  → `bun --no-env-file run --preload=<file> <path>`
++   - `runtime: uv` + inline  → `uv run --no-project --project <run dir> [--with dep ...] python -c '<code>'`
++   - `runtime: uv` + named   → `uv run --no-project --project <run dir> [--with dep ...] <path>`
++
++   The preload file provides the `archon:script` module. `<run dir>` is an empty
++   directory Archon keeps in the run's artifact directory; see
++   [Dependencies](#dependencies-uv-only) for why.
+ 4. **Capture.** `stdout` (with the trailing newline stripped) becomes
+    `$nodeId.output`. On a successful run, `stderr` is logged as a warning and
+    posted to the conversation but does **not** fail the node. A non-zero exit
+@@ -342,6 +346,12 @@ a per-run ephemeral environment:
+   the field, or switch to `uv` if you need explicit dependency management.
+ - **No persistent environment** — each run is isolated; there is no `requirements.txt`
+   or lockfile to maintain.
++- **The target repository's uv project does not apply** — a uv node runs outside
++  any `pyproject.toml` in the checkout. It writes no `.venv` or `uv.lock` into the
++  checkout, and ignores the repository's project dependencies, its `[tool.uv]` or
++  `uv.toml` settings, and its `.python-version`. Your own uv config (for example
++  `~/.config/uv/uv.toml`) still applies. The script still runs with the checkout
++  as its working directory.
+ 
+ ## Output and Data Flow
+ 
+@@ -462,7 +472,8 @@ and bash nodes.
+ `--no-env-file`, so variables in the target repo's `.env` do **not** leak into
+ the script. Archon-managed env (from `~/.archon/.env` and `<repo>/.archon/.env`)
+ passes through normally. `uv`-launched Python subprocesses do not auto-load
+-`.env` at all. See [Security Model](/reference/security/#target-repo-env-isolation)
++`.env` at all, and a uv node does not join the target repository's uv project
++(see [Dependencies](#dependencies-uv-only)). See [Security Model](/reference/security/#target-repo-env-isolation)
+ for the full story.
+ 
+ ## Validation
+diff --git a/packages/workflows/src/dag/nodes/exec/script.test.ts b/packages/workflows/src/dag/nodes/exec/script.test.ts
+index 77faf0d95..4272b4c2b 100644
+--- a/packages/workflows/src/dag/nodes/exec/script.test.ts
++++ b/packages/workflows/src/dag/nodes/exec/script.test.ts
+@@ -179,7 +179,7 @@ describe('executeDagWorkflow -- script node injection hardening (#2115)', () =>
+         { env: NodeJS.ProcessEnv },
+       ];
+       expect(cmd).toBe('uv');
+-      expect(args).toEqual(['run', 'python', '-c', "import os; print(os.environ['ARGUMENTS'])"]);
++      expect(args.slice(-3)).toEqual(['python', '-c', "import os; print(os.environ['ARGUMENTS'])"]);
+       expect(opts.env.ARGUMENTS).toBe('py-message');
+       expect(opts.env.CONTEXT).toBe('ISSUE #42 body text');
+       expect(opts.env.EXTERNAL_CONTEXT).toBe('ISSUE #42 body text');
+diff --git a/packages/workflows/src/dag/nodes/exec/script.ts b/packages/workflows/src/dag/nodes/exec/script.ts
+index e52647096..4aee28408 100644
+--- a/packages/workflows/src/dag/nodes/exec/script.ts
++++ b/packages/workflows/src/dag/nodes/exec/script.ts
+@@ -1,5 +1,4 @@
+ import { scriptInvocation } from '../../../script-invocation';
+-import { scriptApiPreload } from '../../../script-api/preload';
+ import {
+   hostSpawnFailure,
+   isSubprocessTimeout,
+@@ -222,7 +221,7 @@ function resolveScriptInvocation(
+       runtime,
+       { kind: 'inline', code: finalScript },
+       node.deps,
+-      scriptApiPreload(runtime, ctx.artifactsDir)
++      ctx.artifactsDir
+     );
+   }
+   if (namedScripts instanceof Error) {
+@@ -243,7 +242,7 @@ function resolveScriptInvocation(
+     scriptDef.runtime,
+     { kind: 'file', path: scriptDef.path },
+     node.deps,
+-    scriptApiPreload(scriptDef.runtime, ctx.artifactsDir)
++    ctx.artifactsDir
+   );
+ }
+ 
+diff --git a/packages/workflows/src/dry-run/nodes/exec.ts b/packages/workflows/src/dry-run/nodes/exec.ts
+index 01417a48c..6d8a914b6 100644
+--- a/packages/workflows/src/dry-run/nodes/exec.ts
++++ b/packages/workflows/src/dry-run/nodes/exec.ts
+@@ -1,5 +1,4 @@
+ import { scriptInvocation } from '../../script-invocation';
+-import { scriptApiPreload } from '../../script-api/preload';
+ import { bashInvocation } from '../../bash-invocation';
+ import { mkdir } from 'node:fs/promises';
+ import { execFileAsync, resolveBashPath } from '@archon/git';
+@@ -108,12 +107,7 @@ async function resolveCodeInvocation(
+     return { command: resolveBashPath(), ...bashInvocation(code) };
+   }
+   if (isInlineScript(code)) {
+-    return scriptInvocation(
+-      node.runtime,
+-      { kind: 'inline', code },
+-      node.deps,
+-      scriptApiPreload(node.runtime, ctx.artifactsDir)
+-    );
++    return scriptInvocation(node.runtime, { kind: 'inline', code }, node.deps, ctx.artifactsDir);
+   }
+   await assertWorkflowSourceIntegrity(ctx.sourceRoots);
+   const script = (await discoverScriptsForCwd(ctx.cwd, ctx.sourceRoots)).get(code);
+@@ -122,6 +116,6 @@ async function resolveCodeInvocation(
+     script.runtime,
+     { kind: 'file', path: script.path },
+     node.deps,
+-    scriptApiPreload(script.runtime, ctx.artifactsDir)
++    ctx.artifactsDir
+   );
+ }
+diff --git a/packages/workflows/src/script-api/preload.ts b/packages/workflows/src/script-api/preload.ts
+index 53ac9269f..6e25c0e3e 100644
+--- a/packages/workflows/src/script-api/preload.ts
++++ b/packages/workflows/src/script-api/preload.ts
+@@ -9,7 +9,6 @@ import { createHash, randomUUID } from 'node:crypto';
+ import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+ import { join } from 'node:path';
+ import { RUN_ARTIFACTS_ENGINE_SUBDIR } from '@archon/paths';
+-import type { ScriptRuntime } from '../script-discovery';
+ import { scriptApiModuleSource } from '@archon/script-api/text';
+ 
+ export { scriptApiDeclaration } from '@archon/script-api/text';
+@@ -30,16 +29,14 @@ plugin({
+ const PRELOAD_FILE = `preload-${createHash('sha256').update(scriptApiPreloadSource).digest('hex').slice(0, 16)}.ts`;
+ 
+ /**
+- * The preload file for a script of `runtime` in this run, written on first use; undefined
+- * for a runtime that cannot import the module.
++ * The preload file for a Bun script in this run, written on first use.
+  *
+  * It lives in the engine's part of the run's artifact directory, which a container run
+  * mounts at the same path, so the same argv works on both sides of that boundary. The
+  * name carries the content's hash and the file arrives by rename, so parallel nodes and
+  * a resumed run under another Archon version never read a partial or foreign copy.
+  */
+-export function scriptApiPreload(runtime: ScriptRuntime, artifactsDir: string): string | undefined {
+-  if (runtime !== 'bun') return undefined;
++export function scriptApiPreload(artifactsDir: string): string {
+   const dir = join(artifactsDir, RUN_ARTIFACTS_ENGINE_SUBDIR, 'script-api');
+   const path = join(dir, PRELOAD_FILE);
+   if (existsSync(path)) return path;
+diff --git a/packages/workflows/src/script-invocation-runtime.test.ts b/packages/workflows/src/script-invocation-runtime.test.ts
+index 9f284aaba..77fe3ab37 100644
+--- a/packages/workflows/src/script-invocation-runtime.test.ts
++++ b/packages/workflows/src/script-invocation-runtime.test.ts
+@@ -2,9 +2,11 @@
+ import { expect, test } from 'bun:test';
+ import { execFileAsync } from '@archon/git';
+ import { removeTempTree } from '@archon/paths/test-utils';
+-import { mkdtemp, writeFile } from 'node:fs/promises';
++import { existsSync } from 'node:fs';
++import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+ import { tmpdir } from 'node:os';
+ import { join } from 'node:path';
++import { pathToFileURL } from 'node:url';
+ import { scriptInvocation } from './script-invocation';
+ import { recordNodeProcessTrees, runSubprocess } from './subprocess';
+ 
+@@ -34,15 +36,20 @@ async function checkInlineScript(mode: (typeof launchModes)[number], shim: boole
+       INPUTS_MESSAGE: 'input € & | <> % ! ^ "',
+       ARCHON_INLINE_SHIM: '',
+     };
+-    const invocation = scriptInvocation('bun', {
+-      kind: 'inline',
+-      code: [
+-        'import { value } from "./value.ts";',
+-        'const message: string = await Promise.resolve(process.env.INPUTS_MESSAGE!);',
+-        "const literal: string = 'source € & | <> % ! ^ \" `';",
+-        'console.log(JSON.stringify({ value, message, literal, canary: process.env.ARCHON_INLINE_ENV_CANARY, shim: process.env.ARCHON_INLINE_SHIM }));',
+-      ].join('\r\n'),
+-    });
++    const invocation = scriptInvocation(
++      'bun',
++      {
++        kind: 'inline',
++        code: [
++          'import { value } from "./value.ts";',
++          'const message: string = await Promise.resolve(process.env.INPUTS_MESSAGE!);',
++          "const literal: string = 'source € & | <> % ! ^ \" `';",
++          'console.log(JSON.stringify({ value, message, literal, canary: process.env.ARCHON_INLINE_ENV_CANARY, shim: process.env.ARCHON_INLINE_SHIM }));',
++        ].join('\r\n'),
++      },
++      [],
++      join(dir, 'artifacts')
++    );
+     let command = process.execPath;
+     if (shim) {
+       await writeFile(
+@@ -77,3 +84,146 @@ async function checkInlineScript(mode: (typeof launchModes)[number], shim: boole
+     await removeTempTree(dir);
+   }
+ }
++
++async function runInlineUv(checkout: string, artifactsDir: string): Promise<string> {
++  const invocation = scriptInvocation(
++    'uv',
++    { kind: 'inline', code: 'print("ok")' },
++    [],
++    artifactsDir
++  );
++  const result = await execFileAsync(invocation.command, invocation.args, {
++    cwd: checkout,
++    timeout: 60_000,
++  });
++  return result.stdout.trim();
++}
++
++test.skipIf(!Bun.which('uv'))(
++  'inline uv writes no .venv or uv.lock into a checkout that is a uv project',
++  async () => {
++    const checkout = await mkdtemp(join(tmpdir(), 'archon-uv-checkout-'));
++    const artifactsDir = await mkdtemp(join(tmpdir(), 'archon-uv-artifacts-'));
++    try {
++      // A project uv can satisfy, so joining it succeeds and leaves files behind.
++      await writeFile(
++        join(checkout, 'pyproject.toml'),
++        [
++          '[project]',
++          'name = "checkout"',
++          'version = "0.0.0"',
++          'requires-python = ">=3.8"',
++          'dependencies = []',
++          '',
++        ].join('\n')
++      );
++      expect(await runInlineUv(checkout, artifactsDir)).toBe('ok');
++      expect(existsSync(join(checkout, '.venv'))).toBe(false);
++      expect(existsSync(join(checkout, 'uv.lock'))).toBe(false);
++    } finally {
++      await removeTempTree(checkout);
++      await removeTempTree(artifactsDir);
++    }
++  },
++  60_000
++);
++
++test.skipIf(!Bun.which('uv'))(
++  'inline uv ignores the checkout uv project, config and Python pin',
++  async () => {
++    const checkout = await mkdtemp(join(tmpdir(), 'archon-uv-checkout-'));
++    const artifactsDir = await mkdtemp(join(tmpdir(), 'archon-uv-artifacts-'));
++    try {
++      // Each planted file fails the node if uv reads it.
++      await writeFile(
++        join(checkout, 'pyproject.toml'),
++        [
++          '[project]',
++          'name = "checkout"',
++          'version = "0.0.0"',
++          'requires-python = ">=3.99"',
++          'dependencies = ["archon-nonexistent-dependency"]',
++          '',
++          '[tool.uv]',
++          'index-url = "http://127.0.0.1:9/simple"',
++          '',
++        ].join('\n')
++      );
++      await writeFile(join(checkout, '.python-version'), '3.99\n');
++      expect(await runInlineUv(checkout, artifactsDir)).toBe('ok');
++    } finally {
++      await removeTempTree(checkout);
++      await removeTempTree(artifactsDir);
++    }
++  },
++  60_000
++);
++
++// Builds a one-module wheel and a PEP 503 index for it, so the install needs no network.
++const buildIndex = `
++import base64, hashlib, os, sys, zipfile
++root = sys.argv[1]
++files = {
++    'archon_probe_dep.py': 'VALUE = "installed"\\n',
++    'archon_probe_dep-1.0.dist-info/METADATA': 'Metadata-Version: 2.1\\nName: archon-probe-dep\\nVersion: 1.0\\n',
++    'archon_probe_dep-1.0.dist-info/WHEEL': 'Wheel-Version: 1.0\\nGenerator: archon-test\\nRoot-Is-Purelib: true\\nTag: py3-none-any\\n',
++}
++def digest(text):
++    return base64.urlsafe_b64encode(hashlib.sha256(text.encode()).digest()).rstrip(b'=').decode()
++record = ''.join(f'{name},sha256={digest(text)},{len(text.encode())}\\n' for name, text in files.items())
++files['archon_probe_dep-1.0.dist-info/RECORD'] = record + 'archon_probe_dep-1.0.dist-info/RECORD,,\\n'
++wheel = 'archon_probe_dep-1.0-py3-none-any.whl'
++with zipfile.ZipFile(os.path.join(root, wheel), 'w') as archive:
++    for name, text in files.items():
++        archive.writestr(name, text)
++os.makedirs(os.path.join(root, 'simple', 'archon-probe-dep'))
++with open(os.path.join(root, 'simple', 'archon-probe-dep', 'index.html'), 'w') as page:
++    page.write(f'<a href="../../{wheel}">{wheel}</a>\\n')
++`;
++
++test.skipIf(!Bun.which('uv'))(
++  'uv installs a dependency named in deps',
++  async () => {
++    const dir = await mkdtemp(join(tmpdir(), 'archon-uv-deps-'));
++    try {
++      const checkout = join(dir, 'checkout');
++      const index = join(dir, 'index');
++      const config = join(dir, 'config');
++      await Promise.all(
++        [checkout, index, join(config, 'uv')].map(d => mkdir(d, { recursive: true }))
++      );
++      // A scratch user config (XDG on Unix, APPDATA on Windows) points uv at the local index,
++      // and a scratch cache keeps a previous install from satisfying this one.
++      const env = {
++        ...process.env,
++        XDG_CONFIG_HOME: config,
++        APPDATA: config,
++        UV_CACHE_DIR: join(dir, 'cache'),
++      };
++      await execFileAsync('uv', ['run', '--no-project', 'python', '-c', buildIndex, index], {
++        cwd: dir,
++        env,
++        timeout: 60_000,
++      });
++      await writeFile(
++        join(config, 'uv', 'uv.toml'),
++        `index-url = ${JSON.stringify(pathToFileURL(join(index, 'simple')).href)}\n`
++      );
++      const invocation = scriptInvocation(
++        'uv',
++        { kind: 'inline', code: 'import archon_probe_dep; print(archon_probe_dep.VALUE)' },
++        ['archon-probe-dep'],
++        join(dir, 'artifacts')
++      );
++      const result = await execFileAsync(invocation.command, invocation.args, {
++        cwd: checkout,
++        env,
++        timeout: 60_000,
++      });
++      expect(result.stdout.trim()).toBe('installed');
++    } finally {
++      await removeTempTree(dir);
++    }
++  },
++  60_000
++);
+diff --git a/packages/workflows/src/script-invocation.test.ts b/packages/workflows/src/script-invocation.test.ts
+index 376f0fcd8..7250199d7 100644
+--- a/packages/workflows/src/script-invocation.test.ts
++++ b/packages/workflows/src/script-invocation.test.ts
+@@ -1,35 +1,60 @@
+ import { expect, test } from 'bun:test';
++import { mkdtempSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import { trackTempRoots } from '@archon/paths/test-utils';
+ import { scriptInvocation } from './script-invocation';
+ 
++const track = trackTempRoots();
++const artifacts = (): string => track(mkdtempSync(join(tmpdir(), 'archon-script-invocation-')));
++
+ test('Bun inline stdin preserves source exactly', () => {
+   const code =
+     'const message: string = `€ 雪 🦉\r\nsecond line  \t\r\n`;\r\nconsole.log(message);\r\n \t';
+-  expect(scriptInvocation('bun', { kind: 'inline', code }).input).toBe(code);
++  expect(scriptInvocation('bun', { kind: 'inline', code }, [], artifacts()).input).toBe(code);
+ });
+ 
+ test('Bun isolates inline and named scripts from repository env files', () => {
+-  expect(scriptInvocation('bun', { kind: 'inline', code: 'console.log(1)' }, ['ignored'])).toEqual({
+-    command: 'bun',
+-    args: ['--no-env-file', '-'],
+-    input: 'console.log(1)',
+-  });
+-  expect(scriptInvocation('bun', { kind: 'file', path: '/scripts/job.ts' })).toEqual({
++  const artifactsDir = artifacts();
++  const inline = scriptInvocation(
++    'bun',
++    { kind: 'inline', code: 'console.log(1)' },
++    ['ignored'],
++    artifactsDir
++  );
++  expect(inline.args).toEqual(['--no-env-file', expect.stringMatching(/^--preload=/), '-']);
++  expect(inline.input).toBe('console.log(1)');
++  const preload = inline.args[1].slice('--preload='.length);
++  expect(
++    scriptInvocation('bun', { kind: 'file', path: '/scripts/job.ts' }, [], artifactsDir)
++  ).toEqual({
+     command: 'bun',
+-    args: ['--no-env-file', 'run', '/scripts/job.ts'],
++    args: ['--no-env-file', 'run', `--preload=${preload}`, '/scripts/job.ts'],
+   });
+ });
+ 
+ test('uv places dependencies before inline Python or a named script', () => {
+-  expect(scriptInvocation('uv', { kind: 'inline', code: 'print(1)' }, ['httpx', 'rich'])).toEqual({
+-    command: 'uv',
+-    args: ['run', '--with', 'httpx', '--with', 'rich', 'python', '-c', 'print(1)'],
+-  });
+-  expect(scriptInvocation('uv', { kind: 'file', path: '/scripts/job.py' }, ['httpx'])).toEqual({
+-    command: 'uv',
+-    args: ['run', '--with', 'httpx', '/scripts/job.py'],
+-  });
+-  expect(scriptInvocation('uv', { kind: 'file', path: '/scripts/job.py' }).args).toEqual([
+-    'run',
+-    '/scripts/job.py',
++  const artifactsDir = artifacts();
++  const inline = scriptInvocation(
++    'uv',
++    { kind: 'inline', code: 'print(1)' },
++    ['httpx', 'rich'],
++    artifactsDir
++  ).args;
++  expect(inline.slice(-7)).toEqual([
++    '--with',
++    'httpx',
++    '--with',
++    'rich',
++    'python',
++    '-c',
++    'print(1)',
+   ]);
++  const named = scriptInvocation(
++    'uv',
++    { kind: 'file', path: '/scripts/job.py' },
++    ['httpx'],
++    artifactsDir
++  ).args;
++  expect(named.slice(-3)).toEqual(['--with', 'httpx', '/scripts/job.py']);
+ });
+diff --git a/packages/workflows/src/script-invocation.ts b/packages/workflows/src/script-invocation.ts
+index b4aebd95b..c8ae24822 100644
+--- a/packages/workflows/src/script-invocation.ts
++++ b/packages/workflows/src/script-invocation.ts
+@@ -1,34 +1,53 @@
++import { mkdirSync } from 'node:fs';
++import { join } from 'node:path';
++import { RUN_ARTIFACTS_ENGINE_SUBDIR } from '@archon/paths';
++import { scriptApiPreload } from './script-api/preload';
+ import type { ScriptRuntime } from './script-discovery';
+ 
+ export function scriptInvocation(
+   runtime: ScriptRuntime,
+   source: { kind: 'inline'; code: string } | { kind: 'file'; path: string },
+   deps: readonly string[] = [],
+-  /** A Bun preload file: `scriptApiPreload`, which provides the `archon:script` module. */
+-  preload?: string
++  /** The run's artifact directory; the engine keeps the files the runtime needs in its part of it. */
++  artifactsDir: string
+ ): { command: ScriptRuntime; args: string[]; input?: string } {
+   if (runtime === 'bun') {
+     // Preserve Archon's environment boundary when Bun runs in a repository with .env.
+     // Bun reads --preload only where it is placed here: before `-`, and after `run`.
+-    const preloadFlag = preload === undefined ? [] : [`--preload=${preload}`];
++    const preloadFlag = `--preload=${scriptApiPreload(artifactsDir)}`;
+     if (source.kind === 'inline') {
+       return {
+         command: runtime,
+-        args: ['--no-env-file', ...preloadFlag, '-'],
++        args: ['--no-env-file', preloadFlag, '-'],
+         input: source.code,
+       };
+     }
+     return {
+       command: runtime,
+-      args: ['--no-env-file', 'run', ...preloadFlag, source.path],
++      args: ['--no-env-file', 'run', preloadFlag, source.path],
+     };
+   }
++  // Keep the checkout's uv project out of the script. --project moves project, config and
++  // .python-version discovery from the checkout to an empty engine-owned directory, so the
++  // checkout's .venv, uv.lock, dependencies, uv.toml, [tool.uv] and Python pin do not apply.
++  // --no-project stops uv walking up from that directory into an ancestor's project. The
++  // user's own uv config and the script's working directory stay as they are.
+   return {
+     command: runtime,
+     args: [
+       'run',
++      '--no-project',
++      '--project',
++      uvProjectDir(artifactsDir),
+       ...deps.flatMap(dep => ['--with', dep]),
+       ...(source.kind === 'inline' ? ['python', '-c', source.code] : [source.path]),
+     ],
+   };
+ }
++
++/** uv refuses a --project directory that does not exist. */
++function uvProjectDir(artifactsDir: string): string {
++  const dir = join(artifactsDir, RUN_ARTIFACTS_ENGINE_SUBDIR, 'uv-project');
++  mkdirSync(dir, { recursive: true });
++  return dir;
++}

@@ -1,0 +1,1403 @@
+diff --git a/packages/docs-web/src/content/docs/reference/archon-directories.md b/packages/docs-web/src/content/docs/reference/archon-directories.md
+index fbb030906..a5cd2a5ff 100644
+--- a/packages/docs-web/src/content/docs/reference/archon-directories.md
++++ b/packages/docs-web/src/content/docs/reference/archon-directories.md
+@@ -47,6 +47,7 @@ layout below. Existing projects keep their names and storage.
+ │       │   │   │   ├── node-output-spills/  # oversized shell handoffs (*.nodeoutput)
+ │       │   │   │   ├── node-outcomes/       # node-outcome observation files
+ │       │   │   │   ├── scratch/             # throwaway checkouts and installs; removed when the run ends
++│       │   │   │   │   └── nodes/<invocation>/  # $NODE_SCRATCH_DIR; removed when that node invocation ends
+ │       │   │   │   └── typed-artifacts/     # typed-artifact observation files
+ │       │   │   └── nodes/          #     typed output sidecars (<id>.md + <id>.meta.json)
+ │       │   ├── scopes/<workflow>/<scope>/   # cross-invocation artifacts (persist_session)
+@@ -92,7 +93,10 @@ layout below. Existing projects keep their names and storage.
+   removed once the run is completed, failed or cancelled (including a failed run that is
+   resumed later) and its nodes have stopped. Git worktrees of the run's repository that a
+   node added under scratch are removed from that repository first, so no registration
+-  outlives its files. Tagged cache directories anywhere beneath `$ARTIFACTS_DIR` are removed
++  outlives its files. A node invocation's own scratch, `.archon/scratch/nodes/<invocation-id>/`
++  (`$NODE_SCRATCH_DIR`), is removed the same way, worktrees first, as soon as that invocation
++  completes, fails or is skipped; one that is suspended keeps it until it resumes and ends, and one the resumed run skips (a skipped `loop_group` takes its suspended body nodes with it) or replays as completed (a gate answered while the run was paused) loses it then. In a container run its worktrees are removed through the container's git.
++  Tagged cache directories anywhere beneath `$ARTIFACTS_DIR` are removed
+   at that same release point. A container run's scratch and tagged caches are removed when
+   its container is. A run whose nodes Archon cannot confirm stopped (its owner ran on another
+   host, or its owner process is still alive) keeps its scratch and caches until the operator
+diff --git a/packages/docs-web/src/content/docs/reference/variables.md b/packages/docs-web/src/content/docs/reference/variables.md
+index f4686754f..953bc639e 100644
+--- a/packages/docs-web/src/content/docs/reference/variables.md
++++ b/packages/docs-web/src/content/docs/reference/variables.md
+@@ -21,7 +21,8 @@ They are also substituted in a node's **AI-configuration text** — `systemPromp
+ | `$ARGUMENTS` | The user's input message that triggered the workflow | Primary way to pass user input to commands |
+ | `$USER_MESSAGE` | Same as `$ARGUMENTS` | Alias |
+ | `$WORKFLOW_ID` | Unique ID for the current workflow run | Useful for artifact naming and log correlation |
+-| `$ARTIFACTS_DIR` | Pre-created external artifacts directory (`~/.archon/workspaces/<owner>/<repo>/artifacts/runs/<id>/`) | Always exists before node execution; stored outside the repo to avoid polluting the working tree. **Container runs (`--container`):** this host directory is bind-mounted read-write at the same absolute path inside the container, so a node writes to `$ARTIFACTS_DIR` the same way on either side of the boundary. **Scratch work** (a checkout to bisect or spike against, a dependency install) goes under `$ARTIFACTS_DIR/.archon/scratch/`; create it with `mkdir -p`. Archon deletes that directory once the run is completed, failed or cancelled and its nodes have stopped (for a container run, when its container is removed), so a resumed run starts without it. A run whose nodes Archon cannot confirm stopped (its owner ran on another host, or its owner process is still alive) keeps it, and so does a CLI run stopped by a signal until it is abandoned or its conversation is reset; write evidence a later node or the operator reads anywhere else in `$ARTIFACTS_DIR`. At the same release point, Archon also removes [validly tagged cache directories](/reference/archon-directories/#user-level-archon) anywhere beneath `$ARTIFACTS_DIR`: a regular `CACHEDIR.TAG` beginning with `Signature: 8a477f597d28d172789f06886806bc55` makes its entire directory disposable. The artifacts root and untagged evidence outside those subtrees are kept; symlinks are never followed. Removed cache paths and estimated reclaimed bytes are logged per run. Before deleting scratch, Archon removes every git worktree of the run's repository that a node added under it (`git worktree add "$ARTIFACTS_DIR/.archon/scratch/<name>"`), uncommitted changes included, so no registration stays behind; no other worktree is touched. A worktree Git refuses to remove is logged and its files are still deleted, which leaves a registration `git worktree prune` drops. A worktree of another repository, and one added inside a container run, keep their registration until `git worktree prune` there. |
++| `$ARTIFACTS_DIR` | Pre-created external artifacts directory (`~/.archon/workspaces/<owner>/<repo>/artifacts/runs/<id>/`) | Always exists before node execution; stored outside the repo to avoid polluting the working tree. **Container runs (`--container`):** this host directory is bind-mounted read-write at the same absolute path inside the container, so a node writes to `$ARTIFACTS_DIR` the same way on either side of the boundary. **Scratch work** (a checkout to bisect or spike against, a dependency install) has two homes. Scratch only the running node needs goes in `$NODE_SCRATCH_DIR` (next row), which Archon removes when that node ends. Scratch several nodes share goes under `$ARTIFACTS_DIR/.archon/scratch/`; create it with `mkdir -p`. Archon deletes that directory, node scratch inside it included, once the run is completed, failed or cancelled and its nodes have stopped (for a container run, when its container is removed), so a resumed run starts without it. A run whose nodes Archon cannot confirm stopped (its owner ran on another host, or its owner process is still alive) keeps it, and so does a CLI run stopped by a signal until it is abandoned or its conversation is reset; write evidence a later node or the operator reads anywhere else in `$ARTIFACTS_DIR`. At the same release point, Archon also removes [validly tagged cache directories](/reference/archon-directories/#user-level-archon) anywhere beneath `$ARTIFACTS_DIR`: a regular `CACHEDIR.TAG` beginning with `Signature: 8a477f597d28d172789f06886806bc55` makes its entire directory disposable. The artifacts root and untagged evidence outside those subtrees are kept; symlinks are never followed. Removed cache paths and estimated reclaimed bytes are logged per run. Before deleting scratch, Archon removes every git worktree of the run's repository that a node added under it (`git worktree add "$ARTIFACTS_DIR/.archon/scratch/<name>"`), uncommitted changes included, so no registration stays behind; no other worktree is touched. A worktree Git refuses to remove is logged and its files are still deleted, which leaves a registration `git worktree prune` drops. A worktree of another repository keeps its registration until `git worktree prune` there; one added inside a container run goes with the container. |
++| `$NODE_SCRATCH_DIR` | Pre-created scratch directory of the running node invocation (`$ARTIFACTS_DIR/.archon/scratch/nodes/<invocation-id>/`) | Exists before the node runs. For a checkout, worktree or dependency install only this node uses (`git worktree add "$NODE_SCRATCH_DIR/wt"`). One directory per invocation: every retry attempt of the node and every iteration of a `loop:` node share it, and each `loop_group` iteration's body nodes get a fresh one. Archon removes it when the invocation completes, fails or is skipped, before dependents and the next `loop_group` iteration start. Before deleting it, Archon removes every git worktree of the run's repository registered under it, by path, uncommitted changes included; no other worktree is touched and `git worktree prune` is not run. A node suspended at a gate, wait or paused `loop_group` keeps its directory, and the resumed invocation receives the same path; when the resumed run instead skips that node (its `when:` or trigger rule now turns it away; a skipped `loop_group` takes its suspended body nodes' directories with it) or replays it as completed (a gate answered by approval while the run was paused), its directory is removed at that point, before its dependents run. Only invocation directories are removed this way; other entries a workflow puts under `$ARTIFACTS_DIR/.archon/scratch/` stay until the run ends. If a directory on the path to it is a link, the node fails before it runs and Archon removes nothing through the link. A `--dry-run --exec-code` simulation removes each node's directory the same way when the node ends. A node interrupted by a cancel or a stopping run keeps it until the run's scratch is released. In a container run the node registered its worktrees in the container's git, so they are removed through that git, by the same paths, before the files are deleted. A failed removal is logged (`node_scratch.remove_failed`) and does not fail the node; run-end release removes what is left. Do not hand the path to a later node; use run-wide scratch for that. Also delivered to `bash:`/`script:` as the `NODE_SCRATCH_DIR` environment variable. |
+ | `$TYPED_ARTIFACTS_FILE` | Absolute path to the current typed-artifact listing (JSON, inside `$ARTIFACTS_DIR`) | A read-only observation grouped by exact case-sensitive `output_type`. Each agent attempt receives a fresh listing before it starts, including transient retries. Plain `loop` structured-output reasks also receive fresh listings. Ordinary agent structured-output reasks (including agents in a `loop_group` body) reuse their attempt's listing. `bash:` and `script:` nodes receive one before execution. Each `until_bash` check receives a separate listing after the plain loop's agent work or the loop group's body. Also delivered to `bash:`/`script:` as the `TYPED_ARTIFACTS_FILE` environment variable. Referencing it in a context with no listing throws rather than substituting an empty string, except in a `--dry-run` preview, which has no artifacts and substitutes an empty string. See [Typed Artifacts](/reference/workflow-language/#typed-artifacts-output_type). |
+ | `$NODE_OUTCOMES_FILE` | Absolute path to the current node-outcome listing (JSON, inside `$ARTIFACTS_DIR`) | A read-only observation of every node invocation the run has recorded: its state (`pending`, `running`, `completed`, `failed`, `skipped`), a failed node's error, a skipped node's reason and cause, and a completed node's structured output. One entry per `loop_group` iteration. Written at the same moment as `$TYPED_ARTIFACTS_FILE`, to the same invocation contexts, and delivered to `bash:`/`script:` as the `NODE_OUTCOMES_FILE` environment variable. Referencing it in a context with no listing throws, except in a `--dry-run` preview, which substitutes an empty string. See [Reading what other nodes did](/reference/workflow-language/#reading-what-other-nodes-did-node_outcomes_file). |
+ | `$STATE_DIR` | Pre-created external cross-run state directory (`~/.archon/workspaces/<project>/state/`) | Scoped per **project** — shared across every workflow, every conversation, and every invocation surface, so cooperating workflows can share memory. Namespace inside it yourself (`$STATE_DIR/<name>/`) if you want isolation. Survives worktree teardown, and never appears in `git status`. Throws if referenced but unresolved, exactly like `$BASE_BRANCH`. **Container runs (`--container`):** unlike `$ARTIFACTS_DIR`, this host path is not mounted into the container, so a node writing there from inside the container writes to the container's ephemeral layer. |
+@@ -426,7 +427,7 @@ Where two grammars could match at the same `$`, the earlier group in this list w
+ 
+ 1. **Loop references** (inside a `loop_group` body) -- `$LOOP_PREV.<nodeId>.output`, and the
+    group's `$LOOP_USER_INPUT` reply
+-2. **Workflow variables** -- `$WORKFLOW_ID`, `$ARTIFACTS_DIR`, `$STATE_DIR`, `$PACK_DIR`, `$ADOPTED_RUN_DIR`, `$TYPED_ARTIFACTS_FILE`, `$NODE_OUTCOMES_FILE`, `$BASE_BRANCH`, `$DOCS_DIR`, `$USER_MESSAGE`, `$ARGUMENTS`, `$LOOP_USER_INPUT`, `$REJECTION_REASON`, `$LOOP_PREV_OUTPUT`, `$INPUTS.<name>`, then the context variables `$CONTEXT`, `$EXTERNAL_CONTEXT`, `$ISSUE_CONTEXT`
++2. **Workflow variables** -- `$WORKFLOW_ID`, `$ARTIFACTS_DIR`, `$STATE_DIR`, `$PACK_DIR`, `$NODE_SCRATCH_DIR`, `$ADOPTED_RUN_DIR`, `$TYPED_ARTIFACTS_FILE`, `$NODE_OUTCOMES_FILE`, `$BASE_BRANCH`, `$DOCS_DIR`, `$USER_MESSAGE`, `$ARGUMENTS`, `$LOOP_USER_INPUT`, `$REJECTION_REASON`, `$LOOP_PREV_OUTPUT`, `$INPUTS.<name>`, then the context variables `$CONTEXT`, `$EXTERNAL_CONTEXT`, `$ISSUE_CONTEXT`
+ 3. **Node output references** -- `$nodeId.output`, `$nodeId.output.field`
+ 
+ Issue context that is appended because the template names no context variable is added after
+@@ -445,6 +446,7 @@ Positional arguments (`$1` through `$9`) are **not** supported in any context 
+ | `$NODE_OUTCOMES_FILE` | Yes (exec and AI nodes) | No | No |
+ | `$STATE_DIR` | Yes | No | No |
+ | `$PACK_DIR` | Yes (packaged workflows) | No | No |
++| `$NODE_SCRATCH_DIR` | Yes | No | No |
+ | `$BASE_BRANCH` | Yes | No | No |
+ | `$DOCS_DIR` | Yes | No | No |
+ | `$CONTEXT` / aliases | Yes | No | No |
+diff --git a/packages/paths/src/run-paths.ts b/packages/paths/src/run-paths.ts
+index 955647e33..f47054c04 100644
+--- a/packages/paths/src/run-paths.ts
++++ b/packages/paths/src/run-paths.ts
+@@ -113,6 +113,8 @@ export const RUN_ARTIFACTS_ENGINE_SUBDIR = '.archon';
+  * throwaway checkouts, dependency installs and other reproducible bulk here,
+  * and Archon removes it once the run is completed, failed or cancelled and
+  * nothing of the run can still write there (`@archon/workflows/run-scratch`).
++ * It also holds each node invocation's own scratch ({@link getNodeScratchDir}),
++ * which is removed earlier, when that invocation ends.
+  * Evidence a later node or the operator reads goes anywhere else in
+  * `$ARTIFACTS_DIR`, which is kept unless its containing descendant directory carries
+  * a regular CACHEDIR.TAG beginning with the standard signature. Tagged caches are
+@@ -122,6 +124,22 @@ export function getRunScratchDir(artifactsDir: string): string {
+   return join(artifactsDir, RUN_ARTIFACTS_ENGINE_SUBDIR, 'scratch');
+ }
+ 
++/**
++ * One node invocation's scratch directory, `$NODE_SCRATCH_DIR`:
++ * `<run scratch>/nodes/<invocation-id>`. The engine creates it before the node runs and
++ * removes it, with the git worktrees under it, when the invocation completes, fails or is
++ * skipped. Keeping it under the run's scratch makes run-end release the backstop for an
++ * invocation that never reached its end.
++ */
++export function getNodeScratchDir(artifactsDir: string, invocationId: string): string {
++  return join(getNodeScratchRoot(artifactsDir), invocationId);
++}
++
++/** The directory holding every node invocation's scratch: `<run scratch>/nodes`. */
++export function getNodeScratchRoot(artifactsDir: string): string {
++  return join(getRunScratchDir(artifactsDir), 'nodes');
++}
++
+ /**
+  * Whether an entry in a run's artifacts directory is the engine's own store,
+  * which every listing shown to a person (CLI `workflow get`, the console's
+diff --git a/packages/workflows/src/checkout-observation.ts b/packages/workflows/src/checkout-observation.ts
+index fde2ee540..63bed3bb1 100644
+--- a/packages/workflows/src/checkout-observation.ts
++++ b/packages/workflows/src/checkout-observation.ts
+@@ -124,7 +124,7 @@ type ContainerProbe = 'marker' | 'none' | 'failed';
+  * calls, so tests can answer for a container that does not exist instead of spawning
+  * `docker`.
+  */
+-async function probeContainerMarker(
++export async function probeContainerMarker(
+   cwd: string,
+   execContext: Extract<ExecutionContext, { kind: 'container' }>
+ ): Promise<ContainerProbe> {
+diff --git a/packages/workflows/src/dag/node-scratch.test.ts b/packages/workflows/src/dag/node-scratch.test.ts
+new file mode 100644
+index 000000000..399032156
+--- /dev/null
++++ b/packages/workflows/src/dag/node-scratch.test.ts
+@@ -0,0 +1,614 @@
++// @archon-test-isolated
++import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
++import { execFileSync } from 'child_process';
++import { join } from 'path';
++import { tmpdir } from 'os';
++
++// Removal of node scratch fails while `failNodeScratchRemoval` is set. A permission
++// change cannot do this: root's rm ignores it.
++let failNodeScratchRemoval = false;
++const realFs = await import('node:fs/promises');
++// Captured before mocking: the namespace's binding is replaced by the mock below.
++const realRm = realFs.rm;
++mock.module('node:fs/promises', () => ({
++  ...realFs,
++  rm: async (path: Parameters<typeof realFs.rm>[0], options?: Parameters<typeof realFs.rm>[1]) => {
++    if (failNodeScratchRemoval && String(path).includes(join('scratch', 'nodes'))) {
++      throw Object.assign(new Error('injected removal failure'), { code: 'EBUSY' });
++    }
++    return realRm(path, options);
++  },
++}));
++
++// Stands in for the run's container: `docker exec` runs its command here, and the
++// arguments are recorded. Captured before mocking, as `rm` is above.
++const dockerCalls: string[][] = [];
++const realGit = await import('@archon/git');
++const realExecFileAsync = realGit.execFileAsync;
++mock.module('@archon/git', () => ({
++  ...realGit,
++  execFileAsync: async (
++    cmd: string,
++    args: string[],
++    options?: Parameters<typeof realExecFileAsync>[2]
++  ) => {
++    if (cmd !== 'docker') return realExecFileAsync(cmd, args, options);
++    dockerCalls.push(args);
++    // `exec -w <cwd> [-i] [-u <user>] [-e K=V]... <container> <cmd> <args...>`
++    const cwd = args[2];
++    let i = 3;
++    while (args[i]?.startsWith('-')) i += args[i] === '-i' ? 1 : 2;
++    return realExecFileAsync(args[i + 1], args.slice(i + 2), { ...options, cwd });
++  },
++}));
++
++import { existsSync } from 'fs';
++import { mkdir, readdir, readFile, symlink, writeFile } from 'fs/promises';
++import { removeTempTree } from '@archon/paths/test-utils';
++import {
++  getNodeScratchDir,
++  getNodeScratchRoot,
++  getRunScratchDir,
++} from '@archon/paths/archon-paths';
++import { nodeInvocationKey } from '../node-record-reader';
++import { releaseNodeScratch } from '../run-scratch';
++import type { NodeExecutionMetadata } from '../schemas/node-execution';
++import { createEscalationStore } from './pause-test-utils';
++import {
++  createMockDeps,
++  createMockPlatform,
++  dagOptions,
++  makeWorkflowRun,
++  mockLogger,
++  persistedEvents,
++} from './test-utils';
++import { executeDagWorkflow } from '../dag-executor';
++import { dagNodeSchema, type DagNode } from '../schemas';
++
++function git(cwd: string, ...args: string[]): string {
++  return execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8' });
++}
++
++async function initRepo(path: string): Promise<string> {
++  await mkdir(path, { recursive: true });
++  git(path, 'init', '-q');
++  git(
++    path,
++    '-c',
++    'user.name=t',
++    '-c',
++    'user.email=t@t',
++    'commit',
++    '-q',
++    '--allow-empty',
++    '-m',
++    'init'
++  );
++  return path;
++}
++
++function worktreePaths(repo: string): string[] {
++  return git(repo, 'worktree', 'list', '--porcelain')
++    .split('\n')
++    .filter(line => line.startsWith('worktree '));
++}
++
++function exec(id: string, script: string, dependsOn: string[] = []): DagNode {
++  return { id, kind: 'exec', runtime: 'sh', script, depends_on: dependsOn } as DagNode;
++}
++
++const gate = (): DagNode =>
++  dagNodeSchema.parse({
++    id: 'check',
++    approval: { message: 'Review?', decisions: [{ id: 'approve' }, { id: 'reject' }] },
++  }) as DagNode;
++
++describe('executeDagWorkflow -- node scratch', () => {
++  let testDir: string;
++  let artifactsDir: string;
++
++  beforeEach(async () => {
++    testDir = join(
++      tmpdir(),
++      `dag-node-scratch-${Date.now()}-${Math.random().toString(36).slice(2)}`
++    );
++    artifactsDir = join(testDir, 'artifacts');
++    await mkdir(testDir, { recursive: true });
++  });
++
++  afterEach(async () => {
++    failNodeScratchRemoval = false;
++    dockerCalls.length = 0;
++    await removeTempTree(testDir);
++  });
++
++  it('releases each loop_group iteration body scratch, worktree included, as the node ends', async () => {
++    const repo = await initRepo(join(testDir, 'repo'));
++    const counter = join(testDir, 'counter').replace(/\\/g, '/');
++    const nodesDir = join(getRunScratchDir(artifactsDir), 'nodes').replace(/\\/g, '/');
++
++    await executeDagWorkflow(
++      dagOptions({
++        deps: createMockDeps(),
++        platform: createMockPlatform(),
++        conversationId: 'conv-node-scratch',
++        cwd: repo,
++        artifactsDir,
++        workflow: {
++          name: 'node-scratch-loop',
++          nodes: [
++            {
++              id: 'rounds',
++              kind: 'loop_group',
++              loop_group: {
++                until_bash: 'false',
++                max_iterations: 3,
++                fresh_context: false,
++                nodes: [
++                  {
++                    id: 'work',
++                    kind: 'exec',
++                    runtime: 'sh',
++                    // Records what this iteration sees, adds a worktree and a 4 MB file to
++                    // its own scratch, leaves a marker in run-wide scratch on the first
++                    // pass, and fails on the third after making its worktree.
++                    script: [
++                      `n=$(cat "${counter}" 2>/dev/null || echo 0); n=$((n+1)); echo $n > "${counter}"`,
++                      `wt=$(git worktree list --porcelain | grep -c '^worktree ')`,
++                      `dirs=$(ls "${nodesDir}" | wc -l | tr -d ' ')`,
++                      `echo "$wt $dirs" > "$ARTIFACTS_DIR/iter-$n.txt"`,
++                      `git worktree add -q --detach "$NODE_SCRATCH_DIR/wt" HEAD`,
++                      `dd if=/dev/zero of="$NODE_SCRATCH_DIR/wt/big" bs=1048576 count=4 2>/dev/null`,
++                      `[ $n -ne 1 ] || { mkdir -p "$ARTIFACTS_DIR/.archon/scratch/shared"; echo kept > "$ARTIFACTS_DIR/.archon/scratch/shared/marker"; }`,
++                      `[ $n -lt 3 ] || exit 5`,
++                      'echo done',
++                    ].join('\n'),
++                    depends_on: [],
++                  },
++                ],
++              },
++              depends_on: [],
++            },
++          ] as DagNode[],
++        },
++        workflowRun: makeWorkflowRun('node-scratch-loop'),
++      })
++    );
++
++    // Every iteration saw only the main checkout and two scratch directories, the
++    // loop_group's own and its own: the previous iteration's worktree and files were gone.
++    for (const n of [1, 2, 3]) {
++      expect((await readFile(join(artifactsDir, `iter-${n}.txt`), 'utf8')).trim()).toBe('1 2');
++    }
++    const worktrees = git(repo, 'worktree', 'list', '--porcelain')
++      .split('\n')
++      .filter(line => line.startsWith('worktree '));
++    expect(worktrees).toHaveLength(1);
++    // The failed third iteration left nothing either.
++    expect(await readdir(join(getRunScratchDir(artifactsDir), 'nodes'))).toEqual([]);
++    // Run-wide scratch is not node scratch: it stays until the run is released.
++    expect(await readFile(join(getRunScratchDir(artifactsDir), 'shared', 'marker'), 'utf8')).toBe(
++      'kept\n'
++    );
++  });
++
++  it('keeps a suspended gate scratch, hands the resumed gate the same directory, and releases it once answered', async () => {
++    const runId = 'node-scratch-gate';
++    let store = createEscalationStore(runId);
++    const run = (options: Partial<Parameters<typeof dagOptions>[0]>, nodes: DagNode[]) =>
++      executeDagWorkflow(
++        dagOptions({
++          deps: createMockDeps(store),
++          platform: createMockPlatform(),
++          cwd: testDir,
++          artifactsDir,
++          workflow: { name: 'node-scratch-gate', nodes },
++          workflowRun: makeWorkflowRun(runId),
++          ...options,
++        })
++      );
++    await run({}, [gate()]);
++
++    expect(store.getState().status).toBe('paused');
++    const suspended = persistedEvents(store).find(
++      event => event.event_type === 'node_suspended' && event.step_name === 'check'
++    );
++    const execution = suspended?.data as unknown as NodeExecutionMetadata;
++    const invocationId = execution.invocation.id;
++    const nodes = getNodeScratchRoot(artifactsDir);
++    expect(await readdir(nodes)).toEqual([invocationId]);
++    await writeFile(join(nodes, invocationId, 'rework'), Buffer.alloc(4 * 1024 * 1024));
++
++    // Resumed while still unanswered: the gate reuses its invocation and its scratch.
++    // A fresh store is a run back in `running`, as a resume finds it.
++    store = createEscalationStore(runId);
++    store.getDagResumeSnapshot.mockImplementation(async () => ({
++      ...(await createMockDeps().store.getDagResumeSnapshot(runId)),
++      unfinishedInvocations: new Map([[nodeInvocationKey('check', []), execution]]),
++    }));
++    await run({ priorCompletedNodes: new Map() }, [gate()]);
++    expect(store.getState().status).toBe('paused');
++    const restarted = persistedEvents(store).find(
++      event => event.event_type === 'node_started' && event.step_name === 'check'
++    );
++    expect((restarted?.data as unknown as NodeExecutionMetadata).invocation.id).toBe(invocationId);
++    expect(existsSync(join(nodes, invocationId, 'rework'))).toBe(true);
++
++    // Resumed after approval recorded the gate completed: its scratch is gone before a
++    // dependent runs, and scratch the workflow keeps under the same parent is not.
++    await mkdir(join(nodes, 'shared'));
++    await writeFile(join(nodes, 'shared', 'marker'), 'kept');
++    store = createEscalationStore(runId);
++    await run({ priorCompletedNodes: new Map([['check', { output: 'approve', execution }]]) }, [
++      gate(),
++      exec(
++        'after',
++        `cat "${nodes}/shared/marker" > "$ARTIFACTS_DIR/marker.txt"; ls "${nodes}" > "$ARTIFACTS_DIR/after.txt"`,
++        ['check']
++      ),
++    ]);
++    expect(await readFile(join(artifactsDir, 'marker.txt'), 'utf8')).toBe('kept');
++    const seen = (await readFile(join(artifactsDir, 'after.txt'), 'utf8')).trim().split('\n');
++    // `shared` and the running dependent's own directory.
++    expect(seen).toHaveLength(2);
++    expect(seen).toContain('shared');
++    expect(seen).not.toContain(invocationId);
++  });
++
++  it('releases a suspended gate scratch, worktree included, when a resume skips the gate', async () => {
++    const repo = await initRepo(join(testDir, 'repo'));
++    const runId = 'node-scratch-gate-skip';
++    const decision = join(testDir, 'decision');
++    await writeFile(decision, 'go');
++    const nodesFor = (): DagNode[] => [
++      exec('prod', `cat "${decision}"`),
++      { ...gate(), when: "$prod.output == 'go'", depends_on: ['prod'] } as DagNode,
++    ];
++    let store = createEscalationStore(runId);
++    const run = (options: Partial<Parameters<typeof dagOptions>[0]>) =>
++      executeDagWorkflow(
++        dagOptions({
++          deps: createMockDeps(store),
++          platform: createMockPlatform(),
++          cwd: repo,
++          artifactsDir,
++          workflow: { name: 'node-scratch-gate-skip', nodes: nodesFor() },
++          workflowRun: makeWorkflowRun(runId),
++          ...options,
++        })
++      );
++    await run({});
++    expect(store.getState().status).toBe('paused');
++    const execution = persistedEvents(store).find(
++      event => event.event_type === 'node_suspended' && event.step_name === 'check'
++    )?.data as unknown as NodeExecutionMetadata;
++    const gateScratch = join(getNodeScratchRoot(artifactsDir), execution.invocation.id);
++    git(repo, 'worktree', 'add', '-q', '--detach', join(gateScratch, 'wt'), 'HEAD');
++    await writeFile(join(gateScratch, 'wt', 'bulk'), Buffer.alloc(4 * 1024 * 1024));
++
++    // The producer re-runs on resume and turns the gate's condition false.
++    await writeFile(decision, 'stop');
++    store = createEscalationStore(runId);
++    store.getDagResumeSnapshot.mockImplementation(async () => ({
++      ...(await createMockDeps().store.getDagResumeSnapshot(runId)),
++      unfinishedInvocations: new Map([[nodeInvocationKey('check', []), execution]]),
++    }));
++    await run({ priorCompletedNodes: new Map() });
++    expect(
++      persistedEvents(store).some(
++        event => event.event_type === 'node_skipped' && event.step_name === 'check'
++      )
++    ).toBe(true);
++    expect(existsSync(gateScratch)).toBe(false);
++    expect(worktreePaths(repo)).toHaveLength(1);
++  });
++
++  it('releases the scratch of a node whose dispatch throws', async () => {
++    const store = createMockDeps().store;
++    await executeDagWorkflow(
++      dagOptions({
++        deps: createMockDeps(store),
++        cwd: testDir,
++        artifactsDir,
++        // No base branch: substituting $BASE_BRANCH throws inside the node's dispatch.
++        baseBranch: '',
++        workflow: {
++          name: 'node-scratch-dispatch-throws',
++          nodes: [exec('work', 'echo $BASE_BRANCH')],
++        },
++        workflowRun: makeWorkflowRun('node-scratch-dispatch-throws'),
++      })
++    );
++    expect(
++      persistedEvents(store).some(
++        event => event.event_type === 'node_failed' && event.step_name === 'work'
++      )
++    ).toBe(true);
++    expect(await readdir(getNodeScratchRoot(artifactsDir))).toEqual([]);
++  });
++
++  it('deregisters only the ending node worktrees, not a running sibling', async () => {
++    const repo = await initRepo(join(testDir, 'repo'));
++    // `slow` sleeps well past `fast`'s end and release, then checks its own worktree.
++    await executeDagWorkflow(
++      dagOptions({
++        deps: createMockDeps(),
++        cwd: repo,
++        artifactsDir,
++        workflow: {
++          name: 'node-scratch-siblings',
++          nodes: [
++            exec('fast', 'git worktree add -q --detach "$NODE_SCRATCH_DIR/wt" HEAD'),
++            exec(
++              'slow',
++              [
++                'git worktree add -q --detach "$NODE_SCRATCH_DIR/wt" HEAD',
++                'sleep 3',
++                'n=$(git worktree list --porcelain | grep -c "^worktree ")',
++                '[ -e "$NODE_SCRATCH_DIR/wt/.git" ] && f=present || f=missing',
++                'echo "$n $f" > "$ARTIFACTS_DIR/slow.txt"',
++              ].join('\n')
++            ),
++          ],
++        },
++        workflowRun: makeWorkflowRun('node-scratch-siblings'),
++      })
++    );
++    expect((await readFile(join(artifactsDir, 'slow.txt'), 'utf8')).trim()).toBe('2 present');
++    expect(worktreePaths(repo)).toHaveLength(1);
++  });
++
++  for (const removed of ['$NODE_SCRATCH_DIR/wt', '$NODE_SCRATCH_DIR']) {
++    it(`deregisters a worktree whose files the node deleted (${removed})`, async () => {
++      const repo = await initRepo(join(testDir, 'repo'));
++      git(repo, 'branch', 'probe');
++      // Git keeps the registration after `rm -rf`, so `next` can only check `probe`
++      // out if release asked Git, not the now empty or missing directory.
++      await executeDagWorkflow(
++        dagOptions({
++          deps: createMockDeps(),
++          cwd: repo,
++          artifactsDir,
++          workflow: {
++            name: 'node-scratch-branch-reuse',
++            nodes: [
++              exec(
++                'first',
++                `git worktree add -q "$NODE_SCRATCH_DIR/wt" probe\nrm -rf "${removed}"`
++              ),
++              exec(
++                'next',
++                'git worktree add -q "$NODE_SCRATCH_DIR/wt" probe && echo ok > "$ARTIFACTS_DIR/next.txt"',
++                ['first']
++              ),
++            ],
++          },
++          workflowRun: makeWorkflowRun('node-scratch-branch-reuse'),
++        })
++      );
++      expect((await readFile(join(artifactsDir, 'next.txt'), 'utf8')).trim()).toBe('ok');
++      expect(worktreePaths(repo)).toHaveLength(1);
++    });
++  }
++
++  it('logs a failed release and keeps the node completed', async () => {
++    failNodeScratchRemoval = true;
++    const store = createMockDeps().store;
++    // Every level shares one spy in test-utils, so warnings get their own here.
++    const warn = mock((_data: unknown, _message?: string): void => undefined);
++    const sharedWarn = mockLogger.warn;
++    mockLogger.warn = warn;
++    try {
++      await executeDagWorkflow(
++        dagOptions({
++          deps: createMockDeps(store),
++          cwd: testDir,
++          artifactsDir,
++          workflow: {
++            name: 'node-scratch-release-fails',
++            nodes: [
++              exec('work', 'echo bulk > "$NODE_SCRATCH_DIR/file"'),
++              exec('after', 'echo ran > "$ARTIFACTS_DIR/after.txt"', ['work']),
++            ],
++          },
++          workflowRun: makeWorkflowRun('node-scratch-release-fails'),
++        })
++      );
++    } finally {
++      mockLogger.warn = sharedWarn;
++    }
++    const events = persistedEvents(store);
++    const work = events.find(
++      event => event.event_type === 'node_completed' && event.step_name === 'work'
++    )?.data as unknown as NodeExecutionMetadata;
++    const invocationId = work.invocation.id;
++    expect(warn).toHaveBeenCalledWith(
++      expect.objectContaining({
++        nodeId: 'work',
++        invocationId,
++        path: getNodeScratchDir(artifactsDir, invocationId),
++      }),
++      'node_scratch.remove_failed'
++    );
++    expect(events.some(event => event.event_type === 'node_failed')).toBe(false);
++    expect(await readFile(join(artifactsDir, 'after.txt'), 'utf8')).toBe('ran\n');
++    // Left for run-end release.
++    expect(await readdir(getNodeScratchRoot(artifactsDir))).toHaveLength(2);
++  });
++
++  it('deregisters only the node scratch worktrees, by path, never pruning', async () => {
++    const repo = await initRepo(join(testDir, 'repo'));
++    const own = getNodeScratchDir(artifactsDir, 'own');
++    const other = getNodeScratchDir(artifactsDir, 'other');
++    const sibling = join(testDir, 'sibling');
++    // A registration whose checkout is gone: `git worktree prune` would drop it.
++    const missing = join(testDir, 'missing');
++    for (const path of [join(own, 'wt'), join(other, 'wt'), sibling, missing]) {
++      git(repo, 'worktree', 'add', '-q', '--detach', path, 'HEAD');
++    }
++    await removeTempTree(missing);
++
++    await releaseNodeScratch({
++      artifactsDir,
++      invocationId: 'own',
++      repoPath: repo,
++      execContext: { kind: 'host' },
++      logContext: {},
++    });
++    expect(existsSync(own)).toBe(false);
++    expect(worktreePaths(repo)).toHaveLength(4);
++    for (const path of [join(other, 'wt'), sibling, missing]) {
++      expect(worktreePaths(repo).some(line => line.endsWith(path))).toBe(true);
++    }
++  });
++
++  it("deregisters a container node's worktrees through the container's git", async () => {
++    const repo = await initRepo(join(testDir, 'repo'));
++    git(repo, 'branch', 'probe');
++    const first = getNodeScratchDir(artifactsDir, 'first');
++    git(repo, 'worktree', 'add', '-q', join(first, 'wt'), 'probe');
++
++    await releaseNodeScratch({
++      artifactsDir,
++      invocationId: 'first',
++      repoPath: repo,
++      execContext: { kind: 'container', containerId: 'run-container' },
++      logContext: {},
++    });
++    expect(existsSync(first)).toBe(false);
++    expect(dockerCalls.some(args => args.includes('remove') && args.at(-1)?.endsWith('wt'))).toBe(
++      true
++    );
++    // The next node can check out the branch the released one had.
++    git(
++      repo,
++      'worktree',
++      'add',
++      '-q',
++      join(getNodeScratchDir(artifactsDir, 'next'), 'wt'),
++      'probe'
++    );
++  });
++
++  it('releases the scratch of body nodes a resume leaves behind by skipping their suspended loop_group', async () => {
++    const repo = await initRepo(join(testDir, 'repo'));
++    const runId = 'node-scratch-group-skip';
++    const decision = join(testDir, 'decision');
++    await writeFile(decision, 'go');
++    const nodesFor = (): DagNode[] => [
++      exec('prod', `cat "${decision}"`),
++      dagNodeSchema.parse({
++        id: 'grp',
++        depends_on: ['prod'],
++        when: "$prod.output == 'go'",
++        loop_group: {
++          max_iterations: 2,
++          until_bash: 'false',
++          nodes: [
++            {
++              id: 'check',
++              approval: { message: 'Continue?', decisions: [{ id: 'approve' }] },
++            },
++          ],
++        },
++      }) as DagNode,
++    ];
++    let store = createEscalationStore(runId);
++    const run = (options: Partial<Parameters<typeof dagOptions>[0]>) =>
++      executeDagWorkflow(
++        dagOptions({
++          deps: createMockDeps(store),
++          platform: createMockPlatform(),
++          cwd: repo,
++          artifactsDir,
++          workflow: { name: 'node-scratch-group-skip', nodes: nodesFor() },
++          workflowRun: makeWorkflowRun(runId),
++          ...options,
++        })
++      );
++    await run({});
++    expect(store.getState().status).toBe('paused');
++    const suspended = persistedEvents(store)
++      .filter(event => event.event_type === 'node_suspended')
++      .map(event => ({
++        ...(event.data as unknown as NodeExecutionMetadata),
++        path: event.step_name ?? '',
++      }));
++    const body = suspended.find(execution => execution.path === 'grp.check');
++    if (!body) throw new Error('grp.check did not suspend');
++    const bodyScratch = getNodeScratchDir(artifactsDir, body.invocation.id);
++    git(repo, 'worktree', 'add', '-q', '--detach', join(bodyScratch, 'wt'), 'HEAD');
++    await writeFile(join(bodyScratch, 'wt', 'bulk'), Buffer.alloc(4 * 1024 * 1024));
++    // Suspended elsewhere in the run, under a group whose path shares a prefix: kept.
++    const unrelated = {
++      ...body,
++      path: 'grp2.check',
++      invocation: {
++        ...body.invocation,
++        id: 'unrelated',
++        loopPath: [{ groupId: 'grp2', iteration: 1 }],
++      },
++    };
++    const unrelatedScratch = getNodeScratchDir(artifactsDir, 'unrelated');
++    await mkdir(unrelatedScratch, { recursive: true });
++
++    await writeFile(decision, 'stop');
++    store = createEscalationStore(runId);
++    store.getDagResumeSnapshot.mockImplementation(async () => ({
++      ...(await createMockDeps().store.getDagResumeSnapshot(runId)),
++      unfinishedInvocations: new Map(
++        [...suspended, unrelated].map(execution => [
++          nodeInvocationKey(execution.path, execution.invocation.loopPath),
++          execution,
++        ])
++      ),
++    }));
++    await run({ priorCompletedNodes: new Map() });
++    expect(
++      persistedEvents(store).some(
++        event => event.event_type === 'node_skipped' && event.step_name === 'grp'
++      )
++    ).toBe(true);
++    expect(existsSync(bodyScratch)).toBe(false);
++    expect(worktreePaths(repo)).toHaveLength(1);
++    expect(existsSync(unrelatedScratch)).toBe(true);
++  });
++
++  for (const linked of ['scratch', 'nodes'] as const) {
++    it(`touches nothing outside the run when ${linked} is a link`, async () => {
++      const repo = await initRepo(join(testDir, 'repo'));
++      const outside = join(testDir, 'outside');
++      await mkdir(outside);
++      const link =
++        linked === 'scratch' ? getRunScratchDir(artifactsDir) : getNodeScratchRoot(artifactsDir);
++      await mkdir(join(link, '..'), { recursive: true });
++      await symlink(outside, link);
++      const victimDir = linked === 'scratch' ? join(outside, 'nodes') : outside;
++      git(repo, 'worktree', 'add', '-q', '--detach', join(victimDir, 'victim'), 'HEAD');
++      await writeFile(join(victimDir, 'victim', 'uncommitted'), 'keep');
++
++      await releaseNodeScratch({
++        artifactsDir,
++        invocationId: 'victim',
++        repoPath: repo,
++        execContext: { kind: 'host' },
++        logContext: {},
++      });
++      expect(existsSync(join(victimDir, 'victim', 'uncommitted'))).toBe(true);
++      expect(worktreePaths(repo)).toHaveLength(2);
++
++      // A node is not handed a directory through the link either.
++      const store = createMockDeps().store;
++      await executeDagWorkflow(
++        dagOptions({
++          deps: createMockDeps(store),
++          cwd: repo,
++          artifactsDir,
++          workflow: { name: 'node-scratch-linked', nodes: [exec('work', 'echo ran')] },
++          workflowRun: makeWorkflowRun('node-scratch-linked'),
++        })
++      );
++      expect(persistedEvents(store).some(event => event.event_type === 'node_failed')).toBe(true);
++    });
++  }
++});
+diff --git a/packages/workflows/src/dag/node-scratch.ts b/packages/workflows/src/dag/node-scratch.ts
+new file mode 100644
+index 000000000..fedce3b57
+--- /dev/null
++++ b/packages/workflows/src/dag/node-scratch.ts
+@@ -0,0 +1,114 @@
++/**
++ * A node invocation's own scratch directory, `$NODE_SCRATCH_DIR`: created before the node
++ * runs and released, worktree registrations first, when the invocation ends.
++ */
++import { lstat, mkdir } from 'node:fs/promises';
++import { getNodeScratchDir } from '@archon/paths/archon-paths';
++import { isWorkflowExecutionInterruption } from '../execution-interruption';
++import { nodeScratchRootIsDirectory, releaseNodeScratch } from '../run-scratch';
++import { runWithNodeScratch } from '../workflow-variables';
++import { isLoopGroupNode, type DagNode } from '../schemas';
++import type { PersistedNodeOutput } from '../store';
++import type { LayerNodeResult, RunLayersContext } from './run-context';
++
++/**
++ * Run `dispatch` with `invocationId`'s scratch directory created and in scope, then
++ * release it unless the invocation can continue. Release is awaited, so the disk is free
++ * before a dependent or the next `loop_group` iteration starts. A failure to create the
++ * directory, or a directory reached through a link, rejects, so the caller fails the node
++ * rather than hand it a missing path or one outside the run.
++ */
++export async function runInNodeScratch(
++  ctx: RunLayersContext,
++  node: DagNode,
++  invocationId: string,
++  dispatch: () => Promise<LayerNodeResult>
++): Promise<LayerNodeResult> {
++  const dir = getNodeScratchDir(ctx.artifactsDir, invocationId);
++  let keep = false;
++  try {
++    await mkdir(dir, { recursive: true });
++    const logContext = { workflowRunId: ctx.workflowRun.id, nodeId: node.id, invocationId };
++    if (
++      !(await nodeScratchRootIsDirectory(ctx.artifactsDir, logContext)) ||
++      !(await lstat(dir)).isDirectory()
++    ) {
++      throw new Error(
++        `Node scratch ${dir} is not inside the run's artifacts directory: a directory on its path is a link.`
++      );
++    }
++    const result = await runWithNodeScratch(dir, dispatch);
++    // A suspended invocation (a gate, a wait, a paused loop_group) resumes with the same
++    // invocation id, so it finds its scratch where it left it.
++    keep = result.output.state === 'running';
++    return result;
++  } catch (error) {
++    // An interrupted run is stopping under this node, which may still be writing;
++    // run-end release removes its scratch once nothing can.
++    keep = isWorkflowExecutionInterruption(error);
++    throw error;
++  } finally {
++    if (!keep) {
++      await releaseNodeScratch({
++        artifactsDir: ctx.artifactsDir,
++        invocationId,
++        repoPath: ctx.cwd,
++        execContext: ctx.execContext,
++        logContext: { workflowRunId: ctx.workflowRun.id, nodeId: node.id, invocationId },
++      });
++    }
++  }
++}
++
++/**
++ * Release the scratch an admission-settled node leaves behind. Admission dispatches
++ * nothing, but on resume it can settle an invocation a prior pass suspended: skipped by
++ * its condition or trigger rule (the reused `invocationId`), or replayed as the success an
++ * approval recorded while the run was paused (the replayed completion's invocation).
++ * A skipped `loop_group` never dispatches again, so the body invocations a prior pass left
++ * suspended under it (recorded with their own ids) are released with it; suspended work
++ * elsewhere in the run is not. Each is released by id, so scratch a workflow keeps
++ * elsewhere under the run's scratch is never touched. A directory that was never made
++ * costs one `lstat`.
++ */
++export async function releaseAdmittedScratch(
++  ctx: RunLayersContext,
++  node: DagNode,
++  invocationId: string,
++  result: LayerNodeResult,
++  priorCompletedNodes: ReadonlyMap<string, PersistedNodeOutput> | undefined
++): Promise<void> {
++  if (result.output.state === 'running') return;
++  const ids = new Set([invocationId]);
++  const replayed = priorCompletedNodes?.get(node.id)?.execution?.invocation.id;
++  if (replayed !== undefined) ids.add(replayed);
++  if (isLoopGroupNode(node)) {
++    for (const id of suspendedDescendants(ctx, node.id)) ids.add(id);
++  }
++  for (const id of ids) {
++    await releaseNodeScratch({
++      artifactsDir: ctx.artifactsDir,
++      invocationId: id,
++      repoPath: ctx.cwd,
++      execContext: ctx.execContext,
++      logContext: { workflowRunId: ctx.workflowRun.id, nodeId: node.id, invocationId: id },
++    });
++  }
++}
++
++/**
++ * Invocation ids of the unfinished body invocations recorded under loop_group `groupId`
++ * in this context: their path is inside the group's, and their loop path enters the group
++ * from this context's own.
++ */
++function suspendedDescendants(ctx: RunLayersContext, groupId: string): string[] {
++  const groupPath = ctx.stepNamePrefix + groupId;
++  const depth = ctx.loopGroupPath.length;
++  const ids: string[] = [];
++  for (const { path, invocation } of ctx.unfinishedInvocations?.values() ?? []) {
++    if (path.startsWith(`${groupPath}.`) && invocation.loopPath[depth]?.groupId === groupId) {
++      ids.push(invocation.id);
++    }
++  }
++  return ids;
++}
+diff --git a/packages/workflows/src/dag/run-layers.ts b/packages/workflows/src/dag/run-layers.ts
+index a246b11f5..85c6f5fd2 100644
+--- a/packages/workflows/src/dag/run-layers.ts
++++ b/packages/workflows/src/dag/run-layers.ts
+@@ -41,6 +41,7 @@ import { skipNode } from './skip-node';
+ import { dispatchNode } from './dispatch';
+ import { nodePackDir } from '../pack-dir';
+ import { runWithPackDir } from '../workflow-variables';
++import { releaseAdmittedScratch, runInNodeScratch } from './node-scratch';
+ import { getStaleCachedDependencies } from './stale-dependencies';
+ /**
+  * Await thunks one at a time, collecting outcomes in `Promise.allSettled` shape so the
+@@ -142,22 +143,35 @@ async function runLayerPhase(
+   const nodeThunks = layer.map(
+     (node, index): (() => Promise<LayerNodeResult>) =>
+       async (): Promise<LayerNodeResult> => {
++        const invocation =
++          ctx.unfinishedInvocations?.get(
++            nodeInvocationKey(ctx.stepNamePrefix + node.id, ctx.loopGroupPath)
++          )?.invocation ?? newNodeInvocation(ctx.loopGroupPath);
+         const nodeCtx: RunLayersContext = {
+           ...ctx,
+           currentExecution: undefined,
+           interactionAdmission: peers?.[index].admission ?? ctx.interactionAdmission,
+           guardedLayerSnapshots,
+-          nodeInvocation:
+-            ctx.unfinishedInvocations?.get(
+-              nodeInvocationKey(ctx.stepNamePrefix + node.id, ctx.loopGroupPath)
+-            )?.invocation ?? newNodeInvocation(ctx.loopGroupPath),
++          nodeInvocation: invocation,
+         };
+         try {
++          const admitted = await admitNode(nodeCtx, node);
++          if (admitted !== undefined) {
++            await releaseAdmittedScratch(
++              nodeCtx,
++              node,
++              invocation.id,
++              admitted,
++              ctx.priorCompletedNodes
++            );
++          }
+           const result =
+-            (await admitNode(nodeCtx, node)) ??
+-            (await runWithPackDir(
+-              await nodePackDir(nodeCtx.workflowSourceRoots, nodeCtx.workflowPack, node),
+-              () => dispatchNode(nodeCtx, node, isParallelLayer)
++            admitted ??
++            (await runInNodeScratch(nodeCtx, node, invocation.id, async () =>
++              runWithPackDir(
++                await nodePackDir(nodeCtx.workflowSourceRoots, nodeCtx.workflowPack, node),
++                () => dispatchNode(nodeCtx, node, isParallelLayer)
++              )
+             ));
+           if (result.output.state === 'failed') nodeCtx.interactionAdmission?.failed(node.id);
+           return result;
+diff --git a/packages/workflows/src/dry-run-exec.test.ts b/packages/workflows/src/dry-run-exec.test.ts
+index 64a88082d..b5c19be7e 100644
+--- a/packages/workflows/src/dry-run-exec.test.ts
++++ b/packages/workflows/src/dry-run-exec.test.ts
+@@ -5,6 +5,7 @@ import { applyRunEnvironment } from './run-preflight';
+ import { existsSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
+ import { EXEC_NODE_ENVIRONMENT_NAMES } from './exec-environment';
+ import { join, sep } from 'node:path';
++import { execFileSync } from 'node:child_process';
+ import { makeTestWorkflow } from './test-utils';
+ import { dryRunWorkflow, useDryRunFiles } from './dry-run-test-utils';
+ import { inputEnvKey } from './schemas/node-bindings';
+@@ -12,6 +13,28 @@ import { inputEnvKey } from './schemas/node-bindings';
+ const { temporaryDirectory } = useDryRunFiles();
+ 
+ describe('dry-run code execution', () => {
++  test('releases each node scratch before a dependent checks out the same branch', async () => {
++    const repo = temporaryDirectory();
++    const run = (...args: string[]) => execFileSync('git', ['-C', repo, ...args]);
++    run('init', '-q');
++    run('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'init');
++    run('branch', 'probe');
++    const checkout = 'git worktree add -q "$NODE_SCRATCH_DIR/wt" probe';
++    const result = await dryRunWorkflow({
++      cwd: repo,
++      execCode: true,
++      workflow: makeTestWorkflow({
++        name: 'scratch-same-branch',
++        nodes: [
++          { id: 'first', bash: checkout },
++          { id: 'second', bash: checkout, depends_on: ['first'] },
++        ],
++      }),
++    });
++    expect(result.outcome).toBe('completed');
++    expect(String(run('worktree', 'list', '--porcelain')).match(/^worktree /gm)).toHaveLength(1);
++  });
++
+   test('executes bash only with execCode and captures failures', async () => {
+     const success = makeTestWorkflow({
+       name: 'bash-ok',
+diff --git a/packages/workflows/src/dry-run/nodes/exec.ts b/packages/workflows/src/dry-run/nodes/exec.ts
+index 01417a48c..8424ef57a 100644
+--- a/packages/workflows/src/dry-run/nodes/exec.ts
++++ b/packages/workflows/src/dry-run/nodes/exec.ts
+@@ -19,6 +19,7 @@ import {
+ import { collectCredentialValues } from '@archon/paths/credential-redaction';
+ import { assertWorkflowSourceIntegrity } from '../../workflow-source';
+ import { buildExecNodeEnvironment } from '../../exec-environment';
++import { currentNodeScratchDir } from '../../workflow-variables';
+ import type { NodeExecutionMetadata } from '../../schemas/node-execution';
+ import type { ExecNode } from '../../schemas';
+ import type { DryRunContext } from '../context';
+@@ -38,6 +39,8 @@ export async function executeCodeNode(
+     // a pure-stub dry run creates no directory.
+     await mkdir(ctx.artifactsDir, { recursive: true });
+     await mkdir(ctx.stateDir, { recursive: true });
++    const nodeScratchDir = currentNodeScratchDir();
++    if (nodeScratchDir !== undefined) await mkdir(nodeScratchDir, { recursive: true });
+     const env = {
+       ...process.env,
+       ...ctx.envVars,
+diff --git a/packages/workflows/src/dry-run/simulate.ts b/packages/workflows/src/dry-run/simulate.ts
+index 36f846fc2..5de97ebb4 100644
+--- a/packages/workflows/src/dry-run/simulate.ts
++++ b/packages/workflows/src/dry-run/simulate.ts
+@@ -27,7 +27,10 @@ import { simulateLoopGroup } from './nodes/loop-group';
+ import { simulateWait } from './nodes/wait';
+ import { simulateChildRunNode } from './nodes/workflow';
+ import { nodePackDir } from '../pack-dir';
+-import { runWithPackDir } from '../workflow-variables';
++import { runWithNodeScratch, runWithPackDir } from '../workflow-variables';
++import { getNodeScratchDir } from '@archon/paths/archon-paths';
++import { randomUUID } from 'node:crypto';
++import { releaseNodeScratch } from '../run-scratch';
+ 
+ /** Whether the node runs at all; a node the trigger rule or its `when:` turns away is recorded here. */
+ function isReached(
+@@ -144,9 +147,25 @@ async function simulateNode(
+     return;
+   }
+   try {
+-    await runWithPackDir(await nodePackDir(ctx.sourceRoots, ctx.workflow.pack, node), async () =>
+-      simulateNodeKind(node, outputs, ctx, iteration, execution)
+-    );
++    const packDir = await nodePackDir(ctx.sourceRoots, ctx.workflow.pack, node);
++    // Released when the simulated node ends, as in a live run, so a dependent that adds a
++    // worktree on the same branch behaves as it would live.
++    const invocationId = randomUUID();
++    try {
++      await runWithNodeScratch(getNodeScratchDir(ctx.artifactsDir, invocationId), () =>
++        runWithPackDir(packDir, async () =>
++          simulateNodeKind(node, outputs, ctx, iteration, execution)
++        )
++      );
++    } finally {
++      await releaseNodeScratch({
++        artifactsDir: ctx.artifactsDir,
++        invocationId,
++        repoPath: ctx.execWorkspace,
++        execContext: { kind: 'host' },
++        logContext: { workflowRunId: 'dry-run', nodeId: node.id, invocationId },
++      });
++    }
+   } catch (error) {
+     recordFailed(node, outputs, ctx, (error as Error).message, undefined, iteration);
+   }
+diff --git a/packages/workflows/src/exec-environment.ts b/packages/workflows/src/exec-environment.ts
+index e8d914117..eb1c08c3f 100644
+--- a/packages/workflows/src/exec-environment.ts
++++ b/packages/workflows/src/exec-environment.ts
+@@ -1,6 +1,6 @@
+ import type { NodeExecutionMetadata } from './schemas/node-execution';
+ import { USER_CONTROLLED_VARIABLES } from './user-controlled-variables';
+-import { currentPackDir } from './workflow-variables';
++import { currentNodeScratchDir, currentPackDir } from './workflow-variables';
+ import { packDirOrThrow, type PackDirScope } from './pack-dir';
+ 
+ /** The part of a node's execution record its own process may read. */
+@@ -54,6 +54,9 @@ export function buildExecNodeEnvironment(context: ExecNodeEnvironmentContext): N
+     // forget it. Empty for a workflow outside a pack, as ADOPTED_RUN_DIR is without one;
+     // a pack the run's source does not hold fails the node instead of reading ''.
+     PACK_DIR: packDirEnvValue(currentPackDir()),
++    // From the dispatch scope too. Empty only outside dispatch, where the reserved-name
++    // set below is computed; every node invocation runs inside the scope.
++    NODE_SCRATCH_DIR: currentNodeScratchDir() ?? '',
+     // $WORKFLOW_ID substitutes into the body, but a heredoc'd python/node block
+     // reads os.environ and found it missing while its siblings above were all
+     // present. Deliver it the same way.
+diff --git a/packages/workflows/src/fixture-runner.test.ts b/packages/workflows/src/fixture-runner.test.ts
+index e9a558d11..4ad86aa67 100644
+--- a/packages/workflows/src/fixture-runner.test.ts
++++ b/packages/workflows/src/fixture-runner.test.ts
+@@ -1457,9 +1457,12 @@ describe('runFixtures exec-code isolation (#2851)', () => {
+       writeFileSync(join(cwd, 'scratch.txt'), 'untracked stray\n');
+       const dirtyReport = await runFixtures({ workflows, cwd });
+       expect(dirtyReport.passed).toBe(1);
+-      expect(
+-        execSpy.mock.calls.filter(([cmd]) => cmd === 'git').map(([, args]) => args.slice(0, 2))
+-      ).toEqual([
++      // Node scratch release lists worktrees once per node end, whatever the fixture's
++      // isolation does; it is not the preflight this guards against.
++      const isolationCalls = execSpy.mock.calls
++        .filter(([cmd, args]) => cmd === 'git' && !(args[0] === '-C' && args[3] === 'list'))
++        .map(([, args]) => args.slice(0, 2));
++      expect(isolationCalls).toEqual([
+         ['worktree', 'add'],
+         ['worktree', 'remove'],
+         ['worktree', 'add'],
+diff --git a/packages/workflows/src/run-scratch.test.ts b/packages/workflows/src/run-scratch.test.ts
+index 79a58690e..cd3e078fb 100644
+--- a/packages/workflows/src/run-scratch.test.ts
++++ b/packages/workflows/src/run-scratch.test.ts
+@@ -1,6 +1,16 @@
+ import { describe, expect, test } from 'bun:test';
+ import { existsSync } from 'node:fs';
+-import { chmod, link, lstat, mkdir, mkdtemp, realpath, symlink, writeFile } from 'node:fs/promises';
++import {
++  chmod,
++  link,
++  lstat,
++  mkdir,
++  mkdtemp,
++  realpath,
++  rm,
++  symlink,
++  writeFile,
++} from 'node:fs/promises';
+ import { hostname, tmpdir } from 'node:os';
+ import { join, relative, resolve } from 'node:path';
+ import { execFileAsync } from '@archon/git';
+@@ -130,6 +140,10 @@ test.each(['real', 'root-link', 'engine-link', 'scratch-link'] as const)(
+     const sibling = join(base, 'sibling');
+     await git('worktree', 'add', '-q', '--detach', inScratch);
+     await git('worktree', 'add', '-q', '--detach', sibling);
++    // A registration whose checkout is gone: `git worktree prune` would drop it.
++    const missing = join(base, 'missing');
++    await git('worktree', 'add', '-q', '--detach', missing);
++    await rm(missing, { recursive: true, force: true });
+     // Uncommitted work never keeps a scratch worktree registered.
+     await writeFile(join(inScratch, 'dirty.txt'), 'tried a mutation');
+ 
+@@ -149,8 +163,8 @@ test.each(['real', 'root-link', 'engine-link', 'scratch-link'] as const)(
+       .map(line => resolve(line.slice('worktree '.length).trim()));
+     expect(listed.sort()).toEqual(
+       (boundary === 'real'
+-        ? [resolve(repo), resolve(sibling)]
+-        : [resolve(repo), resolve(sibling), resolve(inScratch)]
++        ? [resolve(repo), resolve(sibling), resolve(missing)]
++        : [resolve(repo), resolve(sibling), resolve(missing), resolve(inScratch)]
+       ).sort()
+     );
+     expect(existsSync(join(sibling, '.git'))).toBe(true);
+diff --git a/packages/workflows/src/run-scratch.ts b/packages/workflows/src/run-scratch.ts
+index bc5854b18..4eab32412 100644
+--- a/packages/workflows/src/run-scratch.ts
++++ b/packages/workflows/src/run-scratch.ts
+@@ -1,5 +1,13 @@
+ /**
+- * Release a terminal run's scratch and tagged artifact caches.
++ * Release scratch: a node invocation's own when it ends, and a terminal run's whole
++ * scratch and tagged artifact caches when the run ends.
++ *
++ * `releaseNodeScratch` removes one invocation's `$NODE_SCRATCH_DIR` once that invocation
++ * has completed, failed or been skipped; the layer walker calls it, so the invocation's
++ * own processes have ended, and also when a resumed run skips or replays an invocation
++ * that a prior pass left suspended. Run-end release below
++ * stays the backstop for an invocation that never got there (interrupted, or its
++ * process died).
+  *
+  * Scratch is removed only once the run is terminal and nothing of it can still write
+  * into it. `releaseRunScratch` proves the second half itself: the run's recorded
+@@ -23,22 +31,29 @@
+  * Scratch and descendant directories carrying a valid CACHEDIR.TAG are disposable;
+  * untagged evidence and the artifacts root are retained. Git worktrees a node added
+  * under scratch are removed from the run's repository first, so their registrations
+- * do not outlive their files. A container run's are not: its paths are the container's.
++ * do not outlive their files. At run end a container run's are not: they live in the
++ * container's git, which container teardown removes with the container. A node's own
++ * scratch in a live container is deregistered through that container's git.
+  */
+ 
+ import { hostname } from 'node:os';
+ import { lstat, open, readdir, realpath, rm } from 'node:fs/promises';
+-import { dirname, join, relative } from 'node:path';
++import { basename, dirname, join, relative } from 'node:path';
+ import { execFileAsync, GitFailure } from '@archon/git';
+ import { createLogger } from '@archon/paths';
+ import { isPidProvablyGone } from '@archon/paths/process-owner';
+ import {
++  getNodeScratchDir,
++  getNodeScratchRoot,
+   getRunArtifactsDirForRoot,
+   getRunScratchDir,
+   isPathInside,
+   resolveRunStorageRoot,
+ } from '@archon/paths/archon-paths';
++import type { ExecutionContext } from '@archon/provider-contract';
+ import { isContainerRun, readExecutionOwner, type WorkflowRun } from './schemas/workflow-run';
++import { probeContainerMarker } from './checkout-observation';
++import { buildSubprocessDockerArgs } from './subprocess';
+ 
+ let cachedLog: ReturnType<typeof createLogger> | undefined;
+ function getLog(): ReturnType<typeof createLogger> {
+@@ -110,11 +125,120 @@ export async function releaseRunScratch(run: ScratchRun): Promise<void> {
+     (await scratchParentIsDirectory(artifactsDir, logContext)) &&
+     (await isDirectory(getRunScratchDir(artifactsDir), logContext))
+   ) {
+-    await deregisterScratchWorktrees(run.working_path, getRunScratchDir(artifactsDir), logContext);
++    await deregisterScratchWorktrees(
++      hostGit(run.working_path),
++      getRunScratchDir(artifactsDir),
++      logContext
++    );
+   }
+   await removeScratchAndCaches(artifactsDir, logContext, caches);
+ }
+ 
++/**
++ * Remove one node invocation's scratch directory, deregistering the git worktrees under
++ * it from `repoPath` first. In a container run the node registered them in the
++ * container's git, at the same absolute paths, so they are deregistered there. Never
++ * throws: a failed release is logged and the node's result stands; run-end release
++ * retries the removal.
++ *
++ * Nothing is touched unless every directory from `artifactsDir` down to the node-scratch
++ * root is a real directory: through a linked ancestor, the path would name files and
++ * worktrees outside the run. A link in place of the invocation's own directory is removed
++ * without following it.
++ */
++export async function releaseNodeScratch({
++  artifactsDir,
++  invocationId,
++  repoPath,
++  execContext,
++  logContext,
++}: {
++  artifactsDir: string;
++  invocationId: string;
++  repoPath: string;
++  execContext: ExecutionContext;
++  logContext: Record<string, unknown>;
++}): Promise<void> {
++  const scratchDir = getNodeScratchDir(artifactsDir, invocationId);
++  try {
++    const stat = await lstat(scratchDir).catch((error: unknown) => {
++      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined;
++      throw error;
++    });
++    if (!(await nodeScratchRootIsDirectory(artifactsDir, logContext))) {
++      if (stat) {
++        getLog().warn({ ...logContext, path: scratchDir }, 'node_scratch.ancestor_not_directory');
++      }
++      return;
++    }
++    // Git is asked even when the directory is empty or gone: a node that deleted a
++    // worktree's files left its registration behind, and only Git knows it. A link in
++    // place of the directory is never followed, so it is only removed.
++    if (!stat || stat.isDirectory()) {
++      const git =
++        execContext.kind === 'container'
++          ? await containerGit(execContext, repoPath, logContext)
++          : hostGit(repoPath);
++      if (git) await deregisterScratchWorktrees(git, scratchDir, logContext);
++    }
++    await rm(scratchDir, { recursive: true, force: true });
++  } catch (error) {
++    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return;
++    getLog().warn({ ...logContext, err: error, path: scratchDir }, 'node_scratch.remove_failed');
++  }
++}
++
++/**
++ * Whether `artifactsDir`, its engine child, the run's scratch and the node-scratch root
++ * are all real directories, links rejected. Creation checks it too, so a node is never
++ * handed a directory outside the run.
++ */
++export async function nodeScratchRootIsDirectory(
++  artifactsDir: string,
++  logContext: Record<string, unknown>
++): Promise<boolean> {
++  return (
++    (await scratchParentIsDirectory(artifactsDir, logContext)) &&
++    (await isDirectory(getRunScratchDir(artifactsDir), logContext)) &&
++    (await isDirectory(getNodeScratchRoot(artifactsDir), logContext))
++  );
++}
++
++/**
++/** Runs `git` against one repository, on the host or in the run's container. */
++type RepoGit = (args: string[], timeout: number) => Promise<{ stdout: string }>;
++
++function hostGit(repoPath: string): RepoGit {
++  return (args, timeout) => execFileAsync('git', ['-C', repoPath, ...args], { timeout });
++}
++
++/**
++ * Git in the run's container, or undefined when the container's checkout is not a
++ * repository (a folder project), which has no worktrees to deregister. The container's
++ * own failures are not that answer: they are logged and nothing is deregistered.
++ */
++async function containerGit(
++  execContext: Extract<ExecutionContext, { kind: 'container' }>,
++  repoPath: string,
++  logContext: Record<string, unknown>
++): Promise<RepoGit | undefined> {
++  const marker = await probeContainerMarker(repoPath, execContext);
++  if (marker === 'none') return undefined;
++  if (marker === 'failed') {
++    getLog().warn({ ...logContext, path: repoPath }, 'run_scratch.container_probe_failed');
++    return undefined;
++  }
++  return (args, timeout) =>
++    execFileAsync(
++      'docker',
++      buildSubprocessDockerArgs(execContext, 'git', ['-C', repoPath, ...args], {
++        cwd: repoPath,
++        env: {},
++      }),
++      { timeout }
++    );
++}
++
+ /**
+  * Remove the git worktrees a node added under `scratchDir` from the repository of the
+  * run's checkout, so deleting their files leaves no registration behind in it. Only
+@@ -125,7 +249,7 @@ export async function releaseRunScratch(run: ScratchRun): Promise<void> {
+  * rest of scratch.
+  */
+ async function deregisterScratchWorktrees(
+-  repoPath: string,
++  git: RepoGit,
+   scratchDir: string,
+   logContext: Record<string, unknown>
+ ): Promise<void> {
+@@ -137,21 +261,17 @@ async function deregisterScratchWorktrees(
+     getLog().warn({ ...logContext, err: error, path }, 'run_scratch.worktree_deregister_failed');
+   };
+   try {
+-    // Git prints resolved paths, so the scratch directory is resolved to compare.
+-    const root = await realpath(scratchDir);
+-    const { stdout } = await execFileAsync(
+-      'git',
+-      ['-C', repoPath, 'worktree', 'list', '--porcelain', '-z'],
+-      { timeout: 10000 }
+-    );
++    // Git prints resolved paths, so the scratch directory is resolved to compare. A
++    // container mounts it at the path as given, so that form is matched too.
++    // The parent is resolved, not `scratchDir` itself, which a node may have deleted.
++    const roots = [scratchDir, join(await realpath(dirname(scratchDir)), basename(scratchDir))];
++    const { stdout } = await git(['worktree', 'list', '--porcelain', '-z'], 10000);
+     for (const field of stdout.split('\0')) {
+       if (!field.startsWith('worktree ')) continue;
+       const path = field.slice('worktree '.length);
+-      if (!isPathInside(root, path, { includeRoot: true })) continue;
++      if (!roots.some(root => isPathInside(root, path, { includeRoot: true }))) continue;
+       // `--force`: a scratch worktree is throwaway, and uncommitted changes must not keep it.
+-      await execFileAsync('git', ['-C', repoPath, 'worktree', 'remove', '--force', path], {
+-        timeout: 30000,
+-      }).catch((error: unknown) => {
++      await git(['worktree', 'remove', '--force', path], 30000).catch((error: unknown) => {
+         warn(path, error);
+       });
+     }
+diff --git a/packages/workflows/src/workflow-variables.test.ts b/packages/workflows/src/workflow-variables.test.ts
+index 1c5bb0f42..532e0a415 100644
+--- a/packages/workflows/src/workflow-variables.test.ts
++++ b/packages/workflows/src/workflow-variables.test.ts
+@@ -22,6 +22,7 @@ mock.module('@archon/paths', () => ({
+ import {
+   substituteWorkflowVariables,
+   buildPromptWithContext,
++  runWithNodeScratch,
+   runWithPackDir,
+ } from './workflow-variables';
+ import { buildExecNodeEnvironment, EXEC_NODE_ENVIRONMENT_NAMES } from './exec-environment';
+@@ -93,6 +94,7 @@ describe('user-controlled runtime variable delivery', () => {
+         LOG_DIR: '/logs',
+         ADOPTED_RUN_DIR: '',
+         PACK_DIR: '',
++        NODE_SCRATCH_DIR: '',
+         WORKFLOW_ID: 'run-1',
+         BASE_BRANCH: 'dev',
+         USER_MESSAGE: value('message'),
+@@ -131,6 +133,20 @@ describe('substituteWorkflowVariables', () => {
+     );
+   });
+ 
++  it('replaces $NODE_SCRATCH_DIR with the node scope directory', async () => {
++    const { prompt } = await runWithNodeScratch('/scope/dir', async () =>
++      substituteWorkflowVariables(
++        'Work in $NODE_SCRATCH_DIR/wt',
++        'run-1',
++        'm',
++        '/tmp',
++        'main',
++        'docs/'
++      )
++    );
++    expect(prompt).toBe('Work in /scope/dir/wt');
++  });
++
+   it('replaces $WORKFLOW_ID with the run ID', () => {
+     const { prompt } = substituteWorkflowVariables(
+       'Run ID: $WORKFLOW_ID',
+diff --git a/packages/workflows/src/workflow-variables.ts b/packages/workflows/src/workflow-variables.ts
+index 2ad43b138..a7fc34d54 100644
+--- a/packages/workflows/src/workflow-variables.ts
++++ b/packages/workflows/src/workflow-variables.ts
+@@ -58,6 +58,22 @@ export function currentPackDir(): PackDirScope | undefined {
+   return packDirContext.getStore();
+ }
+ 
++/**
++ * Scope holding `$NODE_SCRATCH_DIR`: the executing node invocation's own scratch
++ * directory, entered per node at dispatch beside the pack-dir scope. The layer walker
++ * creates the directory before entering and removes it when the invocation ends.
++ */
++const nodeScratchContext = new AsyncLocalStorage<string>();
++
++export function runWithNodeScratch<T>(dir: string, fn: () => Promise<T>): Promise<T> {
++  return nodeScratchContext.run(dir, fn);
++}
++
++/** The executing node invocation's scratch directory; undefined outside node dispatch. */
++export function currentNodeScratchDir(): string | undefined {
++  return nodeScratchContext.getStore();
++}
++
+ /** Matches what the substitution below replaces as `$PACK_DIR`. */
+ export const PACK_DIR_REFERENCE = /\$PACK_DIR/;
+ 
+@@ -91,6 +107,9 @@ export interface TemplateReferences {
+  *   without a resolved value.
+  * - $PACK_DIR - The directory of the pack that authored the node, in the run's source
+  *   roots (see {@link runWithPackDir}). Throws when that workflow is not in a pack.
++ * - $NODE_SCRATCH_DIR - The executing node invocation's own scratch directory (see
++ *   {@link runWithNodeScratch}), removed when the invocation ends. Throws outside node
++ *   dispatch.
+  * - $ADOPTED_RUN_DIR (#2747) - The adopted run's artifact directory, resolved
+  *   through its persisted `output_root`. Read-only by contract; throws if
+  *   referenced without an adoption active.
+@@ -184,6 +203,20 @@ export function substituteWorkflowVariables(
+     // Engine-controlled like $ARTIFACTS_DIR, so substituted under shellSafe too. A node
+     // with no pack directory fails: an empty path would point a read at the checkout.
+     variable('PACK_DIR', () => packDirOrThrow(currentPackDir())),
++    // Engine-controlled, so substituted under shellSafe too. Outside node dispatch there
++    // is no invocation to own the directory, and an empty path would point writes at the
++    // checkout.
++    variable('NODE_SCRATCH_DIR', () => {
++      const dir = currentNodeScratchDir();
++      if (dir === undefined) {
++        throw new Error(
++          '$NODE_SCRATCH_DIR is referenced outside a node invocation. ' +
++            "It names the running node invocation's own scratch directory; " +
++            'if you are seeing this from a workflow node, please report it as a bug.'
++        );
++      }
++      return dir;
++    }),
+     // $TYPED_ARTIFACTS_FILE is delivered by every executable invocation context (bash,
+     // script, agent prompt, loop attempt), and to exec subprocesses as TYPED_ARTIFACTS_FILE.
+     // A context that never supplied one must fail loudly: substituting '' would read as

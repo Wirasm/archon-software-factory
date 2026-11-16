@@ -1,0 +1,90 @@
+{
+ "repo": "coleam00/Archon",
+ "note": "Each case names its own base commit. Real factory builds from 2026-11-15 and 16; each is the commit the factory's own review, test check and product review had approved or passed on, and the verdict comes from what was found afterwards.",
+ "cases": [
+  {
+   "id": "5739-A",
+   "item": "items/5739.md",
+   "patch": "builds/5739-A.patch",
+   "base": "253ef8dac87c1819240e2a12d2de32065fc50132",
+   "commit": "e80d5941a0597ce3fb0b63a769e8341a58631e97",
+   "expect": "return",
+   "evidence": "ran",
+   "why": "A `runtime: uv` script node can still import packages from a `.venv` that already exists in the checkout: `uv run --no-project --project <empty dir> python -c 'import six'` in a checkout whose `.venv` holds `six` succeeds, with and without `--with`. The item asks that the node's dependencies do not depend on the repository it runs against. Found by an outside review after the factory's three checks approved; reproduced in a scratch directory on uv 0.6.14. Fixed by `--isolated`.",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "5738-A",
+   "item": "items/5738.md",
+   "patch": "builds/5738-A.patch",
+   "base": "100e3bdbb7875a167f6bbd948ca6a9b3004da553",
+   "commit": "ff7faae65a311618cb3935727d2cc4be98a2079f",
+   "expect": "return",
+   "evidence": "ran",
+   "why": "The change makes nested sandbox objects pass unknown keys through, which changes the generated web API types, and `packages/web/src/lib/api.generated.d.ts` was not regenerated: `bun run validate --only generated-files` fails with `api.generated.d.ts is stale`. The factory's three checks approved; the project's CI caught it.",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "5745-A",
+   "item": "items/5745.md",
+   "patch": "builds/5745-A.patch",
+   "base": "100e3bdbb7875a167f6bbd948ca6a9b3004da553",
+   "commit": "76c16db13ac549b542b89c650a1cc812311e8ad4",
+   "expect": "return",
+   "evidence": "ran",
+   "why": "Two existing `subprocess credential redaction` tests in `packages/workflows` fail: node scratch release now runs a `git worktree` call and a container probe through the same mocked subprocess boundary, and the tests count it as the node's. The builder ran only the test files it touched. Found by CI after the factory's checks had passed the commit on.",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "5745-B",
+   "item": "items/5745.md",
+   "patch": "builds/5745-B.patch",
+   "base": "100e3bdbb7875a167f6bbd948ca6a9b3004da553",
+   "commit": "1573848fdbeb7ab8a30f34fce9b98204ec01d9f6",
+   "expect": "return",
+   "evidence": "ran",
+   "why": "A loop_group that resumes at its body's terminal gate resolves that gate without walking the body again, so the gate's node scratch directory and git worktree registration are kept until run end. Reproduced by a reviewer: the directory and the registration were both still there before the downstream gate paused. Fourth member of one class on this change (a skipped suspended loop, a container node, an empty scratch directory).",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "5688-A",
+   "item": "items/5688.md",
+   "patch": "builds/5688-A.patch",
+   "base": "0f121f23b179f32868cd1781d400d63488382bb7",
+   "commit": "bff6f9cbf11c361c93132908f7ab643e11fae3a3",
+   "expect": "return",
+   "evidence": "read",
+   "why": "`refuseBrokenRunEndedBindings` runs before the run is claimed and calls `cancelWorkflowRun` with no pending condition, so a run another dispatcher has already claimed and moved to `running` is cancelled under its live owner (`packages/workflows/src/run-admission.ts`, `packages/core/src/db/workflow-run-transitions.ts`). Six rounds of the factory's checks did not report it; an outside review did, and the host stage confirmed it by reading the SQL. Two smaller findings on the same commit: a trigger file whose `launch.cwd` no longer exists fails unrelated item runs with an error that does not name the file; a queued drain pass is lost when the running pass fails.",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "5708-A",
+   "item": "items/5708.md",
+   "patch": "builds/5708-A.patch",
+   "base": "9463e78804484f2829fa62c21a4dde3b65282c5d",
+   "commit": "ca662a1556716f646f798bd511006c7f3fb2a137",
+   "expect": "return",
+   "evidence": "ran",
+   "why": "`applyRunDetails` attaches the outcome read from the run row to every terminal chat event, so a `failed` or `cancelled` event for a run that was resumed in place and has since completed carries the later completion's outcome. A test added with the fix (a `workflow_failed` event for a row that has completed with `built`) fails on this commit. Also on this commit: a named outcome is put into a Slack text object with no bound, where the same file truncates every other free-text value.",
+   "built_by": "opus",
+   "from_plan": true
+  },
+  {
+   "id": "5734-A",
+   "item": "items/5734.md",
+   "patch": "builds/5734-A.patch",
+   "base": "253ef8dac87c1819240e2a12d2de32065fc50132",
+   "commit": "5fdbb3cda9af49cf2bea63b603c5680fea8a45e1",
+   "expect": "return",
+   "evidence": "read",
+   "why": "The reference's new workaround for carrying a skip fallback across an include tells the author to bind with `if_skipped` in a bridge `script:` node, and omits that the bridge needs `trigger_rule: all_done`; with the default rule the bridge is skipped with its source and the include gets no value. Every other `if_skipped` example in the same reference sets it. Docs-only defect in a change whose code is right.",
+   "built_by": "opus",
+   "from_plan": true
+  }
+ ]
+}

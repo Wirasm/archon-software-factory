@@ -1,0 +1,198 @@
+diff --git a/packages/docs-web/src/content/docs/reference/workflow-language.md b/packages/docs-web/src/content/docs/reference/workflow-language.md
+index fb8e8232c..c027dbb91 100644
+--- a/packages/docs-web/src/content/docs/reference/workflow-language.md
++++ b/packages/docs-web/src/content/docs/reference/workflow-language.md
+@@ -1933,6 +1933,16 @@ depends on whether the block declares `inputs:` (see
+ `inputs:` ignores unrecognized keys; a block that declares `inputs:` rejects an undeclared
+ key at load.
+ 
++An object value is a literal, with one exception. An object with exactly the shape of a
++command/script directive, `{ from, if_skipped }` or `{ outputs }`, is a load error naming the
++input. Those directives are read only on a command or script node's own `with:` (see
++[Binding values](#binding-values-into-command-and-script-nodes)); passed through an include
++it would reach the block as data, and its `if_skipped` would never apply. To carry a skip
++fallback across an include, bind it with `if_skipped` in a `script:` node's own `with:`, have
++that node print the value, and pass `$<that-node>.output` to the include. Any other object,
++such as `{ from: alice, to: bob }`, stays a literal. The same rule holds for a `workflow:`
++node's `with:`.
++
+ Substitution applies everywhere the value could reach the model, including inside Markdown
+ code fences and inline code spans: `$INPUTS.<name>` has no documentation-only meaning, so a
+ fenced occurrence is still a live parameter.
+@@ -2477,8 +2487,10 @@ nodes:
+ A `workflow:` node has **one** input channel per invocation: either the untyped `input:` string
+ (delivered as the child's `$ARGUMENTS`) **or** the named `with:` map (delivered as the child's
+ `$INPUTS.<name>`. See [Workflow Signature](#workflow-signature-inputs-returns-and-inputs)).
+-Setting both on one node is a load error. Use `with:` when the child declares named `inputs:` or
+-when its `command:` bodies need named values:
++Setting both on one node is a load error. Values follow the same rule as an include's `with:`:
++JSON literals, and a directive-shaped object such as `{ from, if_skipped }` is a load error (see
++[Passing values into an included block](#passing-values-into-an-included-block)). Use `with:`
++when the child declares named `inputs:` or when its `command:` bodies need named values:
+ 
+ ```yaml
+   - id: implement-qa
+diff --git a/packages/workflows/src/include-expander.inputs.test.ts b/packages/workflows/src/include-expander.inputs.test.ts
+index 0aa237a43..775599fc1 100644
+--- a/packages/workflows/src/include-expander.inputs.test.ts
++++ b/packages/workflows/src/include-expander.inputs.test.ts
+@@ -596,15 +596,6 @@ describe('expandWorkflowIncludes — typed with: values (#2637)', () => {
+     const message = errors.find(e => e.filename === 'parent')?.error;
+     expect(message).toContain("binding 'mode'");
+     expect(message).toContain('OBJECT');
+-
+-    // A directive-SHAPED caller object is rejected the same way — data must not be
+-    // able to inject reference semantics the block never authored.
+-    const sneaky = wf('parent', [
+-      { id: 'use', include: 'bind-obj-blk', with: { mode: { from: '$use__consume.output' } } },
+-    ]);
+-    const second = expandWorkflowIncludes(mapOf(block, sneaky));
+-    expect(second.workflows.has('parent')).toBe(false);
+-    expect(second.errors.find(e => e.filename === 'parent')?.error).toContain("binding 'mode'");
+   });
+ });
+ 
+diff --git a/packages/workflows/src/schemas-include.test.ts b/packages/workflows/src/schemas-include.test.ts
+index df6b5d548..40907ae55 100644
+--- a/packages/workflows/src/schemas-include.test.ts
++++ b/packages/workflows/src/schemas-include.test.ts
+@@ -83,17 +83,37 @@ describe('dagNodeSchema — include', () => {
+     const result = dagNodeSchema.parse({
+       id: 'r',
+       include: 'acme-review-block',
+-      with: { flag: true, count: 3, tags: ['a', 'b'], meta: { k: 'v' }, nothing: null },
++      with: {
++        flag: true,
++        count: 3,
++        tags: ['a', 'b'],
++        meta: { k: 'v' },
++        pair: { from: 'alice', to: 'bob' },
++        nothing: null,
++      },
+     });
+     expect((result as IncludeDirective).with).toEqual({
+       flag: true,
+       count: 3,
+       tags: ['a', 'b'],
+       meta: { k: 'v' },
++      pair: { from: 'alice', to: 'bob' },
+       nothing: null,
+     });
+   });
+ 
++  // Include/workflow `with:` reads no directive, so a directive-shaped object would
++  // otherwise reach the child as data with its `if_skipped` never applied (#5734).
++  test.each([
++    ['include', { include: 'acme-review-block' }, { from: '$a.output.v', if_skipped: null }],
++    ['include', { include: 'acme-review-block' }, { outputs: 'review-report' }],
++    ['workflow', { workflow: 'child' }, { from: '$a.output.v', if_skipped: null }],
++  ])("%s rejects a directive-shaped 'with:' value, naming the key", (_kind, mode, x) => {
++    const error = validationError(dagNodeSchema.safeParse({ id: 'r', ...mode, with: { x } }));
++    const issue = error.issues.find(i => i.path[0] === 'with' && i.path[1] === 'x');
++    expect(issue?.message).toContain("input 'x'");
++  });
++
+   test("rejects the reserved node id 'INPUTS'", () => {
+     const error = validationError(dagNodeSchema.safeParse({ id: 'INPUTS', prompt: 'work' }));
+     const idIssue = error.issues.find(issue => issue.path[0] === 'id');
+diff --git a/packages/workflows/src/schemas/node-bindings.ts b/packages/workflows/src/schemas/node-bindings.ts
+index 842c7641c..088ca34e4 100644
+--- a/packages/workflows/src/schemas/node-bindings.ts
++++ b/packages/workflows/src/schemas/node-bindings.ts
+@@ -15,8 +15,9 @@ import { INPUT_NAME_SOURCE, jsonValueSchema, type JsonValue } from '../output-re
+  * On command/script `with:` maps, a plain OBJECT value is ALWAYS parsed as this
+  * directive (any other object shape is a load error naming both accepted forms) —
+  * reserving the object position removes the literal-vs-directive grammar ambiguity
+- * without a `$literal` escape. Include/workflow `with:` maps have no directive, so
+- * objects there stay ordinary JSON literals.
++ * without a `$literal` escape. Include/workflow `with:` maps have no directive: objects
++ * there are JSON literals, and an object with exactly a directive's shape is a load
++ * error rather than a silent literal.
+  */
+ export const bindingDirectiveSchema = z.strictObject({
+   from: z.string().min(1, "'from' must be a non-empty $node.output reference"),
+diff --git a/packages/workflows/src/schemas/node-validation.ts b/packages/workflows/src/schemas/node-validation.ts
+index a88ff47d3..2ef4c9701 100644
+--- a/packages/workflows/src/schemas/node-validation.ts
++++ b/packages/workflows/src/schemas/node-validation.ts
+@@ -240,7 +240,7 @@ function validateWaitNode(data: DagNodeFields, ctx: z.RefinementCtx): void {
+ }
+ 
+ function validateIncludeNode(data: DagNodeFields, ctx: z.RefinementCtx): void {
+-  if (data.with !== undefined) validateWithShape('include', data.with, ctx);
++  if (data.with !== undefined) validateLiteralWith('include', data.with, ctx);
+   if (data.fan_out !== undefined) {
+     const result = composeFanOutNodeSchema.pick({ fan_out: true }).safeParse(data);
+     if (!result.success) addIssues(ctx, result.error.issues);
+@@ -249,7 +249,7 @@ function validateIncludeNode(data: DagNodeFields, ctx: z.RefinementCtx): void {
+ }
+ 
+ function validateWorkflowNode(data: DagNodeFields, ctx: z.RefinementCtx): void {
+-  if (data.with !== undefined) validateWithShape('workflow', data.with, ctx);
++  if (data.with !== undefined) validateLiteralWith('workflow', data.with, ctx);
+   // A `workflow:` node has ONE input channel per invocation: either the untyped
+   // `input:` string ($ARGUMENTS) or the named `with:` map ($INPUTS.<name>). Accepting
+   // both would require a precedence rule between two overlapping channels — the exact
+@@ -327,7 +327,8 @@ function validateComposedFanOut(data: DagNodeFields, ctx: z.RefinementCtx): void
+  * `with:` is an identifier-keyed JSON-value map on include and workflow nodes
+  * (#2470, values widened from string-only in #2637). For includes it inlines at
+  * load time (applyInputsMacro); for sub-runs it becomes `$INPUTS.<name>` runtime
+- * variables on the child. Returns the map when its shape is an object.
++ * variables on the child. Returns the map when its shape is an object. Include and
++ * workflow nodes also refuse directive-shaped objects (validateLiteralWith).
+  */
+ function validateWithShape(
+   kind: 'include' | 'workflow' | 'command' | 'script',
+@@ -367,6 +368,38 @@ function validateWithShape(
+   return map;
+ }
+ 
++/**
++ * Include/workflow `with:` values are JSON literals: these nodes read no directive. An
++ * object with exactly a command/script directive's shape would otherwise pass through
++ * as data while its author expects `if_skipped` (or `outputs`) to apply, so it is a load
++ * error. Only the strict shapes are refused; any other object, such as
++ * `{ from: 'alice', to: 'bob' }`, stays a literal. Only top-level values are checked,
++ * because command/script nodes read directives only at the top level.
++ */
++function validateLiteralWith(
++  kind: 'include' | 'workflow',
++  value: unknown,
++  ctx: z.RefinementCtx
++): void {
++  const map = validateWithShape(kind, value, ctx);
++  if (map === undefined) return;
++  for (const [key, entry] of Object.entries(map)) {
++    if (bindingDirectiveSchema.safeParse(entry).success) {
++      addIssue(
++        ctx,
++        `${kind} input '${key}': '{ from, if_skipped }' is a binding directive, which only command and script nodes read; on ${kind} nodes an object is passed as a literal and if_skipped would never apply. Pass the reference as a string, or bind it with if_skipped in a script node's own 'with:' and pass that node's output.`,
++        ['with', key]
++      );
++    } else if (typedOutputsDirectiveSchema.safeParse(entry).success) {
++      addIssue(
++        ctx,
++        `${kind} input '${key}': '{ outputs }' is a typed-outputs directive, which only a script node's own 'with:' reads; on ${kind} nodes an object is passed as a literal. Read the outputs in a script node and pass that node's output.`,
++        ['with', key]
++      );
++    }
++  }
++}
++
+ /**
+  * Node-local bindings on command/script nodes (#2637): same key/value grammar as
+  * include/workflow `with:`, plus the object position is RESERVED for the binding
+diff --git a/packages/workflows/src/schemas/workflow-node.ts b/packages/workflows/src/schemas/workflow-node.ts
+index 44349283e..6bb8a171e 100644
+--- a/packages/workflows/src/schemas/workflow-node.ts
++++ b/packages/workflows/src/schemas/workflow-node.ts
+@@ -79,7 +79,8 @@ export const workflowNodeSchema = dagNodeBaseSchema.extend({
+   input: z.string().optional(),
+   // Named inputs passed to the child sub-run as `$INPUTS.<name>` (#2470). Mutually
+   // exclusive with `input:`. Same identifier-keyed JSON-value map as `include.with`
+-  // (#2637): non-string values reach the child with their logical type.
++  // (#2637): non-string values reach the child with their logical type. A directive-
++  // shaped object is refused in node-validation.ts (validateLiteralWith).
+   with: z.record(z.string(), jsonValueSchema).optional(),
+   isolation: z.enum(['inherit', 'worktree']).optional(),
+   fan_out: fanOutConfigSchema.optional(),
