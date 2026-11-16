@@ -24,12 +24,10 @@ Docs that your change makes untrue are part of the change. Bring them in line in
 
 Then open the change for review as a draft, the way this project proposes changes. Write its title and description for the maintainers: you know why the change is shaped as it is, where you left the plan and what you are unsure of, and nobody after you will. Where the project has nowhere to propose a change, leave the branch as it is and say so.
 
-A decision you see and choose not to make is an ask, not a note in your report.
-
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
 End in one of three outcomes:
 
-- **built**: the change is made and committed.
+- **built**: the change is made and committed. If you are leaving a decision for a maintainer in your notes or in the description, this is not your outcome: that decision is an ask.
 - **ask**: finishing needs a decision that is not yours. Leave it as an ask and end here; nothing that follows your work starts until it is answered, and then this work runs again.
 - **stop**: the plan cannot be built as written, or building it showed the plan was wrong. Say what, and what you recommend.
