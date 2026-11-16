@@ -14,4 +14,4 @@ The project's admit policy says which items may start without an ask. Read it at
 
 Judge from the item, what triage concluded, and the policy. Do not read the project's code to decide: triage already did, and its conclusion is above. Where you cannot tell whether a line of the policy holds, it is an ask.
 
-When it is an ask, write the question you would put to the operator, with your recommendation and what they need to decide it.
+When it is an ask, write it the way `$PACK_DIR/.shared/ask.md` says: one question, the context, the real options with what each does and costs (usually: start it as it is, start it narrowed, hold it), the one you recommend and why.
