@@ -111,6 +111,49 @@ nodes:
               ## From the builder (what it did about what was returned last round; empty in the first round)
               $fix.output
 
+  # The rounds ran out with the checks still returning the change. One more round is not
+  # automatic: an agent reads what is left and leaves the decision as an ask, with its
+  # recommendation, so the item's ending reaches an operator instead of telling nobody.
+  - id: exhausted
+    depends_on: [rounds]
+    when: "$rounds.output.outcome == 'return'"
+    command: exhausted
+    model: ['@judge', medium]
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        asks:
+          type: array
+          description: 'The one decision: what should happen to this change now.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              question: { type: string }
+              context: { type: string }
+              options:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    id: { type: string, description: 'kebab-case, one token, such as keep-the-flag. The answer names it.' }
+                    does: { type: string }
+                    cost: { type: string }
+                  required: [id, does, cost]
+              recommendation:
+                type: object
+                additionalProperties: false
+                properties:
+                  option: { type: string, description: 'The id of the option you would take. It is one of the options above.' }
+                  why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind.' }
+                required: [option, why]
+            required: [question, context, options, recommendation]
+        same_kind: { type: string, description: 'Whether what is left is the same kind of finding the earlier round returned, and how you know. Say so plainly when you cannot tell.' }
+      required: [asks, same_kind]
+
   # What the place the change is proposed says about it: the project's own checks and any
   # review left there. Runs only on a change our checks approved. A finding goes to the same
   # builder, which pushes its fix, and the host is read again.
@@ -157,12 +200,13 @@ nodes:
   # findings open), waiting (the host has not answered yet), replan, or ask.
   # It computes that from what the two loops ended with and judges nothing.
   - id: result
-    depends_on: [rounds, hostrounds]
+    depends_on: [rounds, hostrounds, exhausted]
     trigger_rule: all_done
     runtime: bun
     with:
       checks: $rounds.output
       host: { from: $hostrounds.output, if_skipped: "" }
+      exhausted: { from: $exhausted.output, if_skipped: "" }
       change: $build.output.proposed
     script: |
       const read = (text: string | undefined) => (text ? JSON.parse(text) : null);
@@ -178,7 +222,10 @@ nodes:
       // recommendation that names no option falls back to the first one, saying so.
       const token = (id: unknown) =>
         String(id ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'option';
-      const asks = (last.asks ?? []).map((ask: any) => {
+      // Rounds used up: the ask is the one the `exhausted` node left.
+      const exhausted = read(process.env.INPUTS_EXHAUSTED);
+      const left = outcome === 'returned' && !host && exhausted ? (exhausted.asks ?? []) : (last.asks ?? []);
+      const asks = left.map((ask: any) => {
         const options = (ask.options ?? []).map((o: any) => ({ id: token(o.id), does: String(o.does ?? ''), cost: String(o.cost ?? '') }));
         // The engine wants at least two options; a stage that left one gets "hold" beside it.
         if (options.length < 2) options.push({ id: 'hold', does: 'Hold the item until an operator says what to do.', cost: 'The item waits.' });
