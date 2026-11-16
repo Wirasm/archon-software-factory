@@ -30,7 +30,7 @@ When you run the project's own software, give it scratch data and a scratch home
 
 Where the change could be wrong in a way its own tests do not show, find out by running something. Say for each thing you report whether you ran it or read it.
 
-Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit, and remove the copy when you are done. Change nothing in the change itself.
+Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit that you make under `$NODE_SCRATCH_DIR`: that directory is yours alone and is removed when you finish. Change nothing in the change itself.
 
 Something wrong that this change did not cause is not a finding against it. Report it as noticed. When what you found sits next to the change, check the commit it was built on before you decide which it is.
 

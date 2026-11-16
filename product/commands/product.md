@@ -18,7 +18,7 @@ Prose is in scope. Docs that the change made untrue, and a new behaviour its use
 
 Judge by the project's own direction and design, not by your taste. Something you would have done differently that the project's documents do not speak to is not a finding.
 
-Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit, and remove the copy when you are done. Change nothing in the change itself.
+Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit that you make under `$NODE_SCRATCH_DIR`: that directory is yours alone and is removed when you finish. Change nothing in the change itself.
 
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
