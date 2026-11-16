@@ -15,7 +15,6 @@
     "validate": "validate/validate.yaml",
     "land": "land/land.yaml",
     "verdict": "verdict/verdict.yaml",
-    "revise": "revise/revise.yaml",
     "product": "product/product.yaml",
     "investigate": "investigate/investigate.yaml",
     "deliver": "deliver/deliver.yaml",
