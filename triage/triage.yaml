@@ -32,3 +32,22 @@ nodes:
       item: $INPUTS.item
       judgment: $judge.output
       open_items: $INPUTS.open_items
+
+  # Shadow measurement, 2026-11-16: may this item start without an operator? Recorded in the
+  # run and read by nothing. It is not part of what triage returns and starts no stage.
+  - id: admit
+    command: admit
+    model: ['@judge', medium]
+    mutates_checkout: false
+    depends_on: [judge]
+    when: "$judge.output.recommend == 'build' || $judge.output.recommend == 'narrow'"
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        admit: { type: string, enum: [auto, ask] }
+        criterion: { type: string, description: 'The line of the policy that decided it, or: all hold. When there is no policy: no policy.' }
+        why: { type: string, description: 'One or two sentences.' }
+        ask: { type: string, description: 'When it is an ask: the question you would put to the operator, with your recommendation. Otherwise empty.' }
+        sure: { type: string, enum: [high, medium, low] }
+      required: [admit, criterion, why, ask, sure]

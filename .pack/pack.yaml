@@ -31,6 +31,13 @@ inputs:
       Path to the project's own test policy, a document that says what its
       maintainers hold tests to. Relative to the project, or absolute. Empty
       means the project has none and the pack's default applies alone.
+  admit_policy:
+    default: ""
+    description: >-
+      Path to the project's own admit policy, a document that says which items
+      may start without an operator being asked. Relative to the project, or
+      absolute. Empty means the project has none. Shadow only for now: the
+      judgment is recorded and nothing acts on it.
   discoveries_policy:
     default: ""
     description: >-
