@@ -31,10 +31,12 @@ A binding in the pack says which stage each event starts. The engine reads it wh
 
 ## What the item owns and what the run owns
 
+This split is what we believe today (last changed 2026-11-16) and moves when runs teach us otherwise.
+
 If this run died now, what must the next run know? That is the item's. What should be fresh for every attempt? That is the run's.
 
-- **Item:** identity, a reference to the contract where it was written, rulings, open asks, approvals and the head each was given at, the size budget, the model setup, the change and its head.
-- **Run:** the checkout, the agent session, the workflow source it started on, its capacity slot, evidence at a head, time and tokens spent.
+- **Item:** identity, a reference to the contract where it was written, rulings, open asks, approvals and the head each was given at, the size budget, the model setup, the change and its head, and (hypothesis, see the bet below) the agent session of each role that works it.
+- **Run:** the checkout, the transcript of the attempt, the workflow source it started on, its capacity slot, evidence at a head, time and tokens spent.
 
 Where an item stands is never stored. It is its last outcome plus its open asks. Evidence stays on the run and is looked up by item and head.
 
