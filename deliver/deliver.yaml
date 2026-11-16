@@ -178,6 +178,7 @@ nodes:
         summary: last.summary ?? '',
         asks: last.asks ?? [],
         for_next: last.for_next ?? '',
+        noticed: checks?.noticed ?? [],
       }));
     output_format:
       type: object
@@ -188,4 +189,5 @@ nodes:
         summary: { type: string }
         asks: { type: array }
         for_next: { type: string }
-      required: [outcome, ended_at, change, summary, asks, for_next]
+        noticed: { type: array, description: 'What the checks noticed that this change did not cause. A discoveries stage can start from it.' }
+      required: [outcome, ended_at, change, summary, asks, for_next, noticed]

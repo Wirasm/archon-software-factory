@@ -10,6 +10,8 @@ The project's open items:
 
 $INPUTS.open_items
 
+When no index of open items is given, find them yourself: `archon forge` searches the project's tracker and reads an item with its comments; run `archon forge --help` once. Try more than one wording, because the same defect is worded differently by whoever filed it, and a search that failed is not a search that found nothing. Read an item and its comments before you say it covers an entry or that nothing does: what an item already holds is often in a comment.
+
 You decide by this project's taste: where it is going and what its maintainers hold its code to. The discoveries policy says where that is written. Read the pack's default at `$PACK_DIR/policy/discoveries.md`. Then read the project's own at `$INPUTS.discoveries_policy`, when one is named there, and the documents it points to. Where they differ, the project's wins.
 
 Read the whole list before deciding anything. Several entries may be the same thing seen by different agents, and several small things may be one larger thing. An entry is a report, not a fact: check it against the code before you file it. Most entries are an agent's caveat about its own work, not something to act on; leave those out.
