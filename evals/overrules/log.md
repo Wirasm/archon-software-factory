@@ -89,3 +89,13 @@
 - **Why:** The refusal itself is proven (the JSON path), and the unknown-kind refusal's message is already checked. What is left is whether one message is non-empty. The project's test rulings put error wording outside what tests protect; this is close to that line. The rounds in the run were used up.
 - **Kind:** `not worth the round`.
 - **What it says about the stage:** The finding follows from the item's own acceptance line, which Claude wrote ("refused with a message that says why"). The line asked for a message, so the check asked for its proof. The miss is in the brief: say "is refused", and leave the message to the builder. Third `item_asks_unguarded` return in one day that came from an acceptance line worded more tightly than meant.
+
+## 2026-11-16: two real findings on the asks change split into issues after its one send-back
+
+- **Item and change:** Archon issue 5640 (a finished run leaves asks on its item), draft PR 5807. Head `5306f9a7b`.
+- **Run:** `review`, re-check after round 3, `codex/gpt-6.1-sol`, told; `tests`, same round, `claude/haiku`. Pack copy `src7`.
+- **What the stages returned:** review `return`, two reproduced defects: two runs of one workflow on one item completing at the same moment on PostgreSQL leave two open ask sets; and the item read reports a set as settled when an open ask in it cannot be read. Tests `return`, two groups of tests that assert message wording.
+- **What was done instead, and by whom:** Claude, acting for the operator, filed the two defects as Archon issues 5824 and 5825, treated the wording findings as notes, and started the host stage.
+- **Why:** The stop agreed with the operator: three rounds in the run, one send-back, then decide. All four earlier findings were fixed in the send-back. The first defect needs two runs of the same workflow on one item at once, which issue 5703 (in checks) removes as an ordinary case. The second needs an unreadable ask row. Neither blocks what waits on this change: asks reaching the operator, the start when asks are settled, the tracker comment, and two web-side items.
+- **Kind:** `split`; and for the tests return, `stage broke its own rule` (third time: a wording-only assertion returned by itself).
+- **What it says about the stage:** The review found a new real defect in each of three passes over a 1,900-line change, each correct. That is the size of the change showing, not a faulty review: the plan sized it l and it went to build as one piece. The reviewer's second finding was introduced by the fix to its own earlier finding, which the builder's "after a fix, go through each thing the item asks for" line did not catch.
