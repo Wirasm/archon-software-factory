@@ -95,6 +95,8 @@ nodes:
               recommend: { type: string }
               why: { type: string }
             required: [question, context, options, recommend, why]
+        reaches: { type: string, description: 'Which callers and other ways in reach what this change adds or alters, and what you saw there. Trial from 2026-11-16.' }
+        nearest_case: { type: string, description: 'The nearest case the item did not name, and what the change does in it. Trial from 2026-11-16.' }
         least_sure:
           type: string
           description: 'The part of this change you are least sure of, and what you did about it. Answer it on an approve too.'
@@ -107,4 +109,4 @@ nodes:
           description: 'Each thing a maintainer would expect you to have run or read that you did not, and why: a suite, a platform, a check the project requires before a change is proposed. Empty when there is none.'
         notes: { type: string, description: 'Anything worth saying that has no field here: doubts, things noticed.' }
         for_next: { type: string, description: 'Anything the engineer who fixes what you returned, or the maintainer who lands it needs from you that has no field here. Write it to them.' }
-      required: [outcome, summary, item_lines, findings, noticed, checked, least_sure, safety_net, not_checked, asks, notes, for_next]
+      required: [outcome, summary, item_lines, findings, noticed, checked, reaches, nearest_case, least_sure, safety_net, not_checked, asks, notes, for_next]
