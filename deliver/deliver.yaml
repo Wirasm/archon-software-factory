@@ -102,3 +102,43 @@ nodes:
 
               ## From the product review (is the change right for the product's users)
               $product.output
+
+  # What the place the change is proposed says about it: the project's own checks and any
+  # review left there. Runs only on a change our checks approved. A finding goes to the same
+  # builder, which pushes its fix, and the host is read again.
+  - id: hostrounds
+    depends_on: [rounds]
+    when: "$rounds.output.outcome == 'approve'"
+    loop_group:
+      max_iterations: 3
+      fresh_context: true
+      until_bash: outcome=$host.output.outcome; test "$outcome" != return
+      nodes:
+        - id: hostfix
+          command: fix-host
+          model: ['@builder', large]
+          context: { resume: build }
+          when: "$LOOP_PREV.host.output.outcome == 'return'"
+          output_format:
+            type: object
+            additionalProperties: false
+            properties:
+              outcome: { type: string, enum: [fixed, ask, stop] }
+              summary: { type: string, description: 'What you fixed, one line per finding.' }
+              disputed:
+                type: array
+                items: { type: string }
+                description: 'Each finding you did not fix because you think it is wrong, with what you ran.'
+              commit: { type: string, description: 'The commit that holds the fix. Empty when there is none.' }
+              for_next: { type: string, description: 'Anything the engineer who checks this again needs from you that has no field here. Write it to them.' }
+            required: [outcome, summary, disputed, commit, for_next]
+
+        - id: host
+          include: host
+          depends_on: [hostfix]
+          trigger_rule: all_done
+          with:
+            item: $INPUTS.item
+            change: $build.output.proposed
+            returned_before: $LOOP_PREV.host.output
+            builder_reply: $hostfix.output
