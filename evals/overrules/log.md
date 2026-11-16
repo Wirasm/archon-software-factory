@@ -49,3 +49,33 @@
 - **Why:** It was the third round in a row to find one more reader mishandling `''`: the console in round 2, four CLI and core views in round 3, the fixture runner in round 4. An outcome is a name an operator and a later stage read, and an empty one says nothing. The builder then confirmed nothing shipped could depend on it: on dev an outcome must be a boolean, and named outcomes exist only on this branch.
 - **Kind:** `better fix`.
 - **What it says about the stage:** Each finding was correct on its own, and the builder had flagged in round 3 that refusing `''` "would be a separate language decision". Neither stage raised it as an ask, so three rounds were spent on the symptom. Hypothesis: when a reviewer returns the same class of finding a second time, it should name the class and ask whether the case should exist; and a builder that sees a decision it will not make should return it as an ask, not a note.
+
+## 2026-11-16: a loop-path test for a changed provider not sent back a fifth time
+
+- **Item and change:** Archon issue 5711, draft PR 5780. Base `1bd1f6cce`, head `e0e1ae6dd`.
+- **Run:** `tests`, run `f3792e7a-73f2-456b-9a4c-0d7ade9937e4`, `claude/haiku`, round 4 (the first send-back after three rounds inside the run), told. 4,928,713 input tokens. Pack copy `src7`. The review in the same round returned `approve`.
+- **What the stage returned:** `return`, one finding, `item_asks_unguarded`: removing the provider comparison on the loop-body path fails no test; it gave the test to add in full.
+- **What was done instead, and by whom:** Claude, acting for the operator, did not send it back and moved the change on to the host stage.
+- **Why:** The stop agreed with the operator the same day: after the three rounds in the run and one send-back, decide instead of sending back again. The behaviour is implemented and the review approves. The comparison is one shared function that a test on the item path already guards; what is unguarded is the loop path calling it with the provider. One more round would cost a full builder turn for one test.
+- **Kind:** `not worth the round`.
+- **What it says about the stage:** The finding is correct and well evidenced, and the stage's recipe was complete. This is the half of a round-3 finding the builder did not finish, so the miss is the builder's. Hypothesis to check on later runs: the fixer now reads the three reports as written (trial from 11-16); a finding half-fixed because the verdict shortened it should become rarer.
+
+## 2026-11-16: an interrupted round's stale scratch split into its own issue at round 8
+
+- **Item and change:** Archon issue 5745, PR 5759. Base `babfb0764`, head `183511cfd`.
+- **Run:** `review`, run `8138d382-d179-40d7-832a-2240f51cff99`, `codex/gpt-6.1-sol`, round 8, told. 1,656,641 input tokens. Pack copy `src7`.
+- **What the stage returned:** `return`: a body node re-run after an interrupted round gets its killed predecessor's scratch; with a registered worktree in it, resume fails. Reproduced by the reviewer in a copy.
+- **What was done instead, and by whom:** Claude, acting for the operator, filed it as Archon issue 5809 and moved the change on to the host stage. The operator is told.
+- **Why:** Round 8, each sent back by hand. The finding is real, but it lives where this change meets PR 5758 (a resumed loop continues its round), which merged the same day after this item was planned. Nothing shipped uses node scratch yet, so no existing workflow regresses; the two items waiting to adopt it (5761, 5691) are held by this change not landing.
+- **Kind:** `split`.
+- **What it says about the stage:** The reviewer was right, and said itself that the interrupted-round behaviour predates the change while the preserved scratch is new. No stage can say "this is now a second item": the only outcomes are approve and return. Hypothesis: a check needs a way to return a real finding as a follow-up item when the change is otherwise sound and the finding comes from another change landing meanwhile; and the round count needs a stop the pack owns.
+
+## 2026-11-16: a test returned only for asserting a log event name
+
+- **Item and change:** Archon issue 5745, PR 5759. Base `babfb0764`, head `183511cfd`.
+- **Run:** `tests`, run `6ee15011-c7b9-474f-8205-fee261582d15`, `claude/haiku`, round 8, told. 3,446,028 input tokens. Pack copy `src7`.
+- **What the stage returned:** `return`, one finding, `fails_for_other_reasons`: one assertion checks the event name of a logged failed release; renaming the key fails the test with no change in behaviour. It said itself "not a merge blocker on its own".
+- **What was done instead, and by whom:** Claude, acting for the operator, treated it as a note and did not send it back.
+- **Why:** The pack's own trial rule since 11-16: an excess test or assertion is a note, never a return by itself. Fifteen other tests in the file were judged to earn their place.
+- **Kind:** `stage broke its own rule`.
+- **What it says about the stage:** The `noted` tier did not hold: the stage classified a wording-only assertion as a fault and returned on it alone. Second time seen. Hypothesis: the outcome rule has to say it in the outcome list itself (return only when a behaviour the item asks for is unguarded or a test cannot fail), not only in the paragraph on notes.
