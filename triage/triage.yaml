@@ -2,7 +2,9 @@ name: triage
 description: |
   Take one work item through triage: judge what should happen to it, and when
   it should be built, place it among the project's other open work. Two stages
-  in one run, until the engine can start a stage on another stage's outcome.
+  in one run: they belong to the same moment for the same item. The run ends
+  with the judgment's recommendation as its outcome, which a binding can start
+  the next stage on.
 
 inputs:
   item:
@@ -13,14 +15,17 @@ inputs:
     description: >-
       The project's other open items, as a short index that says where each can be read in full.
 
+returns: { node: judge, outcome: recommend }
+
 nodes:
   - id: judge
-    workflow: judge
+    include: judge
     with:
       item: $INPUTS.item
+      triage_policy: $INPUTS.triage_policy
 
   - id: link
-    workflow: link
+    include: link
     depends_on: [judge]
     when: "$judge.output.recommend == 'build' || $judge.output.recommend == 'narrow'"
     with:

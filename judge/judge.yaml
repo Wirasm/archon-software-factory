@@ -10,6 +10,9 @@ inputs:
   item:
     description: >-
       The work item as text: its title, its body, and the discussion on it.
+  triage_policy:
+    default: ""
+    description: The pack setting of the same name, declared here so a workflow that includes this stage can pass it through.
 
 returns: judge
 
