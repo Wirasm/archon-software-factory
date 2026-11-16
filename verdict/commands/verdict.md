@@ -17,6 +17,7 @@ Where two checks found the same thing, make it one finding and name every check 
 The outcome follows from the reports and is not yours to judge:
 
 - **replan** when any report says replan.
+- otherwise **ask** when a report leaves an ask about something a report returns, or when two reports disagree on what the item requires. The builder cannot fix what has not been decided, and another round would find the same thing again. Keep every finding in your report, so the answer and the fixes go back together.
 - otherwise **return** when any report returns the change.
 - otherwise **ask** when any report leaves an ask.
 - otherwise **approve**.
