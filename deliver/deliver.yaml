@@ -73,7 +73,7 @@ nodes:
           depends_on: [fix]
           trigger_rule: all_done
           bash: |
-            onto=$INPUTS.land_on
+            onto="${INPUTS_LAND_ON:-}"
             [ -n "$onto" ] || onto=$BASE_BRANCH
             git merge-base HEAD "origin/$onto" 2>/dev/null || git merge-base HEAD "$onto"
 
