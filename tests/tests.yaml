@@ -28,9 +28,10 @@ returns: { node: tests, outcome: outcome }
 nodes:
   - id: tests
     command: tests
-    # A small model sometimes fails to produce a valid report on a large change. A second
-    # attempt starts with a fresh context, which is what gets past it.
-    retry: { max_attempts: 2, on_error: all }
+    # A small model sometimes fails to produce a report that meets the schema on a large
+    # change. A second attempt starts with a fresh context, which is what gets past it.
+    # `schema_unmet` retries that and the transient failures, and not an unknown failure.
+    retry: { max_attempts: 2, on_error: schema_unmet }
     output_format:
       type: object
       additionalProperties: false
