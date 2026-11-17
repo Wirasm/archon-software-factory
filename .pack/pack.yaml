@@ -80,6 +80,25 @@ inputs:
 # Not declared here yet, because the engine has no pack declaration for them:
 # the starts that follow answered asks (a trigger file with `on.asksSettled`).
 bindings:
+  # A work order from an operator: `archon trigger fire --config <this file> --inputs order.json`,
+  # where order.json holds `key` (the item's key), and `source`, `text`, `land_on`, `part_of`.
+  order:
+    workflow: order
+    resource: order
+    capacity: 3
+    overlap: queue
+    item: { field: key }
+  triage-after-order:
+    workflow: triage
+    resource: triage
+    capacity: 3
+    overlap: queue
+    run_ended:
+      workflow: order
+      outcome: ready
+    inputs:
+      item: { result: /item }
+      land_on: { result: /land_on }
   plan-after-triage:
     workflow: plan
     resource: plan
@@ -90,6 +109,7 @@ bindings:
       outcome: [build, narrow]
     inputs:
       item: { input: item }
+      land_on: { input: land_on }
       judgment: { result: "" }
   deliver-after-plan:
     workflow: deliver
@@ -101,6 +121,7 @@ bindings:
       outcome: planned
     inputs:
       item: { input: item }
+      land_on: { input: land_on }
       plan: { result: "" }
   landgate-after-deliver:
     workflow: landgate

@@ -15,6 +15,9 @@ inputs:
   before:
     default: "Nothing. This item has not been delivered before."
     description: What the last delivery run on this item ended with.
+  land_on:
+    default: ""
+    description: The branch this item's change lands on. Empty means the project's base branch.
   build_policy:
     default: ""
     description: The pack setting of the same name, declared here so a workflow that includes this stage can pass it through.

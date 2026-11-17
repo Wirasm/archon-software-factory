@@ -1,0 +1,229 @@
+name: inspect
+description: |
+  Review a change someone else proposed, such as a contributor's pull request, and post the
+  report where the change is proposed. It reads the change's own description as the item,
+  checks out the proposed commit, runs the review and the test check side by side, sorts
+  what they found, and posts one formatted report with findings on their lines. It changes
+  nothing in the change and decides nothing for the maintainer: the report is what they read.
+
+inputs:
+  change:
+    description: A link to where the change is proposed (a pull request).
+  answers:
+    default: "None."
+    description: Decisions an operator already made about this change.
+  review_policy:
+    default: ""
+    description: The pack setting of the same name.
+  test_policy:
+    default: ""
+    description: The pack setting of the same name.
+
+returns: { node: report, outcome: outcome }
+
+nodes:
+  # What is proposed, read through the forge: the description is the item, and the forge
+  # names the commit to review and the branch it is proposed against.
+  - id: read
+    runtime: bun
+    mutates_checkout: false
+    with:
+      change: $INPUTS.change
+    script: |
+      import { emit, forge, input } from 'archon:script';
+      const change = input('change').trim();
+      const refused = (why: string) => emit({ outcome: 'refused', item: '', head: '', number: '', onto: '', why });
+      try {
+        const where = forge('resolve', { remote: change, web: true });
+        if (where.kind !== 'resolved' || where.subject?.kind !== 'pr') {
+          refused(`This is not a proposed change on a forge this install can read: ${change}`);
+        } else {
+          const ref = { repo: where.repo, number: where.subject.number };
+          const seen = forge('pr.view', { selector: { kind: 'number', ref } });
+          const talk = forge('workitem.comments', { subject: { kind: 'pr', ref } });
+          const said = (talk.comments ?? [])
+            .map((c: any) => `**${c.author?.login ?? 'someone'}**:\n\n${String(c.body ?? '').trim()}`)
+            .join('\n\n');
+          const item =
+            `---\nid: change-${ref.number}\nsource: ${seen.pr.url}\n---\n\n# ${seen.title}\n\n` +
+            `This is a change proposed by ${seen.author?.login ?? 'a contributor'} against the branch \`${seen.pr.base}\`. ` +
+            'No separate work item was given: the description below, written by its author, is the item. ' +
+            'Judge the change against what it says it does, against the project\'s own guidance, and against what the project is for. ' +
+            'Say plainly what you could run and what you could only read.\n\n' +
+            `${String(seen.body ?? '').trim()}\n\n## Discussion\n\n${said || 'No comments.'}`;
+          emit({ outcome: 'ready', item, head: seen.pr.head_revision, number: String(ref.number), onto: seen.pr.base, why: '' });
+        }
+      } catch (error) {
+        refused(`The change could not be read: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [ready, refused] }
+        item: { type: string }
+        head: { type: string }
+        number: { type: string }
+        onto: { type: string }
+        why: { type: string }
+      required: [outcome, item, head, number, onto, why]
+
+  # The proposed commit, checked out here, and the commit it was built on.
+  - id: base
+    depends_on: [read]
+    when: "$read.output.outcome == 'ready'"
+    bash: |
+      set -e
+      head=$read.output.head; number=$read.output.number; onto=$read.output.onto
+      git fetch -q origin "$onto"
+      git fetch -q origin "$head" 2>/dev/null || git fetch -q origin "pull/$number/head"
+      git checkout -q --detach "$head"
+      git merge-base HEAD "origin/$onto"
+
+  - id: review
+    include: review
+    depends_on: [base]
+    with:
+      item: $read.output.item
+      answers: $INPUTS.answers
+      base: $base.output
+      review_policy: $INPUTS.review_policy
+
+  - id: tests
+    include: tests
+    depends_on: [base]
+    with:
+      item: $read.output.item
+      answers: $INPUTS.answers
+      base: $base.output
+      test_policy: $INPUTS.test_policy
+
+  - id: verdict
+    include: verdict
+    depends_on: [review, tests]
+    with:
+      item: $read.output.item
+      answers: $INPUTS.answers
+      review_policy: $INPUTS.review_policy
+      reports: |
+        ## From the review (is the change right against the item)
+        $review.output
+
+        ## From the test check (do the tests the change adds or edits earn their place)
+        $tests.output
+
+  # One formatted report where the change is proposed: the result, a table of what the
+  # change says it does and how each was checked, what must change and the notes on their
+  # lines, and what was not checked. Presentation only: nothing reads the posted report.
+  - id: report
+    depends_on: [verdict]
+    trigger_rule: all_done
+    runtime: bun
+    with:
+      read: $read.output
+      verdict: { from: $verdict.output, if_skipped: "" }
+      review: { from: $review.output, if_skipped: "" }
+      tests: { from: $tests.output, if_skipped: "" }
+      change: $INPUTS.change
+    script: |
+      import { execFileSync } from 'node:child_process';
+      import { emit, forge, input, runId } from 'archon:script';
+      const parse = (name: string) => { try { return JSON.parse(input(name) || 'null'); } catch { return null; } };
+      const read = parse('read');
+      const verdict = parse('verdict');
+      const review = parse('review');
+      const tests = parse('tests');
+      if (!read || read.outcome !== 'ready' || !verdict) {
+        emit({ outcome: 'refused', posted: '', why: read?.why || 'The checks did not finish, so there is nothing to report.' });
+      } else {
+        const cell = (text: unknown) => String(text ?? '').replace(/\r?\n+/g, ' ').replace(/\|/g, '\\|').trim();
+        const short = (text: unknown, max = 140) => { const t = cell(text); return t.length > max ? `${t.slice(0, max - 1)}…` : t; };
+        const claim = (text: unknown) => short(text, 90).replace(/[.:]$/, '');
+        const table = (head: string[], rows: string[][]) =>
+          [`| ${head.join(' | ')} |`, `| ${head.map(() => '---').join(' | ')} |`, ...rows.map(r => `| ${r.join(' | ')} |`)].join('\n');
+        const fold = (title: string, body: string) => `<details>\n<summary>${title}</summary>\n\n${body}\n\n</details>`;
+        const findings = verdict.findings ?? [];
+        const notes = verdict.notes ?? [];
+        const lines = review?.item_lines ?? [];
+        const said: Record<string, string> = { met: 'met', not_met: 'not met', not_checked: 'not checked' };
+        const how: Record<string, string> = { ran: 'ran it', read: 'read the code', none: 'not checked' };
+        const results: Record<string, string> = {
+          approve: 'approve',
+          return: `changes needed (${findings.length})`,
+          replan: 'needs a different approach',
+          ask: 'a decision is needed first',
+        };
+        const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+        const parts: string[] = [];
+        parts.push(`## Factory review: ${results[verdict.outcome] ?? verdict.outcome}`);
+        parts.push(String(verdict.summary ?? '').trim());
+        parts.push(table(['Result', 'To change', 'Notes', 'Claims met', 'Reviewed at'], [[
+          results[verdict.outcome] ?? verdict.outcome,
+          String(findings.length),
+          String(notes.length),
+          lines.length ? `${lines.filter((l: any) => l.verdict === 'met').length} of ${lines.length}` : 'n/a',
+          `\`${commit.slice(0, 9)}\``,
+        ]]));
+        if (findings.length) {
+          parts.push('### To change');
+          parts.push(table(['#', 'Where', 'What', 'Cost to leave'], findings.map((f: any, i: number) => [
+            String(i + 1), `\`${cell(f.where)}\``, short(f.what, 220), short(f.cost_to_leave, 160),
+          ])));
+          parts.push(fold('Evidence for each', findings.map((f: any, i: number) => `**${i + 1}.** ${String(f.evidence ?? '').trim()}`).join('\n\n')));
+        }
+        if (lines.length) {
+          parts.push('### What the change says it does');
+          parts.push(table(['Claim', 'Result', 'Checked by'], lines.map((l: any) => [
+            claim(l.line), said[l.verdict] ?? cell(l.verdict), how[l.evidence] ?? cell(l.evidence),
+          ])));
+          parts.push(fold('How each claim was checked', lines.map((l: any) => `- **${claim(l.line)}**: ${String(l.how ?? '').trim()}`).join('\n')));
+        }
+        if (notes.length) {
+          parts.push('### Notes (these do not hold the change)');
+          parts.push(table(['Where', 'Note'], notes.map((n: any) => [`\`${cell(n.where)}\``, short(n.what, 240)])));
+        }
+        const unchecked = [...(review?.not_checked ?? []), ...(tests?.not_checked ?? [])];
+        if (unchecked.length) {
+          parts.push('### Not checked');
+          parts.push(unchecked.map((u: string) => `- ${String(u).trim()}`).join('\n'));
+        }
+        if (review?.least_sure) parts.push(`### Least sure about\n\n${String(review.least_sure).trim()}`);
+        const noticed = verdict.noticed ?? review?.noticed ?? [];
+        if (noticed.length) {
+          parts.push('### Noticed, not caused by this change');
+          parts.push(table(['Where', 'What'], noticed.map((n: any) => [`\`${cell(n.where)}\``, short(n.what, 240)])));
+        }
+        parts.push('<sub>Reviewed by the software factory: a code review and a test check on the proposed commit, then one sorting of what they found. A maintainer decides what lands.</sub>');
+        const body = (title: string, f: any, extra: string) =>
+          `**${title}** ${String(f.what ?? '').trim()}\n\n${String(f.evidence ?? '').trim()}${extra}`;
+        const all = [
+          ...findings.map((f: any) => ({ f, text: body('Must change.', f, f.cost_to_leave ? `\n\nCost to leave: ${f.cost_to_leave}` : '') })),
+          ...notes.map((f: any) => ({ f, text: body('Note, does not hold the change.', f, f.why_a_note ? `\n\n${f.why_a_note}` : '') })),
+        ];
+        const comments = all
+          .filter(({ f }) => f.path && Number.isInteger(f.line) && f.line > 0)
+          .map(({ f, text }) => ({ path: f.path, line: f.line, body: text }));
+        let posted = '';
+        let why = '';
+        try {
+          const where = forge('resolve', { remote: input('change').trim(), web: true });
+          const done = forge('pr.review.submit', {
+            ref: { repo: where.repo, number: where.subject.number },
+            commit,
+            key: `${runId()}:${commit}`,
+            summary: parts.join('\n\n'),
+            comments,
+          });
+          posted = done?.review?.url ?? '';
+        } catch (error) {
+          why = `The report was not posted: ${error instanceof Error ? error.message : String(error)}`;
+          console.error(why);
+        }
+        emit({ outcome: verdict.outcome, posted, why });
+      }
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [approve, return, replan, ask, refused] }
+        posted: { type: string, description: 'Where the report was posted. Empty when it was not.' }
+        why: { type: string, description: 'Why nothing was posted, when nothing was.' }
+      required: [outcome, posted, why]

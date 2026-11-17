@@ -1,0 +1,76 @@
+name: order
+description: |
+  Take a work order from an operator and make it one work item the factory can read.
+  A work order names its work by a link to an item on the project's forge, by text, or
+  both, and may say where the change lands and which larger item it is part of. This
+  stage reads and judges nothing: it gathers the text and hands the order on.
+
+inputs:
+  source:
+    default: ""
+    description: A link to the work item on the project's forge (an issue, for example). Empty when the work lives in no tracker.
+  text:
+    default: ""
+    description: The work as text. With a source, it is added below what the source says, as the operator's own words.
+  land_on:
+    default: ""
+    description: The branch this item's change lands on. Empty means the project's base branch.
+  part_of:
+    default: ""
+    description: The key of the larger item this one is a member of, when it is one. Empty when it stands alone.
+
+returns: { node: order, outcome: outcome }
+
+nodes:
+  - id: order
+    runtime: bun
+    mutates_checkout: false
+    with:
+      source: $INPUTS.source
+      text: $INPUTS.text
+      land_on: $INPUTS.land_on
+      part_of: $INPUTS.part_of
+    script: |
+      import { emit, forge, input } from 'archon:script';
+      const source = input('source').trim();
+      const text = input('text').trim();
+      const order = { land_on: input('land_on').trim(), part_of: input('part_of').trim() };
+      const refused = (why: string) => emit({ outcome: 'refused', item: '', ...order, why });
+      const said = text ? `\n\n## From the operator who ordered this\n\n${text}` : '';
+      if (!source && !text) {
+        refused('The order names no work: give a source, text, or both.');
+      } else if (!source) {
+        emit({ outcome: 'ready', item: text, ...order, why: '' });
+      } else {
+        let item = '';
+        let why = '';
+        try {
+          const where = forge('resolve', { remote: source, web: true });
+          if (where.kind !== 'resolved' || !where.subject) {
+            why = `The source is not an item on a forge this install can read: ${source}`;
+          } else {
+            const ref = { repo: where.repo, number: where.subject.number };
+            const work = forge('workitem.view', { ref });
+            const seen = forge('workitem.comments', { subject: { kind: where.subject.kind, ref } });
+            const talk = (seen.comments ?? [])
+              .map((c: any) => `**${c.author?.login ?? 'someone'}**:\n\n${String(c.body ?? '').trim()}`)
+              .join('\n\n');
+            item =
+              `---\nid: ${where.subject.number}\nsource: ${work.url ?? source}\n---\n\n` +
+              `# ${work.title}\n\n${String(work.body ?? '').trim()}\n\n## Discussion\n\n${talk || 'No comments.'}${said}`;
+          }
+        } catch (error) {
+          why = `The source could not be read: ${error instanceof Error ? error.message : String(error)}`;
+        }
+        if (item) emit({ outcome: 'ready', item, ...order, why: '' });
+        else refused(why);
+      }
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [ready, refused] }
+        item: { type: string, description: 'The work item as text.' }
+        land_on: { type: string, description: 'The branch the change lands on. Empty means the base branch.' }
+        part_of: { type: string, description: 'The larger item this one is a member of. Empty when none.' }
+        why: { type: string, description: 'Why the order was refused. Empty when it was not.' }
+      required: [outcome, item, land_on, part_of, why]

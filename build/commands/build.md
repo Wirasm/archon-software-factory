@@ -26,6 +26,8 @@ When you run the project's own software, give it scratch data and a scratch home
 
 You are in your own checkout of the project, on your own branch. Commit your work there.
 
+Where this change lands: `$INPUTS.land_on` (empty means the project's base branch). When a branch is named, the change is built on that branch and proposed against it: before you write anything, put your own branch on its tip, and say in your result that you did.
+
 Docs that your change makes untrue are part of the change. Bring them in line in the same work.
 
 Then open the change for review as a draft, the way this project proposes changes. Write its title and description for the maintainers: you know why the change is shaped as it is, where you left the plan and what you are unsure of, and nobody after you will. Where the project has nowhere to propose a change, leave the branch as it is and say so.

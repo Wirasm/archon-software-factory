@@ -7,6 +7,9 @@ model: ['@planner', large]
 inputs:
   item:
     description: The work item as text.
+  land_on:
+    default: ""
+    description: The branch this item's change lands on. Empty means the project's base branch. This stage passes it on.
   judgment:
     result_of: triage
     description: What triage concluded about the item. Read from the item when the start does not pass it.

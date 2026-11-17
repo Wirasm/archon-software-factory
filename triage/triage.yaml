@@ -10,6 +10,9 @@ inputs:
   item:
     description: >-
       The work item as text: its title, its body, and the discussion on it.
+  land_on:
+    default: ""
+    description: The branch this item's change lands on. Empty means the project's base branch. This stage passes it on.
   open_items:
     default: "None listed."
     description: >-
