@@ -122,3 +122,12 @@
 - **Why:** the test and the temp-name change came from a review finding in the last round: two `archon trigger add` of the same file at once could rename a copy the other is still writing. Nobody adds one file eight times at once. Windows refuses a rename onto a name another rename is replacing, so the test cannot pass there, and the add fails loudly with nothing half-written. The item has used its two runs.
 - **Kind:** `not worth the round`.
 - **What it says about the stage:** the "ordinary use" line added to `policy/review.md` at 01:45 did not stop this finding; the reviewer described a way it happens (two operators, or a script run twice) and that was enough. Second: the host step cannot see Windows, so "ready" on a change whose whole point is Windows behaviour was not earned. A host that dispatches the full suite when the change touches file-system or process behaviour would have caught it in the run.
+
+## 2026-11-17, issue 5703 (PR 5801): host returned a ninth-round finding; merged with a follow-up
+
+- **Stage overruled:** host (run output `factory-runs/5703/host-host8.out`, model Sol), outcome `return`, one finding.
+- **The finding:** `listWaitedItemHolders` misses the newer blocker of an admitted pending run, so a lost-owner blocker is absent from attention reporting. The host ran it: the extended older-binary test got `[]`.
+- **What I did:** did not send it back. Filed it as https://github.com/coleam00/Archon/issues/5880 and merged PR 5801 at `a41f9fdaf`.
+- **Why:** the finding is true and of the same kind as round eight's (a reader of "who holds this item" that forgets the admitted pending run). It needs two binary versions on one database, an overlap and a lost owner. By the review policy in trial since today that is a note, not a return: real, written down, not ordinary use. The item had eight builder rounds; each of the last two fixed one member of this kind and the bot found the next.
+- **What the pack got wrong:** in round eight the builder was told to look for the same fault elsewhere, listed this very function, and judged it clean by reading. The host disproved that by running it. "Look for the same fault elsewhere" is not enough when the builder checks by reading: the fixer should run the failing case against each member it clears.
+- **Run meta:** rounds 1-3 in deliver, send-backs 4-8 by hand (merge-dev rounds 5 and 7); host on Sonnet missed the core finding at round 5, Sol and Opus caught it; full test run with Windows green at `a41f9fdaf` (run 44021368096).
