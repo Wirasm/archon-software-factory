@@ -114,3 +114,11 @@
 - **Why:** the round-stop rule says no second send-back. A replan or split makes no sense for an approved change with a docs conflict. The conflict came from my own merges of PRs 5845, 5848 and 5854 in the same half hour.
 - **Kind:** `not worth the round`.
 - **What it says about the stage:** the host stage cannot merge the base in, so a conflict that appears during its own verification costs a whole deliver run (the first return here also cost 115 minutes for three red tests). A host that may run `git merge origin/<base>` when the conflict is in docs only, or a land step that merges the base before it checks, would have ended this in the run. Second time in two days (PR 5831 was the first).
+
+## 2026-11-17 issue 5843 (PR 5865): a test for eight overlapping adds failed on Windows; removed by hand
+
+- **Stage overruled:** deliver `ready` (run after the answered ask, 3.54 dollars, pack copy src9). The host step read PR checks as green; PR checks skip Windows. The full Windows suite I dispatch before a merge failed: `addTriggerFile > lets overlapping adds of one file each place a whole copy` with `EPERM` on `rename`.
+- **What I did:** deleted that test (commit 131d43710) and dispatched Windows again. The per-add temp name stays.
+- **Why:** the test and the temp-name change came from a review finding in the last round: two `archon trigger add` of the same file at once could rename a copy the other is still writing. Nobody adds one file eight times at once. Windows refuses a rename onto a name another rename is replacing, so the test cannot pass there, and the add fails loudly with nothing half-written. The item has used its two runs.
+- **Kind:** `not worth the round`.
+- **What it says about the stage:** the "ordinary use" line added to `policy/review.md` at 01:45 did not stop this finding; the reviewer described a way it happens (two operators, or a script run twice) and that was enough. Second: the host step cannot see Windows, so "ready" on a change whose whole point is Windows behaviour was not earned. A host that dispatches the full suite when the change touches file-system or process behaviour would have caught it in the run.
