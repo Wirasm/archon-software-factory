@@ -21,6 +21,9 @@ inputs:
   part_of:
     default: ""
     description: The key of the larger item this one is a member of, when it is one. Empty when it stands alone.
+  depends_on:
+    default: ""
+    description: Keys of the items that must land before this one, separated by commas. Empty when none. Recorded with the order; nothing waits on it yet.
 
 returns: { node: order, outcome: outcome }
 

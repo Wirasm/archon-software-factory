@@ -21,6 +21,7 @@
     "investigate": "investigate/investigate.yaml",
     "deliver": "deliver/deliver.yaml",
     "host": "host/host.yaml",
-    "inspect": "inspect/inspect.yaml"
+    "inspect": "inspect/inspect.yaml",
+    "split": "split/split.yaml"
   }
 }

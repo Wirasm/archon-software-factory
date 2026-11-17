@@ -1,0 +1,133 @@
+name: split
+description: |
+  Cut one item into the work orders that build it: the members, what each depends on,
+  which start now, and where they land. Shadow for now: it writes the work orders as files
+  in the run's artifacts and starts nothing, so an operator can read the cut before any
+  member runs.
+
+model: ['@planner', large]
+
+inputs:
+  item:
+    description: The work item as text.
+  key:
+    default: "order"
+    description: The key of the item being cut. Members are named after it and recorded as part of it.
+  judgment:
+    result_of: triage
+    description: What triage concluded about the item. Read from the item when the start does not pass it.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
+  land_on:
+    default: ""
+    description: The branch the whole lands on. Empty means the project's base branch.
+
+returns: { node: orders, outcome: outcome }
+
+nodes:
+  - id: cut
+    command: cut
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        outcome: { type: string, enum: [whole, split] }
+        reason:
+          type: string
+          enum: [separate_outcomes, must_land_first, one_mechanism_two_forms, too_wide_for_one_run, none]
+          description: 'The one reason that decided a split. none when it stays whole.'
+        why: { type: string, description: 'Two or three sentences, from the item and the project.' }
+        members:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id: { type: string, description: 'kebab-case, short, unique among the members, such as host-identity.' }
+              title: { type: string, description: 'The outcome in one line, as a change title would say it.' }
+              brief: { type: string, description: 'The member as a work item that stands alone: problem, why it is worth solving, why now, desired outcome, invariants, acceptance.' }
+              proves: { type: string, description: 'What becomes observably true when this member lands.' }
+              start: { type: string, enum: [now, later] }
+              depends_on: { type: array, items: { type: string }, description: 'Ids of members that must land before this one. Empty when none.' }
+              waits_on: { type: string, description: 'For a member that starts later: the ruling or signal it waits on. Empty for one that starts now.' }
+            required: [id, title, brief, proves, start, depends_on, waits_on]
+        landing:
+          type: object
+          additionalProperties: false
+          properties:
+            together: { type: boolean, description: 'True when the members land on one branch that is then landed once.' }
+            branch: { type: string, description: 'The branch they land on together. Empty when each lands on the base branch.' }
+            why: { type: string }
+          required: [together, branch, why]
+        rulings:
+          type: array
+          description: 'Questions an operator must answer before a later member can start.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              question: { type: string }
+              holds: { type: array, items: { type: string }, description: 'Ids of the members it holds.' }
+            required: [question, holds]
+        left_out: { type: string, description: 'What the item asks for that no member builds, and why. Empty when nothing is left out.' }
+        sure: { type: string, enum: [high, medium, low] }
+        for_next: { type: string, description: 'Anything the operator who reads this cut needs from you that has no field here.' }
+      required: [outcome, reason, why, members, landing, rulings, left_out, sure, for_next]
+
+  # The cut as work orders an operator can read and fire: one file a member, plus an index.
+  # Nothing is started and no link is recorded: this stage is a shadow until its cuts have
+  # been read against what an operator would have done.
+  - id: orders
+    depends_on: [cut]
+    runtime: bun
+    mutates_checkout: false
+    with:
+      cut: $cut.output
+      key: $INPUTS.key
+      land_on: $INPUTS.land_on
+      dir: $ARTIFACTS_DIR
+    script: |
+      import { mkdirSync, writeFileSync } from 'node:fs';
+      import { join } from 'node:path';
+      import { emit, input } from 'archon:script';
+      const cut = JSON.parse(input('cut'));
+      const parent = input('key').trim() || 'order';
+      const landOn = cut.landing?.together && cut.landing?.branch ? String(cut.landing.branch) : input('land_on').trim();
+      const dir = join(input('dir').trim(), 'orders');
+      mkdirSync(dir, { recursive: true });
+      const keyOf = (id: string) => `${parent}-${String(id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}`;
+      const cell = (text: unknown) => String(text ?? '').replace(/\r?\n+/g, ' ').replace(/\|/g, '\\|').trim();
+      const members = (cut.members ?? []).map((m: any) => {
+        const key = keyOf(m.id);
+        const dependsOn = (m.depends_on ?? []).map(keyOf);
+        const file = join(dir, `${key}.json`);
+        writeFileSync(file, `${JSON.stringify({ key, text: m.brief, land_on: landOn, part_of: parent, depends_on: dependsOn.join(',') }, null, 2)}\n`);
+        return { key, title: m.title, start: m.start, depends_on: dependsOn, waits_on: m.waits_on ?? '', proves: m.proves, file };
+      });
+      const links = members.flatMap((m: any) => [
+        { from: m.key, kind: 'part_of', to: parent },
+        ...m.depends_on.map((to: string) => ({ from: m.key, kind: 'depends_on', to })),
+      ]);
+      const wouldStart = members.filter((m: any) => m.start === 'now' && m.depends_on.length === 0).map((m: any) => m.key);
+      const index = [
+        `# Work order ${parent}: ${cut.outcome}`,
+        cut.why,
+        `Landing: ${cut.landing?.together ? `together on \`${landOn}\`, then landed once` : 'each member on the base branch as it finishes'}. ${cut.landing?.why ?? ''}`,
+        [
+          '| Member | Starts | Depends on | Waits on | Proves |',
+          '| --- | --- | --- | --- | --- |',
+          ...members.map((m: any) => `| \`${m.key}\` ${cell(m.title)} | ${m.start} | ${m.depends_on.map((d: string) => `\`${d}\``).join(', ') || 'nothing'} | ${cell(m.waits_on) || 'nothing'} | ${cell(m.proves)} |`),
+        ].join('\n'),
+        (cut.rulings ?? []).length ? `## Rulings an operator owes\n\n${cut.rulings.map((r: any) => `- ${r.question} (holds: ${(r.holds ?? []).map(keyOf).join(', ')})`).join('\n')}` : '',
+        cut.left_out ? `## Left out\n\n${cut.left_out}` : '',
+        `Would start now, if this stage acted: ${wouldStart.join(', ') || 'nothing'}.`,
+      ].filter(Boolean).join('\n\n');
+      writeFileSync(join(dir, 'index.md'), `${index}\n`);
+      emit({ outcome: cut.outcome, parent, land_on: landOn, members, links, would_start: wouldStart, rulings: cut.rulings ?? [], index: join(dir, 'index.md'), sure: cut.sure });
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [whole, split] }
+      required: [outcome]
