@@ -8,7 +8,8 @@ inputs:
   item:
     description: The work item as text.
   plan:
-    description: What plan concluded, as its result. It holds the option plan recommends and the plan for it.
+    result_of: plan
+    description: What plan concluded, as its result. It holds the option plan recommends and the plan for it. Read from the item when the start does not pass it.
   answers:
     default: "None."
     description: Decisions an operator already made on this item.
