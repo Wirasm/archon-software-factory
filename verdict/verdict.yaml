@@ -1,7 +1,8 @@
 name: verdict
 description: |
   Put the reports several checks made on one change into one report and one
-  outcome. Trusts the reports; checks nothing again and reads no code.
+  outcome. Sorts what they found into findings, notes and things noticed.
+  Trusts the reports; checks nothing again and reads no code.
 
 model: ['@verdict', small]
 
@@ -10,6 +11,9 @@ inputs:
     description: The work item as text.
   reports:
     description: Each check's result, labelled with the check it came from.
+  review_policy:
+    default: ""
+    description: The pack setting of the same name, declared here so a workflow that includes this stage can pass it through.
 
 returns: { node: verdict, outcome: outcome }
 
@@ -36,6 +40,19 @@ nodes:
               cost_to_leave: { type: string }
               reported_by: { type: array, items: { type: string }, description: 'Every check that reported it.' }
             required: [what, where, evidence, cost_to_leave, reported_by]
+        notes:
+          type: array
+          description: 'Real and on the record, and not a reason to return the change. Trial from 2026-11-17.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              what: { type: string }
+              where: { type: string }
+              evidence: { type: string }
+              why_a_note: { type: string, description: 'Which line of the review policy makes this a note and not a finding.' }
+              reported_by: { type: array, items: { type: string } }
+            required: [what, where, evidence, why_a_note, reported_by]
         disagreements:
           type: array
           items: { type: string }
@@ -80,4 +97,4 @@ nodes:
               from: { type: string, description: 'The check that left it.' }
             required: [question, context, options, recommendation, from]
         for_next: { type: string, description: 'Anything the maintainer deciding on this change needs from you that has no field here. Write it to them.' }
-      required: [outcome, summary, findings, disagreements, noticed, asks, for_next]
+      required: [outcome, summary, findings, notes, disagreements, noticed, asks, for_next]

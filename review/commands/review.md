@@ -18,7 +18,7 @@ What the builder says it did about that:
 
 $INPUTS.builder_reply
 
-When something was returned before, the builder's account of the fix is a claim. First find out whether each thing returned is fixed. Then look at the change as it now stands, including what the fix itself changed, as if you had not seen it before.
+When something was returned before, the builder's account of the fix is a claim. First find out whether each thing returned is fixed. Then read what the fix changed, and what that now touches, with the same care as a first reading. An earlier round already read the rest and passed it. Go back to it when the fix changes what it means, or when you see a way it goes wrong in ordinary use that was missed. A real fault that was missed is still a finding; say that it was missed. What you would only do differently on a second reading is not.
 
 Judge the change against the item: what it is for, what must hold, and how it is accepted. For each of those, say whether the change meets it and how you know.
 
@@ -32,7 +32,9 @@ Where the change could be wrong in a way its own tests do not show, find out by 
 
 Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit that you make under `$NODE_SCRATCH_DIR`: that directory is yours alone and is removed when you finish. Change nothing in the change itself.
 
-Something wrong that this change did not cause is not a finding against it. Report it as noticed. When what you found sits next to the change, check the commit it was built on before you decide which it is.
+Report everything you can find in this reading. Each round costs the builder a fix and every check another run, so a finding held back for later is the expensive kind.
+
+Something wrong that this change did not cause is not a finding against it. Code that came in through a merge of the branch the change is proposed against is not this change either, unless the way a conflict was resolved made it wrong. Report it as noticed. When what you found sits next to the change, check the commit it was built on before you decide which it is.
 
 When what you are about to return is the same kind of thing you returned before, one more place with the same fault, name the kind and ask whether that case should exist at all.
 

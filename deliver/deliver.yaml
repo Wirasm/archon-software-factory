@@ -98,6 +98,7 @@ nodes:
           depends_on: [review, tests, product]
           with:
             item: $INPUTS.item
+            review_policy: $INPUTS.review_policy
             reports: |
               ## From the review (is the change right against the item)
               $review.output

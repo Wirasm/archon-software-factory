@@ -20,7 +20,7 @@ What the builder says it did about that:
 
 $INPUTS.builder_reply
 
-When something was returned before, the builder's account of the fix is a claim. First find out whether each thing returned is fixed. Then look at the change as it now stands, including what the fix itself changed, as if you had not seen it before.
+When something was returned before, the builder's account of the fix is a claim. First find out whether each thing returned is fixed. Then read what the fix changed, and what that now touches, with the same care as a first reading. An earlier round already read the rest and passed it. Go back to it when the fix changes what it means, or when you see a test that cannot fail, or fails for other reasons, that was missed. A real fault that was missed is still a finding; say that it was missed. What you would only do differently on a second reading is not.
 
 When you run the project's own software, give it scratch data and a scratch home of its own. A database or other server you need is one you start yourself, reachable only through a socket in a directory you made, and you stop it when you are done. Never connect to a server you did not start, whatever port answers: it holds someone's real data. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
 
