@@ -6,6 +6,9 @@ description: |
   stage reads and judges nothing: it gathers the text and hands the order on.
 
 inputs:
+  key:
+    default: ""
+    description: The key of the item this order is about, such as issue-123. The binding that starts this stage puts the run on that item.
   source:
     default: ""
     description: A link to the work item on the project's forge (an issue, for example). Empty when the work lives in no tracker.
