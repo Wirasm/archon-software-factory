@@ -106,3 +106,11 @@
 - **What I did:** removed the refusals for empty host entries, repeated URL parameters and services (78 lines to about 20 in the guard, a 13-input test loop deleted) and kept one rule: PGHOST, PGHOSTADDR or a DATABASE_URL host must be set. Marked the PR ready.
 - **Why:** the item's failure is a check run with no server named, which reached a PostgreSQL that was not ours. Every round since round 2 added a guard for a setting nobody writes by accident (`PGHOST=,`, a hostless service file). That is speculative hardening; each fix gave the reviewer a new libpq corner to find, so the rounds could not end.
 - **Finding for the pack:** `policy/review.md` has no line against speculative hardening. Trial added the same day: a finding needs a way the failure happens in ordinary use.
+
+## 2026-11-17 issue 5668 (PR 5860): second `returned` was only a merge conflict; merged dev by hand
+
+- **Stage overruled:** host `return`, deliver `returned`, after the one send-back (run e95153c5, deliver, 32.4 minutes, 5.93 dollars, pack copy src9). Review, tests, product and verdict all approved in that run, and all 19 checks were green. The only open point: dev moved while the host was verifying, and the PR conflicted.
+- **What I did:** merged dev into the branch in its worktree. One file conflicted, `guides/workflow-triggers.md`: both sides had edited the same paragraph. Kept the branch's new paragraph on queued starts and dev's wording of the next one. Pushed as 4f3c2dbde and dispatched the Windows suite.
+- **Why:** the round-stop rule says no second send-back. A replan or split makes no sense for an approved change with a docs conflict. The conflict came from my own merges of PRs 5845, 5848 and 5854 in the same half hour.
+- **Kind:** `not worth the round`.
+- **What it says about the stage:** the host stage cannot merge the base in, so a conflict that appears during its own verification costs a whole deliver run (the first return here also cost 115 minutes for three red tests). A host that may run `git merge origin/<base>` when the conflict is in docs only, or a land step that merges the base before it checks, would have ended this in the run. Second time in two days (PR 5831 was the first).
