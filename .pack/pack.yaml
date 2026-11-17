@@ -77,8 +77,8 @@ inputs:
 # and `archon trigger add` registers each. The project's policies reach the stages through
 # the settings above, so no binding names one.
 #
-# Not declared here yet, because the engine has no pack declaration for them:
-# the starts that follow answered asks (a trigger file with `on.asksSettled`).
+# A stage that ended with asks starts again when they are answered, with the answers as
+# decisions already made. Delivery continues in the checkout it left.
 bindings:
   # A work order from an operator: `archon trigger fire --config <this file> --inputs order.json`,
   # where order.json holds `key` (the item's key), and `source`, `text`, `land_on`, `part_of`.
@@ -145,3 +145,29 @@ bindings:
       outcome: ready
     inputs:
       discoveries: { result: /noticed }
+  plan-after-answers:
+    workflow: plan
+    resource: plan
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: plan
+      settled: answered
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      links: { input: links }
+      answers: { answers: true }
+  deliver-after-answers:
+    workflow: deliver
+    resource: deliver
+    capacity: 5
+    overlap: queue
+    asks_settled:
+      workflow: deliver
+      settled: answered
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { answers: true }
