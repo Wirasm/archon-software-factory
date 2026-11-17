@@ -38,6 +38,9 @@ nodes:
 
   # Shadow measurement, 2026-11-16: may this item start without an operator? Recorded in the
   # run and read by nothing. It is not part of what triage returns and starts no stage.
+  # Nothing is admitted automatically: every item starts because an operator ordered it.
+  # The `admitted` node below records what the judgment would have done, so the prompt
+  # and the project's admit policy can be tuned against what then happened to the item.
   - id: admit
     command: admit
     model: ['@judge', medium]
@@ -112,3 +115,22 @@ nodes:
         later: { type: string, description: 'When split: what comes after, and the signal the earlier work must show first. Otherwise empty.' }
         sure: { type: string, enum: [high, medium, low] }
       required: [split, reason, why, now, later, sure]
+
+  # What admit would have done, as records for `archon metrics`: one per item, latest wins.
+  - id: admitted
+    depends_on: [admit]
+    runtime: bun
+    mutates_checkout: false
+    with:
+      admit: $admit.output
+    script: |
+      import { emit, input, item } from 'archon:script';
+      let said = '';
+      try { said = JSON.parse(input('admit') || '{}').admit ?? ''; } catch {}
+      const subject = item()?.item.key ?? null;
+      const count = (name: string, value: number) => ({ name, unit: 'items', subject, kind: 'count', value });
+      emit({
+        would: said,
+        metrics: said ? [count('sf.admit_would_start', said === 'auto' ? 1 : 0), count('sf.admit_would_ask', said === 'ask' ? 1 : 0)] : [],
+      });
+    output_format: { type: object }
