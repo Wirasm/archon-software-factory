@@ -398,6 +398,27 @@ nodes:
           artifacts: [],
         };
       });
+      // An ending that is not ready stops the item, so it always tells an operator: when the
+      // stage that ended it attached no question, the run leaves one saying what it knows.
+      if (outcome !== 'ready' && outcome !== 'waiting' && asks.length === 0) {
+        const said: Record<string, string> = {
+          ask: 'A stage asked for a decision and attached no question.',
+          returned: 'The checks returned the change and the rounds are used up.',
+          replan: 'A check says the change needs a different approach.',
+        };
+        asks.push({
+          question: 'Delivery of this item stopped. What should happen to the change now?',
+          context: [said[outcome] ?? `Delivery ended as ${outcome}.`, String(last.summary ?? ''), String(last.for_next ?? '')]
+            .filter(Boolean).join(' '),
+          options: [
+            { id: 'send-back-once', does: 'The same builder continues on the change with what you say in your answer.', cost: 'One more delivery run.' },
+            { id: 'replan', does: 'The item goes back to planning with what you say in your answer.', cost: 'The work so far may be discarded.' },
+            { id: 'hold', does: 'Nothing proceeds until an operator says more.', cost: 'The item waits.' },
+          ],
+          recommendation: { option: 'hold', why: 'No stage recommended a way forward, so the run does not guess one.' },
+          artifacts: [],
+        });
+      }
       console.log(JSON.stringify({
         outcome,
         ended_at: host ? 'host' : 'checks',
