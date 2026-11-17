@@ -112,6 +112,57 @@ nodes:
               ## From the builder (what it did about what was returned last round; empty in the first round)
               $fix.output
 
+        # Shows this round's review where the change is proposed, findings and notes on
+        # their lines. Presentation only: the verdict is the run's, nothing reads the
+        # posted review, and a post that fails is said on stderr and changes nothing.
+        # It hands the verdict on unchanged, so the group still ends with it.
+        - id: shown
+          depends_on: [verdict]
+          runtime: bun
+          with:
+            verdict: $verdict.output
+            change: $build.output.proposed
+          script: |
+            import { execFileSync } from 'node:child_process';
+            import { emit, forge, input, runId } from 'archon:script';
+            const verdict = JSON.parse(input('verdict'));
+            try {
+              const change = input('change').trim();
+              const where = change ? forge('resolve', { remote: change, web: true }) : null;
+              if (where && where.kind === 'resolved' && where.subject?.kind === 'pr') {
+                const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+                const by = (f: any) => `Reported by: ${(f.reported_by ?? []).join(', ')}`;
+                const finding = (f: any) =>
+                  `**Must change.** ${f.what}\n\n${f.evidence}\n\nCost to leave: ${f.cost_to_leave}\n\n${by(f)}`;
+                const note = (n: any) =>
+                  `**Note, does not hold the change.** ${n.what}\n\n${n.evidence}\n\n${n.why_a_note}\n\n${by(n)}`;
+                const all = [
+                  ...(verdict.findings ?? []).map((f: any) => ({ f, body: finding(f) })),
+                  ...(verdict.notes ?? []).map((f: any) => ({ f, body: note(f) })),
+                ];
+                const onLine = all.filter(({ f }) => f.path && Number.isInteger(f.line) && f.line > 0);
+                const noLine = all.filter(entry => !onLine.includes(entry));
+                const summary = [
+                  `**Factory review: ${verdict.outcome}.** ${(verdict.findings ?? []).length} to change, ${(verdict.notes ?? []).length} notes.`,
+                  verdict.summary,
+                  ...noLine.map(({ f, body }) => `${body}\n\nWhere: ${f.where}`),
+                ].join('\n\n');
+                const review = forge('pr.review.submit', {
+                  ref: { repo: where.repo, number: where.subject.number },
+                  commit,
+                  key: `${runId()}:${commit}`,
+                  summary,
+                  comments: onLine.map(({ f, body }) => ({ path: f.path, line: f.line, body })),
+                });
+                console.error(`shown: review posted on ${change}: ${JSON.stringify(review).slice(0, 300)}`);
+              } else {
+                console.error('shown: the change is proposed nowhere a review can be posted; nothing posted.');
+              }
+            } catch (error) {
+              console.error(`shown: the review was not posted: ${error instanceof Error ? error.message : String(error)}`);
+            }
+            emit(verdict);
+
   # The rounds ran out with the checks still returning the change. One more round is not
   # automatic: an agent reads what is left and leaves the decision as an ask, with its
   # recommendation, so the item's ending reaches an operator instead of telling nobody.

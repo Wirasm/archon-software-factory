@@ -36,10 +36,12 @@ nodes:
             properties:
               what: { type: string }
               where: { type: string }
+              path: { type: string, description: 'The one file this is best shown on, relative to the repository root, as the report names it. Empty when the report names no file.' }
+              line: { type: integer, description: 'The line in that file, on the changed side. 0 when the report names none.' }
               evidence: { type: string }
               cost_to_leave: { type: string }
               reported_by: { type: array, items: { type: string }, description: 'Every check that reported it.' }
-            required: [what, where, evidence, cost_to_leave, reported_by]
+            required: [what, where, path, line, evidence, cost_to_leave, reported_by]
         notes:
           type: array
           description: 'Real and on the record, and not a reason to return the change. Trial from 2026-11-17.'
@@ -49,10 +51,12 @@ nodes:
             properties:
               what: { type: string }
               where: { type: string }
+              path: { type: string, description: 'As on a finding.' }
+              line: { type: integer, description: 'As on a finding.' }
               evidence: { type: string }
               why_a_note: { type: string, description: 'Which line of the review policy makes this a note and not a finding.' }
               reported_by: { type: array, items: { type: string } }
-            required: [what, where, evidence, why_a_note, reported_by]
+            required: [what, where, path, line, evidence, why_a_note, reported_by]
         disagreements:
           type: array
           items: { type: string }

@@ -20,6 +20,8 @@ The review policy says what returns a change and what is a note. Read the pack's
 
 Sort by what the report itself says: who meets the fault and how, what was run, what leaving it costs. When a report does not say enough to tell a finding from a note, it is a finding. A check that sorted something itself, such as the test check's notes, has already decided: keep its choice. If two reports disagree, say so and keep both.
 
+Each finding and each note is shown on the change where it is proposed, on one line of one file. Give that file and line as the report names them. When a report names several places, take the one where a reader should start, and leave the rest in `where`.
+
 Where two checks found the same thing, make it one finding and name every check that reported it.
 
 The outcome follows from the reports and is not yours to judge:
