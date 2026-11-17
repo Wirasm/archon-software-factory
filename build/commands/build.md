@@ -14,6 +14,12 @@ Decisions already made:
 
 $INPUTS.answers
 
+What the last delivery run on this item ended with (`null` when there was none):
+
+$INPUTS.before
+
+When it names a change that is already proposed, continue that change on its branch; do not open a second one.
+
 The build policy is what this project's maintainers hold the code of a change to. Read the pack's default at `$PACK_DIR/policy/build.md`. Then read the project's own at `$INPUTS.build_policy`, when one is named there. Where they differ, the project's wins.
 
 When you run the project's own software, give it scratch data and a scratch home of its own. A database or other server you need is one you start yourself, reachable only through a socket in a directory you made, and you stop it when you are done. Never connect to a server you did not start, whatever port answers: it holds someone's real data. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.

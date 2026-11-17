@@ -71,3 +71,56 @@ inputs:
       project is for, who uses it and how it wants to feel to them, or points
       at the product and design documents that do. Relative to the project,
       or absolute. Empty means the pack's default applies alone.
+
+# The starts the factory recommends between its stages. A declaration starts nothing:
+# `archon pack bindings` writes one trigger file per binding and outcome for a repository,
+# and `archon trigger add` registers each. The project's policies reach the stages through
+# the settings above, so no binding names one.
+#
+# Not declared here yet, because the engine has no pack declaration for them:
+# the starts that follow answered asks (a trigger file with `on.asksSettled`).
+bindings:
+  plan-after-triage:
+    workflow: plan
+    resource: plan
+    capacity: 3
+    overlap: queue
+    run_ended:
+      workflow: triage
+      outcome: [build, narrow]
+    inputs:
+      item: { input: item }
+      judgment: { result: "" }
+  deliver-after-plan:
+    workflow: deliver
+    resource: deliver
+    capacity: 5
+    overlap: queue
+    run_ended:
+      workflow: plan
+      outcome: planned
+    inputs:
+      item: { input: item }
+      plan: { result: "" }
+  landgate-after-deliver:
+    workflow: landgate
+    resource: landgate
+    capacity: 3
+    overlap: queue
+    run_ended:
+      workflow: deliver
+      outcome: ready
+    inputs:
+      item: { input: item }
+      change: { result: /change }
+      delivered: { result: "" }
+  discoveries-after-deliver:
+    workflow: discoveries
+    resource: discoveries
+    capacity: 2
+    overlap: queue
+    run_ended:
+      workflow: deliver
+      outcome: ready
+    inputs:
+      discoveries: { result: /noticed }

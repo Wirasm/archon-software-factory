@@ -10,6 +10,12 @@ What triage concluded:
 
 $INPUTS.judgment
 
+Decisions an operator already made on this item:
+
+$INPUTS.answers
+
+A decision is part of the item. Where the item's text and a decision differ, the decision holds; plan from it and do not ask it again.
+
 What had to land before it:
 
 $INPUTS.links

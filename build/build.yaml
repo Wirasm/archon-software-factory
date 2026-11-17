@@ -12,6 +12,9 @@ inputs:
   answers:
     default: "None."
     description: Decisions an operator already made on this item.
+  before:
+    default: "Nothing. This item has not been delivered before."
+    description: What the last delivery run on this item ended with.
   build_policy:
     default: ""
     description: The pack setting of the same name, declared here so a workflow that includes this stage can pass it through.

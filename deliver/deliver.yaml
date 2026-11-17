@@ -8,7 +8,11 @@ inputs:
   item:
     description: The work item as text.
   plan:
-    description: What plan concluded, as its result.
+    result_of: plan
+    description: What plan concluded, as its result. Read from the item when the start does not pass it.
+  before:
+    result_of: deliver
+    description: What the last delivery run on this item ended with, when there was one. Read from the item.
   answers:
     default: "None."
     description: Decisions an operator already made on this item.
@@ -24,6 +28,7 @@ nodes:
       item: $INPUTS.item
       plan: $INPUTS.plan
       answers: $INPUTS.answers
+      before: $INPUTS.before
       build_policy: $INPUTS.build_policy
 
   # One round: the builder fixes what the last round returned (never on the first
@@ -126,6 +131,7 @@ nodes:
           with:
             verdict: $verdict.output
             change: $build.output.proposed
+            earlier: $LOOP_PREV.shown.output
           script: |
             import { execFileSync } from 'node:child_process';
             import { emit, forge, input, runId } from 'archon:script';
@@ -165,7 +171,28 @@ nodes:
             } catch (error) {
               console.error(`shown: the review was not posted: ${error instanceof Error ? error.message : String(error)}`);
             }
-            emit(verdict);
+            // Records for `archon metrics`. The latest record per change wins, so each round
+            // carries the running totals: after the last round they are the change's totals.
+            // The verdict goes on unchanged beside them.
+            let earlier: any = {};
+            try { earlier = JSON.parse(input('earlier') || '{}'); } catch {}
+            const round = (earlier.round ?? 0) + 1;
+            const found = (earlier.found ?? 0) + (verdict.findings ?? []).length;
+            const noted = (earlier.noted ?? 0) + (verdict.notes ?? []).length;
+            const subject = (input('change').trim() || null);
+            const count = (name: string, unit: string, value: number) => ({ name, unit, subject, kind: 'count', value });
+            emit({
+              ...verdict,
+              round,
+              found,
+              noted,
+              metrics: [
+                count('sf.review_rounds', 'rounds', round),
+                count('sf.findings', 'findings', found),
+                count('sf.notes', 'notes', noted),
+              ],
+            });
+          output_format: { type: object }
 
   # The rounds ran out with the checks still returning the change. One more round is not
   # automatic: an agent reads what is left and leaves the decision as an ask, with its
@@ -307,6 +334,13 @@ nodes:
         asks,
         for_next: last.for_next ?? '',
         noticed: checks?.noticed ?? [],
+        // Records for `archon metrics`: the change (latest record per change wins), how this
+        // run ended for it, and one count per delivery run whatever the change.
+        metrics: [
+          { name: 'sf.changes', unit: 'changes', subject: (process.env.INPUTS_CHANGE || null), kind: 'count', value: 1 },
+          { name: `sf.ended_${outcome}`, unit: 'runs', subject: (process.env.INPUTS_CHANGE || null), kind: 'count', value: 1 },
+          { name: 'sf.delivery_runs', unit: 'runs', subject: null, kind: 'count', value: 1 },
+        ],
       }));
     output_format:
       type: object

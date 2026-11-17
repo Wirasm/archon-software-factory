@@ -8,8 +8,11 @@ inputs:
   item:
     description: The work item as text.
   judgment:
-    default: "None recorded."
-    description: What triage concluded about the item.
+    result_of: triage
+    description: What triage concluded about the item. Read from the item when the start does not pass it.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
   links:
     default: "Nothing."
     description: The items that had to land before this one.
