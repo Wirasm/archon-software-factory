@@ -9,6 +9,9 @@ model: ['@host', medium]
 inputs:
   item:
     description: The work item as text.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
   change:
     description: Where the change is proposed, as the builder reported it. Empty when the project has nowhere to propose a change.
   returned_before:

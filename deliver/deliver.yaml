@@ -70,6 +70,7 @@ nodes:
           depends_on: [base]
           with:
             item: $INPUTS.item
+            answers: $INPUTS.answers
             base: $base.output
             review_policy: $INPUTS.review_policy
             returned_before: $LOOP_PREV.verdict.output
@@ -80,6 +81,7 @@ nodes:
           depends_on: [base]
           with:
             item: $INPUTS.item
+            answers: $INPUTS.answers
             base: $base.output
             test_policy: $INPUTS.test_policy
             returned_before: $LOOP_PREV.verdict.output
@@ -90,6 +92,7 @@ nodes:
           depends_on: [base]
           with:
             item: $INPUTS.item
+            answers: $INPUTS.answers
             base: $base.output
             product_policy: $INPUTS.product_policy
 
@@ -98,6 +101,7 @@ nodes:
           depends_on: [review, tests, product]
           with:
             item: $INPUTS.item
+            answers: $INPUTS.answers
             review_policy: $INPUTS.review_policy
             reports: |
               ## From the review (is the change right against the item)
@@ -243,6 +247,7 @@ nodes:
           trigger_rule: all_done
           with:
             item: $INPUTS.item
+            answers: $INPUTS.answers
             change: $build.output.proposed
             returned_before: $LOOP_PREV.host.output
             builder_reply: $hostfix.output

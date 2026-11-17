@@ -6,6 +6,12 @@ The item:
 
 $INPUTS.item
 
+Decisions an operator already made on this item:
+
+$INPUTS.answers
+
+A decision is part of the item. Where the item's text and a decision differ, the decision holds; do not raise the same question again.
+
 The change is the commit checked out in front of you, against the commit it was built on: $INPUTS.base
 
 The product policy says what this project is for, who uses it and how it wants to feel to them. Read the pack's default at `$PACK_DIR/policy/product.md`. Then read the project's own at `$INPUTS.product_policy`, when one is named there, and the product and design documents it points to. Where they differ, the project's wins.

@@ -8,6 +8,12 @@ The item:
 
 $INPUTS.item
 
+Decisions an operator already made on this item:
+
+$INPUTS.answers
+
+A decision is part of the item. Where the item's text and a decision differ, the decision holds; do not raise the same question again.
+
 The change is the commit checked out in front of you, against the commit it was built on: $INPUTS.base
 
 The test policy is what this project's maintainers hold its tests to. Read the pack's default at `$PACK_DIR/policy/tests.md`. Then read the project's own at `$INPUTS.test_policy`, when one is named there. Where they differ, the project's wins.

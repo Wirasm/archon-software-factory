@@ -6,6 +6,12 @@ The item:
 
 $INPUTS.item
 
+Decisions an operator already made on this item:
+
+$INPUTS.answers
+
+A decision is part of the item. Where the item's text and a decision differ, the decision holds; do not raise the same question again.
+
 Where the change is proposed:
 
 $INPUTS.change

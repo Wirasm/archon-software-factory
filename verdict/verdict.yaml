@@ -9,6 +9,9 @@ model: ['@verdict', small]
 inputs:
   item:
     description: The work item as text.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
   reports:
     description: Each check's result, labelled with the check it came from.
   review_policy:

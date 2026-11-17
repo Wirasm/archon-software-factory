@@ -9,6 +9,9 @@ model: ['@product-reviewer', large]
 inputs:
   item:
     description: The work item as text.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
   base:
     description: The commit the change was built on.
   product_policy:
