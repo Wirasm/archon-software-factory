@@ -66,7 +66,7 @@ archon workflow attention
 archon workflow answer --ref <ask ref> --choose <option id> --text "why"
 ```
 
-An answered plan ask starts the plan again with your answer. An answered delivery ask does not restart delivery yet (see below): start it again with a work order that says what you decided.
+An answer does not restart the stage yet (see below). After you answer, start the item again with a work order whose `text` says what you decided; the stages read that as a decision already made.
 
 **5. Read the report.** Delivery keeps one report on the pull request and replaces it after every round: the rounds, what is still to change, what the item asks for and how each was checked, and how the run ended.
 
@@ -83,7 +83,7 @@ archon workflow run inspect --input change=https://github.com/<owner>/<name>/pul
 - **It does not merge.** The land gate runs after a ready change and records what it would do. A person merges.
 - **Nothing enters on its own.** Every item starts with a work order. A standing intake is being tried as a shadow.
 - **Admit is recorded, not acted on.** Triage records whether an item could have started without asking; nothing uses it yet.
-- **An answered delivery ask does not restart delivery.** It waits on an engine change (a stage restarted by answers continues in the checkout it left).
+- **An answer does not restart the stage.** The engine can start a stage when its asks are answered, but a pack cannot declare that start yet, and a delivery restarted that way would not continue in the checkout it left. Both wait on one engine change.
 - **The landing branch is carried, not enforced.** `land_on` reaches the builder and the checks, but the engine still cuts the worktree from the base branch.
 - **No screenshots in the report.** The forge has no way to attach a file.
 
