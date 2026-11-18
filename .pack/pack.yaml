@@ -57,6 +57,14 @@ inputs:
       Path to the project's own discoveries policy, a document that says what
       its maintainers want filed from what agents notice. Relative to the
       project, or absolute. Empty means the pack's default applies alone.
+  checks_file:
+    default: ""
+    description: >-
+      Path to a YAML file that lists the project's checks: under `checks:`, one entry
+      a check with a `name` and the command to `run` from the project's root. A script
+      runs each to its end on a change's commit. Relative to the project, or absolute.
+      Empty means none are declared. Shadow only for now: the results are recorded
+      and nothing acts on them.
   validate_command:
     default: ""
     description: >-

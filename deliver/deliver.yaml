@@ -80,6 +80,52 @@ nodes:
             [ -n "$onto" ] || onto=$BASE_BRANCH
             git merge-base HEAD "origin/$onto" 2>/dev/null || git merge-base HEAD "$onto"
 
+        # Shadow, since 2026-11-18: the checks the project declares, each run to its end by a
+        # script on this round's commit, beside the three reviews. Nothing reads the result
+        # yet: it is compared with what the reviews returned before it gates anything. It
+        # never fails the round, and it runs no `fix` command.
+        - id: checks
+          depends_on: [base]
+          runtime: bun
+          with:
+            file: $INPUTS.checks_file
+            change: $build.output.proposed
+          script: |
+            import { existsSync, readFileSync } from 'node:fs';
+            import { input } from 'archon:script';
+            const results: { name: string; passed: boolean; exit: number | null; seconds: number; tail: string }[] = [];
+            let problem = '';
+            try {
+              const file = input('file').trim();
+              if (file && existsSync(file)) {
+                const declared = (Bun.YAML.parse(readFileSync(file, 'utf8')) as any)?.checks ?? [];
+                for (const check of declared) {
+                  const started = Date.now();
+                  const ran = Bun.spawnSync(['sh', '-c', String(check.run)], { stdout: 'pipe', stderr: 'pipe', timeout: 15 * 60 * 1000 });
+                  const text = `${ran.stdout?.toString() ?? ''}\n${ran.stderr?.toString() ?? ''}`.trim();
+                  results.push({
+                    name: String(check.name),
+                    passed: ran.exitCode === 0,
+                    exit: ran.exitCode,
+                    seconds: Math.round((Date.now() - started) / 1000),
+                    tail: ran.exitCode === 0 ? '' : text.slice(-1500),
+                  });
+                }
+              } else if (file) problem = `no checks file at ${file}`;
+            } catch (error) {
+              problem = error instanceof Error ? error.message : String(error);
+            }
+            const failed = results.filter(r => !r.passed).map(r => r.name);
+            console.log(JSON.stringify({
+              declared: results.length,
+              failed,
+              results,
+              problem,
+              metrics: results.length
+                ? [{ name: 'sf.checks_failed', unit: 'checks', subject: (input('change').trim() || null), kind: 'count', value: failed.length }]
+                : [],
+            }));
+
         - id: review
           include: review
           depends_on: [base]
