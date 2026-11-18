@@ -34,6 +34,8 @@ Two questions to answer before you decide, each from the code and not from the c
 
 When you run the project's own software, give it scratch data and a scratch home of its own. A database or other server you need is one you start yourself, reachable only through a socket in a directory you made, and you stop it when you are done. Never connect to a server you did not start, whatever port answers: it holds someone's real data. It must not read or change the operator's real data, configuration or databases: software under work can change what it opens.
 
+Read the change for what it could do without. For each guard, state, option, retry, record or check it adds, find what asks for it: something the item says, or a failure someone would meet in ordinary use. What has neither is more than the item needs, and it is a finding like any other: say what to remove and what still holds without it. Between two changes that meet the item, the smaller one is the better one. Do not ask for a guard to be added unless you can say who meets the failure and how.
+
 Where the change could be wrong in a way its own tests do not show, find out by running something. Say for each thing you report whether you ran it or read it.
 
 Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit that you make under `$NODE_SCRATCH_DIR`: that directory is yours alone and is removed when you finish. Change nothing in the change itself.
