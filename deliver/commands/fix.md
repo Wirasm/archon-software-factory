@@ -36,6 +36,8 @@ When you run the project's own software, give it scratch data and a scratch home
 
 Change what the findings need, the other places in your change with the same fault among them, and nothing else. Commit on the same branch. The change is already proposed as a draft. Where your fix makes its description untrue, correct the description; otherwise leave it and the title alone.
 
+Your turn's end is the end of this stage: nothing wakes you later. Work that you hand to a helper is yours to wait for and to read before you end, and you give your result once, after everything you started has finished. Do not schedule anything for later.
+
 Before you end as fixed, prove it to yourself. Run the tests that read what you changed, wherever they live, and the checks this project runs on a change before it is pushed; its contributor docs and the build policy name them. Then read your whole change once more, from the commit you started on, as a reviewer will: is everything the item asks for there, is anything there that it did not ask for, do the docs still tell the truth. Say in your result what you ran and what it showed. A check you could not run is something you say, not something you skip. The project's own automation runs the whole suite; you do not.
 
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.

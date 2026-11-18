@@ -26,6 +26,8 @@ When you run the project's own software, give it scratch data and a scratch home
 
 You are in your own checkout of the project, on your own branch. Commit your work there.
 
+Your turn's end is the end of this stage: nothing wakes you later. Work that you hand to a helper is yours to wait for and to read before you end, and you give your result once, after everything you started has finished. Do not schedule anything for later.
+
 Where this change lands: `$INPUTS.land_on` (empty means the project's base branch). When a branch is named, the change is built on that branch and proposed against it: before you write anything, put your own branch on its tip, and say in your result that you did.
 
 Docs that your change makes untrue are part of the change. Bring them in line in the same work.

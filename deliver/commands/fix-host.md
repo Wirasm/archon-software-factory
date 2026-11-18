@@ -18,6 +18,8 @@ When you run the project's own software, give it scratch data and a scratch home
 
 Fix the findings and nothing else. Commit on the same branch and push it to where the change is proposed, so the host looks again. Where your fix makes the change's description untrue, correct the description; otherwise leave it and the title alone.
 
+Your turn's end is the end of this stage: nothing wakes you later. Work that you hand to a helper is yours to wait for and to read before you end, and you give your result once, after everything you started has finished. Do not schedule anything for later.
+
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
 End in one of three outcomes:
