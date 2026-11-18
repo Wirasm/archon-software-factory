@@ -14,6 +14,9 @@ inputs:
     description: Decisions an operator already made on this item.
   change:
     description: Where the change is proposed, as the builder reported it. Empty when the project has nowhere to propose a change.
+  host_policy:
+    default: ""
+    description: Path to the project's own host policy. Empty means the project has none.
   returned_before:
     default: "Nothing. This is the first time the host is read for this change."
     description: What this stage returned the last time, when the change has been here before.

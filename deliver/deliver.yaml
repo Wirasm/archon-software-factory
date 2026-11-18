@@ -351,6 +351,7 @@ nodes:
             item: $INPUTS.item
             answers: $INPUTS.answers
             change: $build.output.proposed
+            host_policy: $INPUTS.host_policy
             returned_before: $LOOP_PREV.host.output
             builder_reply: $hostfix.output
 
