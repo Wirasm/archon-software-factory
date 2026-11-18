@@ -13,10 +13,29 @@ inputs:
     default: "None listed."
     description: The project's open items, as a short index.
 
-returns: drain
+returns: result
 
 nodes:
+  # An empty list is the common case: most deliveries notice nothing. Count the entries so
+  # the manager is not started to say so.
+  - id: intake
+    runtime: bun
+    with:
+      discoveries: $INPUTS.discoveries
+    script: |
+      import { input } from 'archon:script';
+      const text = input('discoveries').trim();
+      let entries = text ? 1 : 0;
+      try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) entries = parsed.length;
+        else if (parsed === null) entries = 0;
+      } catch {}
+      console.log(JSON.stringify({ entries }));
+
   - id: drain
+    depends_on: [intake]
+    when: "$intake.output.entries > 0"
     command: discoveries
     mutates_checkout: false
     output_format:
@@ -69,3 +88,15 @@ nodes:
         notes: { type: string, description: 'Anything worth saying that has no field here.' }
         for_next: { type: string, description: 'Anything the operator who owns the backlog needs from you that has no field here. Write it to them.' }
       required: [summary, filed, folded, held, dropped, left_out, notes, for_next]
+
+  # What the run returns: the manager's decisions, or an empty drain when nothing was noticed.
+  - id: result
+    depends_on: [drain]
+    trigger_rule: all_done
+    runtime: bun
+    with:
+      drain: { from: $drain.output, if_skipped: "" }
+    script: |
+      import { input } from 'archon:script';
+      const drained = input('drain').trim();
+      console.log(drained || JSON.stringify({ summary: 'Nothing was noticed, so there was nothing to decide.', filed: [], folded: [], held: [], dropped: [] }));
