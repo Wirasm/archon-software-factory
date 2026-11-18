@@ -137,6 +137,19 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       plan: { result: "" }
+  # After a change landed: when the landed stage finds the change broke its branch and
+  # writes a work order, the order starts as new work on the landed check's own item.
+  # An empty work order (roll back, ask) is refused by the order stage and starts nothing.
+  order-after-landed:
+    workflow: order
+    resource: order
+    capacity: 3
+    overlap: queue
+    run_ended:
+      workflow: landed
+      outcome: broken_here
+    inputs:
+      text: { result: /work_order }
   landgate-after-deliver:
     workflow: landgate
     resource: landgate

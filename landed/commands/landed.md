@@ -1,6 +1,6 @@
 # Did this change break the branch it landed on?
 
-A change of ours was merged. An item is not done at the merge: it is done when the branch it landed on is still sound with the change in it. Find out, and say what should happen next. You change nothing and start nothing. You say what you would do.
+A change of ours was merged. An item is not done at the merge: it is done when the branch it landed on is still sound with the change in it. Find out, and say what should happen next. You change nothing yourself. You say what should happen, and when this change broke the branch, the work order you write is started as new work.
 
 The item:
 
@@ -31,4 +31,4 @@ End in one of these:
 - **not_landed**: the change is not merged.
 - **none**: the policy names nothing to wait for after landing.
 
-Then say what you would do, following the policy: nothing; start a fix as new work on the same item; roll the merge back; report it as something the project should hear of; or ask an operator. When you would start a fix, write the work order: a text that stands alone, with the failing check, the test or step, the lines of the log that show it, the commit it failed at, and what must be true when the fix lands. State behaviour, not a solution.
+Then say what you would do, following the policy: nothing; start a fix as new work on the same item; roll the merge back; report it as something the project should hear of; or ask an operator. Write a work order only when you end `broken_here` and would start a fix; leave it empty in every other case, because a work order you write for `broken_here` is started. Before you write one, look whether the branch is already sound again at its newest commit: a break that is already fixed needs no order, and you say so instead. The work order is a text that stands alone, with the failing check, the test or step, the lines of the log that show it, the commit it failed at, and what must be true when the fix lands. State behaviour, not a solution.
