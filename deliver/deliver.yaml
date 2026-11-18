@@ -181,8 +181,12 @@ nodes:
         # their lines. Presentation only: the verdict is the run's, nothing reads the
         # posted review, and a post that fails is said on stderr and changes nothing.
         # It hands the verdict on unchanged, so the group still ends with it.
+        # `shown` is the one node the round ends on: the loop's output is the output of its last
+        # node, and the nodes after the loop read the verdict from it. So it waits for the
+        # shadow checks too, whatever became of them.
         - id: shown
-          depends_on: [verdict]
+          depends_on: [verdict, checks]
+          trigger_rule: all_done
           runtime: bun
           with:
             verdict: $verdict.output
