@@ -38,8 +38,11 @@ nodes:
   # One round: the builder fixes what the last round returned (never on the first
   # round), then the three checks look again side by side, each with a fresh context and told
   # what was returned last round and what the builder says it did about it.
+  # A builder that ended in an ask or a stop made nothing to check: the rounds do not run
+  # and `result` ends the run with what the builder said.
   - id: rounds
     depends_on: [build]
+    when: "$build.output.outcome == 'built'"
     loop_group:
       max_iterations: 3
       # Running out of rounds is a normal ending: the last round's outcome stands and the
@@ -360,18 +363,22 @@ nodes:
     trigger_rule: all_done
     runtime: bun
     with:
-      checks: $rounds.output
+      built: $build.output
+      checks: { from: $rounds.output, if_skipped: "" }
       host: { from: $hostrounds.output, if_skipped: "" }
       exhausted: { from: $exhausted.output, if_skipped: "" }
       change: $build.output.proposed
     script: |
       const read = (text: string | undefined) => (text ? JSON.parse(text) : null);
+      const built = read(process.env.INPUTS_BUILT);
       const checks = read(process.env.INPUTS_CHECKS);
       const host = read(process.env.INPUTS_HOST);
-      const last = host ?? checks;
+      // No checks ran: the builder ended in an ask or a stop, and its own words are the ending.
+      const last = host ?? checks ?? { summary: built?.stop || built?.summary, for_next: built?.for_next, asks: built?.asks };
       const hostOutcome: Record<string, string> = { clear: 'ready', none: 'ready', return: 'returned' };
       const outcome = host
         ? (hostOutcome[host.outcome] ?? host.outcome)
+        : !checks ? (built?.outcome === 'ask' ? 'ask' : 'replan')
         : checks.outcome === 'return' ? 'returned' : checks.outcome;
       // The engine refuses a run whose asks do not hold together, and that would lose the
       // run at its last step. So an option id is made the token the engine wants, and a
@@ -404,7 +411,7 @@ nodes:
         const said: Record<string, string> = {
           ask: 'A stage asked for a decision and attached no question.',
           returned: 'The checks returned the change and the rounds are used up.',
-          replan: 'A check says the change needs a different approach.',
+          replan: checks ? 'A check says the change needs a different approach.' : 'The builder stopped: the plan could not be built as written.',
         };
         asks.push({
           question: 'Delivery of this item stopped. What should happen to the change now?',
@@ -421,7 +428,7 @@ nodes:
       }
       console.log(JSON.stringify({
         outcome,
-        ended_at: host ? 'host' : 'checks',
+        ended_at: host ? 'host' : checks ? 'checks' : 'build',
         change: process.env.INPUTS_CHANGE ?? '',
         summary: last.summary ?? '',
         asks,
@@ -439,7 +446,7 @@ nodes:
       type: object
       properties:
         outcome: { type: string, enum: [ready, returned, waiting, replan, ask] }
-        ended_at: { type: string, enum: [checks, host] }
+        ended_at: { type: string, enum: [build, checks, host] }
         change: { type: string }
         summary: { type: string }
         for_next: { type: string }
@@ -454,7 +461,7 @@ nodes:
     runtime: bun
     with:
       result: $result.output
-      checks: $rounds.output
+      checks: { from: $rounds.output, if_skipped: "" }
       host: { from: $hostrounds.output, if_skipped: "" }
       change: $build.output.proposed
     script: |
