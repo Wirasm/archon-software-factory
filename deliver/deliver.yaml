@@ -431,28 +431,34 @@ nodes:
         ? (hostOutcome[host.outcome] ?? host.outcome)
         : !checks ? (built?.outcome === 'ask' ? 'ask' : 'replan')
         : checks.outcome === 'return' ? 'returned' : checks.outcome;
-      // The engine refuses a run whose asks do not hold together, and that would lose the
-      // run at its last step. So an option id is made the token the engine wants, and a
-      // recommendation that names no option falls back to the first one, saying so.
+      // An option id as the token the engine wants.
       const token = (id: unknown) =>
         String(id ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'option';
       // Rounds used up: the ask is the one the `exhausted` node left.
       const exhausted = read(process.env.INPUTS_EXHAUSTED);
       const left = outcome === 'returned' && !host && exhausted ? (exhausted.asks ?? []) : (last.asks ?? []);
+      // An answer's option id decides what starts next (the pack's asks-settled bindings name
+      // them), so every ask this run leaves offers the same four. What a stage offered in its
+      // own words is kept in the context, and the operator says which in the answer's text.
+      const routes = [
+        { id: 'send-back', does: 'The same builder continues on the change with what you say in your answer.', cost: 'One more delivery run.' },
+        { id: 'replan', does: 'The item goes back to planning with what you say in your answer.', cost: 'The work so far may be discarded.' },
+        { id: 'take-as-is', does: 'The change stands as it is; nothing more is built. An operator lands it or closes it.', cost: 'What the checks returned stays unfixed.' },
+        { id: 'hold', does: 'Nothing proceeds until an operator says more.', cost: 'The item waits.' },
+      ];
       const asks = left.map((ask: any) => {
-        const options = (ask.options ?? []).map((o: any) => ({ id: token(o.id), does: String(o.does ?? ''), cost: String(o.cost ?? '') }));
-        // The engine wants at least two options; a stage that left one gets "hold" beside it.
-        if (options.length < 2) options.push({ id: 'hold', does: 'Hold the item until an operator says what to do.', cost: 'The item waits.' });
+        const offered = (ask.options ?? []).map((o: any) => `- ${String(o.id ?? '')}: ${String(o.does ?? '')}${o.cost ? ` (cost: ${String(o.cost)})` : ''}`);
         const wanted = token(ask.recommendation?.option);
-        const named = options.some((o: { id: string }) => o.id === wanted);
         const why = String(ask.recommendation?.why ?? '');
+        const route = routes.some(r => r.id === wanted) ? wanted : wanted.startsWith('hold') ? 'hold' : 'send-back';
         return {
           question: String(ask.question ?? ''),
-          context: ask.from ? `${ask.context ?? ''} (Left by: ${ask.from}.)` : String(ask.context ?? ''),
-          options,
-          recommendation: named
-            ? { option: wanted, why }
-            : { option: options[0]?.id ?? 'option', why: `The stage's recommendation named no option ("${ask.recommendation?.option ?? ''}"). ${why}` },
+          context: [
+            ask.from ? `${ask.context ?? ''} (Left by: ${ask.from}.)` : String(ask.context ?? ''),
+            offered.length ? `The stage offered these, in its own words; say which in your answer:\n${offered.join('\n')}` : '',
+          ].filter(Boolean).join('\n\n'),
+          options: routes,
+          recommendation: { option: route, why: ask.recommendation?.option ? `The stage recommends "${ask.recommendation.option}". ${why}` : why },
           artifacts: [],
         };
       });
@@ -468,11 +474,7 @@ nodes:
           question: 'Delivery of this item stopped. What should happen to the change now?',
           context: [said[outcome] ?? `Delivery ended as ${outcome}.`, String(last.summary ?? ''), String(last.for_next ?? '')]
             .filter(Boolean).join(' '),
-          options: [
-            { id: 'send-back-once', does: 'The same builder continues on the change with what you say in your answer.', cost: 'One more delivery run.' },
-            { id: 'replan', does: 'The item goes back to planning with what you say in your answer.', cost: 'The work so far may be discarded.' },
-            { id: 'hold', does: 'Nothing proceeds until an operator says more.', cost: 'The item waits.' },
-          ],
+          options: routes,
           recommendation: { option: 'hold', why: 'No stage recommended a way forward, so the run does not guess one.' },
           artifacts: [],
         });

@@ -185,6 +185,22 @@ bindings:
       land_on: { input: land_on }
       links: { input: links }
       answers: { answers: true }
+  # A delivery's asks all offer the same options, and the option chosen decides what starts:
+  # `send-back` continues delivery in the checkout it left, `replan` starts planning again
+  # with the answer, and `take-as-is` and `hold` start nothing.
+  plan-after-deliver-replan:
+    workflow: plan
+    resource: plan
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: deliver
+      settled: answered
+      option: replan
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { answers: true }
   deliver-after-answers:
     workflow: deliver
     resource: deliver
@@ -193,6 +209,7 @@ bindings:
     asks_settled:
       workflow: deliver
       settled: answered
+      option: send-back
       checkout: asking-run
     inputs:
       item: { input: item }
