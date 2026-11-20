@@ -50,7 +50,9 @@ nodes:
       change: $build.output.proposed
       returned: $INPUTS.returned
       next: $INPUTS.next
-      checked: ""   # host stage only
+      checked: ""     # host stage only
+      allowed: ""     # check and host stages only
+      exhausted: ""   # check and host stages only
     output_format:
       type: object
       properties:

@@ -28,7 +28,9 @@ inputs:
 returns: { node: end, outcome: outcome, asks: asks }
 
 nodes:
-  - id: host
+  # The host read. Its id is `rounds` because deliver's exhausted prompt, used below
+  # unchanged, reads what was returned as `$rounds.output`.
+  - id: rounds
     include: host
     with:
       item: $INPUTS.item
@@ -38,17 +40,81 @@ nodes:
       returned_before: $INPUTS.returned_before
       builder_reply: $INPUTS.builder_reply
 
+  # Which round of this stage on the item this is, and how many the item is allowed.
+  - id: allowance
+    depends_on: [rounds]
+    runtime: bun
+    script: allowance
+    with:
+      stage: stage-host
+      last: $rounds.output
+    output_format:
+      type: object
+      properties:
+        round: { type: integer }
+        allowance: { type: integer }
+        state: { type: string, enum: [open, used_up] }
+      required: [round, allowance, state]
+
+  # The rounds this item is allowed are used up and the change is still returned. One more
+  # round is not automatic: an agent reads what is left and recommends what to do, with
+  # deliver's own prompt (commands/exhausted.md is deliver's file, copied unchanged because
+  # a command resolves only from its own workflow; it reads `$rounds.output`, which is why
+  # the node above has that id). The options are the script's: the recommendation names one.
+  - id: exhausted
+    depends_on: [allowance]
+    when: "$allowance.output.state == 'used_up'"
+    command: exhausted
+    model: ['@judge', medium]
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        asks:
+          type: array
+          description: 'The one decision: what should happen to this change now.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              question: { type: string }
+              context: { type: string }
+              recommendation:
+                type: object
+                additionalProperties: false
+                properties:
+                  option:
+                    type: string
+                    enum: [one-more-round, take-as-is, replan, hold]
+                    description: 'What you would do: one-more-round sends it back once more, take-as-is lets the change go on as it is, replan sends the item back to planning, hold waits for the operator. When you would split the change, recommend replan and say so.'
+                  why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind.' }
+                required: [option, why]
+            required: [question, context, recommendation]
+        same_kind: { type: string, description: 'Whether what is left is the same kind of finding the earlier round returned, and how you know. Say so plainly when you cannot tell.' }
+      required: [asks, same_kind]
+
   - id: end
-    depends_on: [host]
+    depends_on: [allowance, exhausted]
+    trigger_rule: all_done
     runtime: bun
     script: ending
     with:
       stage: stage-host
-      last: $host.output
+      last: $rounds.output
       change: $INPUTS.change
-      returned: $host.output
+      allowed: $allowance.output
+      exhausted: { from: $exhausted.output, if_skipped: "" }
       checked: $INPUTS.checked
       next: ""   # build stage only
+      # What the builder gets when the host returns the change. The builder's prompt is the
+      # build prompt, which does not say to push, and the host reads only what was pushed.
+      returned: |
+        The change is proposed at $INPUTS.change
+
+        $rounds.output
+
+        Commit on the same branch and push it to where the change is proposed, so the host looks again.
     output_format:
       type: object
       properties:
@@ -61,3 +127,16 @@ nodes:
         allowance: { type: integer, description: 'How many rounds of this stage the item is allowed: three, plus one for each one-more-round answer.' }
         returned: { type: string, description: 'What goes back to the builder: what the host said.' }
       required: [outcome, change, summary, for_next, noticed, round, allowance, returned]
+
+  # The report on the change says how the host round ended, as deliver's does at its end.
+  # The script is deliver's `reported` body, unchanged; the report it closes is the one the
+  # last check run left.
+  - id: reported
+    depends_on: [end]
+    runtime: bun
+    script: reported
+    with:
+      result: $end.output
+      checks: $INPUTS.checked
+      host: $rounds.output
+      change: $INPUTS.change
