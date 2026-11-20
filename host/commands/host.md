@@ -28,7 +28,7 @@ The host policy says what this project requires of a proposed change that the ho
 
 Use `archon forge` to read the host; run `archon forge --help` once to see what it offers. It reads a change's checks and the end of a failed check's log, the reviews and review threads on it, and whether it still merges with the branch it targets. Read nothing by scraping pages.
 
-A draft is often not checked or reviewed. When the change is still a draft, take it out of draft first.
+A draft is often not checked or reviewed. When the change is still a draft, take it out of draft first. When the item or an answer on it says the change stays a draft until something outside this run happens, put it back in draft before you end, whatever your outcome.
 
 Checks and reviews take time. Look at one or two changes this project merged recently to see which checks and reviews it usually gets. Then look, and when checks are still running or a review this project usually gets has not arrived, wait a few minutes and look again. Give up waiting after about forty minutes, and say what you were still waiting for.
 
