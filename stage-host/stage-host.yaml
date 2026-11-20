@@ -1,0 +1,63 @@
+name: stage-host
+description: |
+  Delivery as three stages, stage three: one read of what the place the change is proposed
+  says about it. Ready ends delivery; a finding goes back to the builder through the
+  pack's bindings, and the host is read again after the fix.
+
+inputs:
+  item:
+    description: The work item as text.
+  land_on:
+    default: ""
+    description: The branch this item's change lands on. Carried for the build a return starts.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
+  change:
+    description: Where the change is proposed, as the builder reported it.
+  returned_before:
+    default: ""
+    description: What this stage returned the last time, when the change has been here before.
+  builder_reply:
+    default: ""
+    description: What the builder says it did about what was returned.
+  checked:
+    result_of: stage-check
+    description: What the last check run on this item ended with. Read from the item, for what it noticed.
+
+returns: { node: end, outcome: outcome, asks: asks }
+
+nodes:
+  - id: host
+    include: host
+    with:
+      item: $INPUTS.item
+      answers: $INPUTS.answers
+      change: $INPUTS.change
+      host_policy: $INPUTS.host_policy
+      returned_before: $INPUTS.returned_before
+      builder_reply: $INPUTS.builder_reply
+
+  - id: end
+    depends_on: [host]
+    runtime: bun
+    script: ending
+    with:
+      stage: stage-host
+      last: $host.output
+      change: $INPUTS.change
+      returned: $host.output
+      checked: $INPUTS.checked
+      next: ""   # build stage only
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [ready, return, waiting, ask] }
+        change: { type: string }
+        summary: { type: string }
+        for_next: { type: string }
+        noticed: { type: array, description: 'What the last check noticed that this change did not cause. The discoveries stage starts from it.' }
+        round: { type: integer, description: 'Which run of this stage on the item this is, counted since the item was last planned.' }
+        allowance: { type: integer, description: 'How many rounds of this stage the item is allowed: three, plus one for each one-more-round answer.' }
+        returned: { type: string, description: 'What goes back to the builder: what the host said.' }
+      required: [outcome, change, summary, for_next, noticed, round, allowance, returned]

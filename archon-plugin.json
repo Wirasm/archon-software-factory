@@ -22,6 +22,9 @@
     "deliver": "deliver/deliver.yaml",
     "host": "host/host.yaml",
     "inspect": "inspect/inspect.yaml",
-    "split": "split/split.yaml"
+    "split": "split/split.yaml",
+    "stage-build": "stage-build/stage-build.yaml",
+    "stage-check": "stage-check/stage-check.yaml",
+    "stage-host": "stage-host/stage-host.yaml"
   }
 }

@@ -78,6 +78,18 @@ archon workflow run inspect --input change=https://github.com/<owner>/<name>/pul
 
 **Tell it how your project works.** Put a settings file in the project at `.archon/packs/Wirasm.archon-software-factory.yaml` and point it at your own policy files; [`.pack/pack.yaml`](.pack/pack.yaml) lists every setting. Archon's own are in its repository under `.archon/factory/policy/`.
 
+## Delivery as three stages (trial)
+
+`deliver` is one run, so an answer on its ask can only start the whole delivery again. On trial beside it: `stage-build`, `stage-check` and `stage-host`, each a run of its own on the item, started by the pack's bindings. A check that returns the change starts the builder in the session it last had on the item; an approval starts the host round; and an answer starts only the stage its option names (`send-back`, `one-more-round`, `replan`, `take-as-is`, `hold`).
+
+An item is allowed three check rounds. When a check would return the change with the rounds used up, it ends in an ask, and `one-more-round` allows the item one more. Each check run's result says which round it was and how many the item is allowed (`archon workflow get <run-id> --json`, under `terminal_record.returns.value`).
+
+Both shapes are declared. A repository takes one at the hand-off from plan: register `deliver-after-plan` or `stage-build-after-plan`, not both. Write the files of the new shape with `--only`, naming every binding in [`.pack/pack.yaml`](.pack/pack.yaml) below the "Delivery as three stages" comment, and add each. To try a single item on the new shape while the repository stays on `deliver`, leave `stage-build-after-plan` unregistered. The item's `deliver` run still starts when it is planned: cancel it, or withdraw its start while it is queued, then start the build by hand. Every later stage on the item is started by the bindings.
+
+```bash
+archon workflow run stage-build --item <key> --input-file item=<the item's text>
+```
+
 ## What is not there yet
 
 - **It does not merge.** The land gate runs after a ready change and records what it would do. A person merges.

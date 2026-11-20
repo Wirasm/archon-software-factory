@@ -1,0 +1,63 @@
+name: stage-build
+description: |
+  Delivery as three stages, stage one: the builder makes the planned change, or, when a
+  check, the host or an operator sent it back, continues it in the session it last had on
+  this item. One run. The pack's bindings start the check or the host round after it.
+
+inputs:
+  item:
+    description: The work item as text.
+  plan:
+    result_of: plan
+    description: What plan concluded, as its result. Read from the item when the start does not pass it.
+  land_on:
+    default: ""
+    description: The branch this item's change lands on. Empty means the project's base branch.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
+  returned:
+    default: "null"
+    description: What a check, the host or an asking stage returned for the builder to act on. `null` on a first build.
+  next:
+    default: check
+    description: The stage that looks at the change after this build. `host` when the host returned it, so our own checks do not run again.
+
+returns: { node: end, outcome: outcome, asks: asks }
+
+nodes:
+  # The first build and every later fix are this one node on purpose: `context: same` in
+  # the build block continues the session this node last had on the item, and a session is
+  # kept per workflow and node. A separate fix node would start without the builder's context.
+  - id: build
+    include: build
+    with:
+      item: $INPUTS.item
+      plan: $INPUTS.plan
+      answers: $INPUTS.answers
+      before: $INPUTS.returned
+      land_on: $INPUTS.land_on
+      build_policy: $INPUTS.build_policy
+
+  # The engine defines the `asks` property of the result, so the output format leaves it out.
+  - id: end
+    depends_on: [build]
+    runtime: bun
+    script: ending
+    with:
+      stage: stage-build
+      last: $build.output
+      change: $build.output.proposed
+      returned: $INPUTS.returned
+      next: $INPUTS.next
+      checked: ""   # host stage only
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [built, built_for_host, replan, ask] }
+        change: { type: string }
+        summary: { type: string }
+        for_next: { type: string }
+        returned: { type: string, description: 'What the builder was given to act on. Empty on a first build.' }
+        reply: { type: string, description: 'What the builder says it did about what it was given. Empty on a first build.' }
+      required: [outcome, change, summary, for_next, returned, reply]

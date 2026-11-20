@@ -215,3 +215,261 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       answers: { answers: true }
+
+  # Delivery as three stages: build, check and host are each a run of their own on the item,
+  # so an answer starts the stage it belongs to and nothing already done runs again. These
+  # bindings stand beside deliver's: register `deliver-after-plan` or `stage-build-after-plan`
+  # for a repository, not both, and an item stays on the shape its build started on.
+  # Every stage after the first build works in the checkout the run before it left.
+  stage-build-after-plan:
+    workflow: stage-build
+    resource: stage-build
+    capacity: 5
+    overlap: queue
+    run_ended:
+      workflow: plan
+      outcome: planned
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      plan: { result: "" }
+  stage-check-after-build:
+    workflow: stage-check
+    resource: stage-check
+    capacity: 5
+    overlap: queue
+    run_ended:
+      workflow: stage-build
+      outcome: built
+      checkout: ended-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { input: answers }
+      change: { result: /change }
+      returned_before: { result: /returned }
+      builder_reply: { result: /reply }
+  # A check that returns the change starts the builder with what it returned. A check run
+  # that would return it with the item's rounds used up ends as `ask` and starts nothing.
+  stage-build-after-check:
+    workflow: stage-build
+    resource: stage-build
+    capacity: 5
+    overlap: queue
+    run_ended:
+      workflow: stage-check
+      outcome: return
+      checkout: ended-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { input: answers }
+      returned: { result: /returned }
+  stage-host-after-check:
+    workflow: stage-host
+    resource: stage-host
+    capacity: 5
+    overlap: queue
+    run_ended:
+      workflow: stage-check
+      outcome: approve
+      checkout: ended-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { input: answers }
+      change: { result: /change }
+  # What the host returns goes to the builder and then straight back to the host, as in
+  # deliver: our own checks approved the change and do not run again for a host fix.
+  stage-build-after-host:
+    workflow: stage-build
+    resource: stage-build
+    capacity: 5
+    overlap: queue
+    run_ended:
+      workflow: stage-host
+      outcome: return
+      checkout: ended-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { input: answers }
+      returned: { result: /returned }
+      next: host
+  stage-host-after-fix:
+    workflow: stage-host
+    resource: stage-host
+    capacity: 5
+    overlap: queue
+    run_ended:
+      workflow: stage-build
+      outcome: built_for_host
+      checkout: ended-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { input: answers }
+      change: { result: /change }
+      returned_before: { result: /returned }
+      builder_reply: { result: /reply }
+  # Host ready is where deliver's `ready` was: the land gate and the discoveries drain start.
+  landgate-after-stage-host:
+    workflow: landgate
+    resource: landgate
+    capacity: 3
+    overlap: queue
+    run_ended:
+      workflow: stage-host
+      outcome: ready
+    inputs:
+      item: { input: item }
+      change: { result: /change }
+      delivered: { result: "" }
+  discoveries-after-stage-host:
+    workflow: discoveries
+    resource: discoveries
+    capacity: 2
+    overlap: queue
+    run_ended:
+      workflow: stage-host
+      outcome: ready
+    inputs:
+      discoveries: { result: /noticed }
+  # Asks. Every ask a stage leaves offers the same options, and the one chosen decides what
+  # starts: `send-back` the builder with the answer, then the checks; `one-more-round`
+  # (offered when the item's rounds are used up) the builder with what was returned, which
+  # also raises the item's allowance by one; `replan` planning; `take-as-is` the host round;
+  # `hold` nothing. On a host ask `take-as-is` starts nothing either: an operator lands it.
+  stage-build-after-build-answers:
+    workflow: stage-build
+    resource: stage-build
+    capacity: 5
+    overlap: queue
+    asks_settled:
+      workflow: stage-build
+      settled: answered
+      option: send-back
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      next: { input: next }
+      returned: { result: /returned }
+      answers: { answers: true }
+  stage-host-after-build-as-is:
+    workflow: stage-host
+    resource: stage-host
+    capacity: 5
+    overlap: queue
+    asks_settled:
+      workflow: stage-build
+      settled: answered
+      option: take-as-is
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      change: { result: /change }
+      answers: { answers: true }
+  plan-after-stage-build-replan:
+    workflow: plan
+    resource: plan
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: stage-build
+      settled: answered
+      option: replan
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { answers: true }
+  stage-build-after-check-answers:
+    workflow: stage-build
+    resource: stage-build
+    capacity: 5
+    overlap: queue
+    asks_settled:
+      workflow: stage-check
+      settled: answered
+      option: [send-back, one-more-round]
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      returned: { result: /returned }
+      answers: { answers: true }
+  stage-host-after-check-as-is:
+    workflow: stage-host
+    resource: stage-host
+    capacity: 5
+    overlap: queue
+    asks_settled:
+      workflow: stage-check
+      settled: answered
+      option: take-as-is
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      change: { result: /change }
+      answers: { answers: true }
+  plan-after-stage-check-replan:
+    workflow: plan
+    resource: plan
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: stage-check
+      settled: answered
+      option: replan
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { answers: true }
+  # After a host ask, an operator's `send-back` may change anything, so the checks look at
+  # it again; `one-more-round` is one more host fix and goes straight back to the host.
+  stage-build-after-host-answers:
+    workflow: stage-build
+    resource: stage-build
+    capacity: 5
+    overlap: queue
+    asks_settled:
+      workflow: stage-host
+      settled: answered
+      option: send-back
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      returned: { result: /returned }
+      answers: { answers: true }
+  stage-build-after-host-one-more:
+    workflow: stage-build
+    resource: stage-build
+    capacity: 5
+    overlap: queue
+    asks_settled:
+      workflow: stage-host
+      settled: answered
+      option: one-more-round
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      returned: { result: /returned }
+      answers: { answers: true }
+      next: host
+  plan-after-stage-host-replan:
+    workflow: plan
+    resource: plan
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: stage-host
+      settled: answered
+      option: replan
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { answers: true }
