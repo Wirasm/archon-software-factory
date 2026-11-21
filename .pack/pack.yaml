@@ -247,6 +247,7 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       plan: { result: "" }
+      answers: { input: answers }
   stage-check-after-build:
     workflow: stage-check
     resource: stage-check
