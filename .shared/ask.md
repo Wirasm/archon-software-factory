@@ -38,6 +38,8 @@ An ask is how your run ends. Your result is the asks, and nothing that follows y
 
 When they are answered, this same work runs again with the answers as decisions already made. That run finishes what yours could not.
 
+In delivery the operator's answer also picks what happens next, from four routes: `send-back` (the builder continues with the answer), `replan`, `take-as-is` (the change stands and nothing more is built) and `hold`. An option the builder should carry out needs nothing from you: it is shown as a send-back. When an option of yours is itself one of the other three, such as "leave it as it is" or "plan it again", give it that route's id, so your recommendation is not shown as a send-back.
+
 So before you end:
 
 - **Find every decision you need, not only the first.** The operator answers them as a set, and each further round costs a full run.
