@@ -2,7 +2,7 @@
 
 A software factory that runs on [Archon](https://github.com/coleam00/Archon): it takes work items from a forge, turns each into a merged change, and asks a person only when a decision is theirs.
 
-**Status: early, and it runs.** It has delivered real changes to Archon since 2026-11-13: triage, plan, build, three checks, a verdict and a read of the project's own CI, with asks where a decision belongs to a person. It does not merge yet, and nothing enters on its own. See [what is not there yet](#what-is-not-there-yet).
+**Status: early, and it runs.** It has delivered real changes to Archon since 2026-11-13: triage, plan, build, three checks, a verdict and a read of the project's own CI, with asks where a decision belongs to an operator, and an answer that starts the next stage. It does not merge yet, and nothing enters on its own. See [what is not there yet](#what-is-not-there-yet).
 
 ## What it is for
 
@@ -19,7 +19,13 @@ Someone installs Archon, points it at their forge and their CI, and work flows f
 
 ## Run it
 
-You need Archon from its `dev` branch, a project registered with Archon, the database store (the default), and a forge plugin for the project's host (`archon forge check`).
+You need Archon from its `dev` branch, a checkout of your project, the database store (the default), and a forge plugin for the project's host. The first work order registers the project with Archon; there is no separate step. This checks the plugin and its credential for what the pack's scripts call:
+
+```bash
+archon forge check --data '{"repo":"github.com/<owner>/<name>","operations":["pr.view","pr.review.submit","workitem.view","workitem.comments","workitem.comment.upsert"]}'
+```
+
+The commands below are written for a POSIX shell.
 
 **1. Install the pack, and update it the same way later.**
 
@@ -33,10 +39,12 @@ archon plugin update Wirasm/archon-software-factory
 ```bash
 archon pack bindings Wirasm.archon-software-factory \
   --repo github.com/<owner>/<name> --host <host-id> --run-as <user-id> \
-  --cwd <path to the checkout> --out ~/.archon/bindings/factory
-archon trigger add <each file the command printed>
+  --cwd <path to the checkout> --out <a directory you choose>
+archon trigger add <each file the command printed, except the order file>
 archon trigger check
 ```
+
+The order file is the one you fire by hand in step 3; it is not registered. Run the same three commands again after a pack update, because an update can add or change a start.
 
 `<host-id>` is a name you choose for the machine that runs the work. Pass the same name as `ARCHON_TRIGGER_HOST` when you start an item.
 
@@ -54,10 +62,10 @@ archon trigger check
 
 ```bash
 ARCHON_TRIGGER_HOST=<host-id> archon trigger fire \
-  --config ~/.archon/bindings/factory/<the order file> --inputs order.json
+  --config <that directory>/<the order file> --inputs order.json
 ```
 
-The order becomes a work item, and the engine starts each next stage when the one before ends: triage, plan, deliver, then the land gate and the discoveries drain. `archon workflow runs --item issue-123` shows where it is.
+The order becomes a work item, and the engine starts each next stage when the one before ends: triage, plan, deliver, then the land gate and the discoveries drain. `archon workflow runs --item issue-123` shows where it is. For a few seconds after a stage ends, the next one reads as admitted and not started; it starts by itself.
 
 **4. Answer what it asks.** A stage that needs a decision ends and leaves an ask with options and a recommendation.
 
@@ -66,7 +74,14 @@ archon workflow attention
 archon workflow answer --ref <ask ref> --choose <option id> --text "why"
 ```
 
-An answer does not restart the stage yet (see below). After you answer, start the item again with a work order whose `text` says what you decided; the stages read that as a decision already made.
+The answer starts what comes next, and what you wrote reaches that run as a decision already made. An ask from plan starts plan again. An ask from delivery offers four options, and the one you choose decides:
+
+| Option | What starts |
+|---|---|
+| `send-back` | Delivery, in the checkout it left, with the same builder. |
+| `replan` | Plan, then delivery. |
+| `take-as-is` | Nothing. The change stands; you land it or close it. |
+| `hold` | Nothing, until you say more. |
 
 **5. Read the report.** Delivery keeps one report on the pull request and replaces it after every round: the rounds, what is still to change, what the item asks for and how each was checked, and how the run ended.
 
@@ -76,7 +91,7 @@ An answer does not restart the stage yet (see below). After you answer, start th
 archon workflow run inspect --input change=https://github.com/<owner>/<name>/pull/45
 ```
 
-**Tell it how your project works.** Put a settings file in the project at `.archon/packs/Wirasm.archon-software-factory.yaml` and point it at your own policy files; [`.pack/pack.yaml`](.pack/pack.yaml) lists every setting. Archon's own are in its repository under `.archon/factory/policy/`.
+**Tell it how your project works.** Put a settings file in the project at `.archon/packs/Wirasm.archon-software-factory.yaml`, commit it (a run reads it from its own checkout), and point it at your own policy files; [`.pack/pack.yaml`](.pack/pack.yaml) lists every setting. Archon's own are in its repository under `.archon/factory/policy/`.
 
 ## Delivery as three stages (trial)
 
@@ -95,7 +110,8 @@ archon workflow run stage-build --item <key> --input-file item=<the item's text>
 - **It does not merge.** The land gate runs after a ready change and records what it would do. A person merges.
 - **Nothing enters on its own.** Every item starts with a work order. A standing intake is being tried as a shadow.
 - **Admit is recorded, not acted on.** Triage records whether an item could have started without asking; nothing uses it yet.
-- **An answer does not restart the stage.** The engine can start a stage when its asks are answered, but a pack cannot declare that start yet, and a delivery restarted that way would not continue in the checkout it left. Both wait on one engine change.
+- **Nothing files an item.** The discoveries drain decides what should become a work item, including what triage left out when it narrowed one. Its result says so; an operator files it.
+- **Changes built side by side can conflict.** A change that was ready stops merging when a sibling lands first. Nothing brings it up to date yet.
 - **The landing branch is carried, not enforced.** `land_on` reaches the builder and the checks, but the engine still cuts the worktree from the base branch.
 - **No screenshots in the report.** The forge has no way to attach a file.
 

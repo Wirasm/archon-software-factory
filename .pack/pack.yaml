@@ -137,6 +137,8 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       plan: { result: "" }
+      # What an operator answered while the item was planned is a decision delivery holds to.
+      answers: { input: answers }
   # After a change landed: when the landed stage finds the change broke its branch and
   # writes a work order, the order starts as new work on the landed check's own item.
   # An empty work order (roll back, ask) is refused by the order stage and starts nothing.
@@ -172,6 +174,18 @@ bindings:
       outcome: ready
     inputs:
       discoveries: { result: /noticed }
+  # Triage narrowed the item: the part it left out is not lost. The drain reads the judgment
+  # and decides what of it becomes a work item of its own.
+  discoveries-after-triage-narrow:
+    workflow: discoveries
+    resource: discoveries
+    capacity: 2
+    overlap: queue
+    run_ended:
+      workflow: triage
+      outcome: narrow
+    inputs:
+      discoveries: { result: "" }
   plan-after-answers:
     workflow: plan
     resource: plan
