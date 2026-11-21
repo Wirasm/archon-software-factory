@@ -13,6 +13,13 @@ inputs:
       Path to the project's own plan policy, a document that says what its
       maintainers hold a design to. Relative to the project, or absolute. Empty
       means the project has none and the pack's default applies alone.
+  split_policy:
+    default: ""
+    description: >-
+      Path to the project's own split policy, a document that says when its
+      maintainers build an item as several changes, and how a PRD, an epic and a
+      bundle of tasks are cut. Relative to the project, or absolute. Empty means
+      the project has none and the pack's default applies alone.
   build_policy:
     default: ""
     description: >-
@@ -128,6 +135,62 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       judgment: { result: "" }
+  # Triage judged `split`: all of the item is worth building, but not as one change. The
+  # split stage decides how. Whole: plan starts on the item as it is. Split: each member
+  # that starts now is recorded as part of the item, and the order stage starts on every
+  # item that is part of it; it takes the members this split started, once each, and from
+  # there a member goes through triage like any other item. Waiting: nothing starts.
+  # An answer on an ask the split left starts the split again.
+  split-after-triage:
+    workflow: split
+    resource: split
+    capacity: 3
+    overlap: queue
+    run_ended:
+      workflow: triage
+      outcome: split
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      judgment: { result: "" }
+      answers: { item: answers }
+  plan-after-split:
+    workflow: plan
+    resource: plan
+    capacity: 3
+    overlap: queue
+    run_ended:
+      workflow: split
+      outcome: whole
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+  order-after-split:
+    workflow: order
+    resource: order
+    capacity: 3
+    overlap: queue
+    run_ended:
+      workflow: split
+      outcome: split
+      linked: { kind: part_of, holder: from }
+    inputs:
+      members: { result: /start }
+      land_on: { result: /land_on }
+      part_of: { item: key }
+  split-after-answers:
+    workflow: split
+    resource: split
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: split
+      settled: answered
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
   deliver-after-plan:
     workflow: deliver
     resource: deliver
@@ -185,18 +248,6 @@ bindings:
       outcome: ready
     inputs:
       discoveries: { result: /noticed }
-  # Triage narrowed the item: the part it left out is not lost. The drain reads the judgment
-  # and decides what of it becomes a work item of its own.
-  discoveries-after-triage-narrow:
-    workflow: discoveries
-    resource: discoveries
-    capacity: 2
-    overlap: queue
-    run_ended:
-      workflow: triage
-      outcome: narrow
-    inputs:
-      discoveries: { result: "" }
   plan-after-answers:
     workflow: plan
     resource: plan

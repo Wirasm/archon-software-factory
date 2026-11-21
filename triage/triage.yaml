@@ -84,38 +84,6 @@ nodes:
         sure: { type: string, enum: [high, medium, low] }
       required: [admit, criterion, why, asks, sure]
 
-  # Shadow measurement, 2026-11-16: would this item be split, for which reason, into what?
-  # Recorded in the run and read by nothing. No split stage exists.
-  - id: split
-    command: split
-    model: ['@judge', medium]
-    mutates_checkout: false
-    depends_on: [judge]
-    when: "$judge.output.recommend == 'build' || $judge.output.recommend == 'narrow'"
-    output_format:
-      type: object
-      additionalProperties: false
-      properties:
-        split: { type: string, enum: [whole, split] }
-        reason:
-          type: string
-          enum: [separate_outcomes, must_land_first, too_wide_for_one_run, none]
-          description: 'The one reason that decided a split. none when it stays whole.'
-        why: { type: string, description: 'One or two sentences, from the item itself.' }
-        now:
-          type: array
-          description: 'When split: the pieces to start now, fewest that each prove something. Often one. Empty when whole.'
-          items:
-            type: object
-            additionalProperties: false
-            properties:
-              title: { type: string }
-              proves: { type: string, description: 'What becomes observably true when this piece lands.' }
-            required: [title, proves]
-        later: { type: string, description: 'When split: what comes after, and the signal the earlier work must show first. Otherwise empty.' }
-        sure: { type: string, enum: [high, medium, low] }
-      required: [split, reason, why, now, later, sure]
-
   # What admit would have done, as records for `archon metrics`: one per item, latest wins.
   - id: admitted
     depends_on: [admit]

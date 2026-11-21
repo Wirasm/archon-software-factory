@@ -65,7 +65,7 @@ ARCHON_TRIGGER_HOST=<host-id> archon trigger fire \
   --config <that directory>/<the order file> --inputs order.json
 ```
 
-The order becomes a work item, and the engine starts each next stage when the one before ends: triage, plan, deliver, the land gate, and on the three-stage shape the land stage, the landed check and the discoveries drain. `archon workflow runs --item issue-123` shows where it is. For a few seconds after a stage ends, the next one reads as admitted and not started; it starts by itself.
+The order becomes a work item, and the engine starts each next stage when the one before ends: triage, the split when triage calls for one, plan, deliver, the land gate, and on the three-stage shape the land stage, the landed check and the discoveries drain. `archon workflow runs --item issue-123` shows where it is. For a few seconds after a stage ends, the next one reads as admitted and not started; it starts by itself.
 
 **4. Answer what it asks.** A stage that needs a decision ends and leaves an ask with options and a recommendation.
 
@@ -93,6 +93,24 @@ archon workflow run inspect --input change=https://github.com/<owner>/<name>/pul
 
 **Tell it how your project works.** Put a settings file in the project at `.archon/packs/Wirasm.archon-software-factory.yaml`, commit it (a run reads it from its own checkout), and point it at your own policy files; [`.pack/pack.yaml`](.pack/pack.yaml) lists every setting. Archon's own are in its repository under `.archon/factory/policy/`.
 
+## Items that are not one change
+
+Triage ends `narrow` when part of an item should not be built: the smaller part is planned and the rest is dropped. It ends `split` when all of the item is worth building, but not as one change: an epic, a PRD, a bundle of tasks, or parts that must land apart. That starts the split stage, which reads the project and decides by the item's kind, held to [`policy/split.md`](policy/split.md) and the project's own `split_policy`. A piece is cut off only when it cannot be part of the same change. A run ends one of three ways:
+
+| Outcome | What starts |
+|---|---|
+| `whole` | Plan, on the item as it is. |
+| `split` | Each member that starts now becomes a work item of its own, with the key `<item key>-<member id>`, recorded as part of the item. It goes through order and triage like any other item. |
+| `waiting` | Nothing. Every member waits on a ruling or a signal. |
+
+A member that starts later has no brief yet. It stays in the run's result with what it waits on (`archon workflow get <run-id> --json`). A ruling it waits on is an ask on the item, and answering it starts the split again, which starts the member. Nothing watches a signal or a member landing: start the split again when it has happened.
+
+To split an epic or a PRD without triage, start the stage on its item. With the bindings registered, its outcome starts what the table says.
+
+```bash
+archon workflow run split --item <key> --input-file item=<the item's text>
+```
+
 ## Delivery as three stages (trial)
 
 `deliver` is one run, so an answer on its ask can only start the whole delivery again. On trial beside it: `stage-build`, `stage-check` and `stage-host`, each a run of its own on the item, started by the pack's bindings. A check that returns the change starts the builder in the session it last had on the item; an approval starts the host round; and an answer starts only the stage its option names (`send-back`, `one-more-round`, `replan`, `take-as-is`, `hold`).
@@ -110,7 +128,8 @@ archon workflow run stage-build --item <key> --input-file item=<the item's text>
 - **It merges only on the three-stage shape, and only what was allowed.** After a ready change the land gate decides: it ends `land` when the project's land policy lets the change land by itself, and asks otherwise, always when the project names no land policy. The land stage then merges the change into its landing branch through the forge, when it still merges and the host's checks at its head are green; a change that does not goes back to its builder. Not there yet: `take-as-is` on a host ask still starts nothing, a land return on an item built by `deliver` continues on the three stages and has not been tried, and landing is not waited for by anything that depends on the item.
 - **Nothing enters on its own.** Every item starts with a work order. A standing intake is being tried as a shadow.
 - **Admit is recorded, not acted on.** Triage records whether an item could have started without asking; nothing uses it yet.
-- **The drain files at most three items a run.** The discoveries drain decides what should become a work item, including what triage left out when it narrowed one. When the project has a tracker it creates the three most valuable there, and holds the rest; its result says where each was filed. With no tracker it writes nothing and an operator files them. On the three-stage shape it starts when the change has landed; on `deliver` it still starts at `ready`.
+- **The drain files at most three items a run.** The discoveries drain decides what should become a work item. When the project has a tracker it creates the three most valuable there, and holds the rest; its result says where each was filed. With no tracker it writes nothing and an operator files them. On the three-stage shape it starts when the change has landed; on `deliver` it still starts at `ready`.
+- **A split starts its first members and nothing after them.** A member that waits on a signal, or on another member landing, starts only when the split runs again, by an answer or by hand. The members' landing branch reaches them as `land_on`; the split does not create the branch or record it on the item.
 - **Changes built side by side can conflict.** A change that was ready stops merging when a sibling lands first. Nothing brings it up to date yet.
 - **The landing branch is enforced at the merge, not before it.** `land_on` reaches every stage, and the land stage merges only a change proposed against it: one proposed against another branch stops with an ask. Not enforced: the engine still cuts the first worktree from the base branch, and nothing makes the builder propose against `land_on`. The land stage records the branch on the item after the merge, so later work on the item is cut from it.
 - **No screenshots in the report.** The forge has no way to attach a file.

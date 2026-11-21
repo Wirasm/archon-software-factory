@@ -26,7 +26,7 @@ nodes:
       properties:
         recommend:
           type: string
-          enum: &verbs [build, narrow, recipe, native, fold, park, deprecate, decline, close]
+          enum: &verbs [build, narrow, split, recipe, native, fold, park, deprecate, decline, close]
           description: 'The option you recommend. It is one of the options below.'
         why: { type: string, description: 'One line: why this one.' }
         options:

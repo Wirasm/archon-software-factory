@@ -14,8 +14,6 @@ When no index of open items is given, find them yourself: `archon forge` searche
 
 You decide by this project's taste: where it is going and what its maintainers hold its code to. The discoveries policy says where that is written. Read the pack's default at `$PACK_DIR/policy/discoveries.md`. Then read the project's own at `$INPUTS.discoveries_policy`, when one is named there, and the documents it points to. Where they differ, the project's wins.
 
-An entry may be a triage judgment that narrowed an item to a smaller part. What it left out is then the thing noticed: decide whether each part left out becomes an item of its own.
-
 Read the whole list before deciding anything. Several entries may be the same thing seen by different agents, and several small things may be one larger thing. An entry is a report, not a fact: check it against the code before you file it. Most entries are an agent's caveat about its own work, not something to act on; leave those out.
 
 A real defect in behaviour that matters comes first. Everything else is ranked by that taste: what moves the project the way it wants to go, and what keeps its code the way its maintainers want it.

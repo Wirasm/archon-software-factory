@@ -2,8 +2,9 @@ name: order
 description: |
   Take a work order from an operator and make it one work item the factory can read.
   A work order names its work by a link to an item on the project's forge, by text, or
-  both, and may say where the change lands and which larger item it is part of. This
-  stage reads and judges nothing: it gathers the text and hands the order on.
+  both, and may say where the change lands and which larger item it is part of. A split
+  orders its members the same way: the member's brief is the text. This stage reads and
+  judges nothing: it gathers the text and hands the order on.
 
 inputs:
   key:
@@ -24,6 +25,12 @@ inputs:
   depends_on:
     default: ""
     description: Keys of the items that must land before this one, separated by commas. Empty when none. Recorded with the order; nothing waits on it yet.
+  members:
+    default: ""
+    description: >-
+      The members a split started, as JSON: each with its `key`, `title` and `brief`. Set by
+      the binding that starts this stage on every item that is part of a split one. The
+      order is the member with this run's item key, and it is taken once.
 
 returns: { node: order, outcome: outcome }
 
@@ -36,14 +43,24 @@ nodes:
       text: $INPUTS.text
       land_on: $INPUTS.land_on
       part_of: $INPUTS.part_of
+      members: $INPUTS.members
     script: |
-      import { emit, forge, input } from 'archon:script';
+      import { emit, forge, input, item } from 'archon:script';
       const source = input('source').trim();
       const text = input('text').trim();
       const order = { land_on: input('land_on').trim(), part_of: input('part_of').trim() };
       const refused = (why: string) => emit({ outcome: 'refused', item: '', ...order, why });
       const said = text ? `\n\n## From the operator who ordered this\n\n${text}` : '';
-      if (!source && !text) {
+      const listed = input('members').trim();
+      if (listed) {
+        // Started by a split, on every item that is part of the split one: this item is
+        // ordered only when that split started it, and only the first time.
+        const read = item();
+        const mine = JSON.parse(listed).find((m: any) => m.key === read?.item.key);
+        if (!mine) refused('The split that ended started other members, not this item.');
+        else if ((read?.runs ?? []).some(run => run.workflow === 'order' && run.outcome === 'ready')) refused('This member was ordered before.');
+        else emit({ outcome: 'ready', item: `# ${mine.title}\n\n${mine.brief}\n\nThis is one piece of the larger item \`${order.part_of}\`, which was split into members that are each built on their own.`, ...order, why: '' });
+      } else if (!source && !text) {
         refused('The order names no work: give a source, text, or both.');
       } else if (!source) {
         emit({ outcome: 'ready', item: text, ...order, why: '' });

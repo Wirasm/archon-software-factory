@@ -13,7 +13,8 @@ You are in a checkout of the project. Change nothing.
 What can happen to an item:
 
 - **build**: do the work as asked.
-- **narrow**: do a smaller part of it.
+- **narrow**: do a smaller part of it, because the rest should not be built.
+- **split**: all of it is worth building, but not as one change: an epic, a PRD, a bundle of tasks, or parts that must land apart.
 - **recipe**: write no code; show how to get it with what already exists.
 - **native**: leave it to what the platform or provider already gives.
 - **fold**: it belongs with another item.
