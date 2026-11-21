@@ -6,7 +6,7 @@ The item:
 
 $INPUTS.item
 
-Decisions an operator already made on this item:
+Decisions an operator already made on this item, oldest first; where two disagree, the later one holds:
 
 $INPUTS.answers
 

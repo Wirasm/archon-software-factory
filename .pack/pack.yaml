@@ -49,8 +49,8 @@ inputs:
     description: >-
       Path to the project's own land policy, a document that says which ready
       changes may land without an operator being asked. Relative to the
-      project, or absolute. Empty means the project has none. Shadow only for
-      now: the judgment is recorded and nothing acts on it.
+      project, or absolute. Empty means the project has none: the land gate
+      then asks an operator every time.
   discoveries_policy:
     default: ""
     description: >-
@@ -93,6 +93,9 @@ inputs:
 #
 # A stage that ended with asks starts again when they are answered, with the answers as
 # decisions already made. Delivery continues in the checkout it left.
+#
+# `answers: { item: answers }` gives a stage every answer on its item, from every stage
+# that left asks there, oldest first, so a later stage holds to what was decided earlier.
 bindings:
   # A work order from an operator: `archon trigger fire --config <this file> --inputs order.json`,
   # where order.json holds `key` (the item's key), and `source`, `text`, `land_on`, `part_of`.
@@ -152,6 +155,9 @@ bindings:
       outcome: broken_here
     inputs:
       text: { result: /work_order }
+      land_on: { input: land_on }
+  # The gate works in the checkout delivery left, so a change that goes back from landing
+  # reaches its builder on its own branch.
   landgate-after-deliver:
     workflow: landgate
     resource: landgate
@@ -160,10 +166,15 @@ bindings:
     run_ended:
       workflow: deliver
       outcome: ready
+      checkout: ended-run
     inputs:
       item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
       change: { result: /change }
       delivered: { result: "" }
+  # This start predates landing: it drains at `ready`, so it can file a follow-up for a
+  # change that then never merges. The staged shape drains when the change has landed.
   discoveries-after-deliver:
     workflow: discoveries
     resource: discoveries
@@ -198,7 +209,7 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       links: { input: links }
-      answers: { answers: true }
+      answers: { item: answers }
   # A delivery's asks all offer the same options, and the option chosen decides what starts:
   # `send-back` continues delivery in the checkout it left, `replan` starts planning again
   # with the answer, and `take-as-is` and `hold` start nothing.
@@ -214,7 +225,7 @@ bindings:
     inputs:
       item: { input: item }
       land_on: { input: land_on }
-      answers: { answers: true }
+      answers: { item: answers }
   deliver-after-answers:
     workflow: deliver
     resource: deliver
@@ -247,7 +258,7 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       plan: { result: "" }
-      answers: { input: answers }
+      answers: { item: answers }
   stage-check-after-build:
     workflow: stage-check
     resource: stage-check
@@ -260,7 +271,7 @@ bindings:
     inputs:
       item: { input: item }
       land_on: { input: land_on }
-      answers: { input: answers }
+      answers: { item: answers }
       change: { result: /change }
       returned_before: { result: /returned }
       builder_reply: { result: /reply }
@@ -278,7 +289,7 @@ bindings:
     inputs:
       item: { input: item }
       land_on: { input: land_on }
-      answers: { input: answers }
+      answers: { item: answers }
       returned: { result: /returned }
   stage-host-after-check:
     workflow: stage-host
@@ -292,7 +303,7 @@ bindings:
     inputs:
       item: { input: item }
       land_on: { input: land_on }
-      answers: { input: answers }
+      answers: { item: answers }
       change: { result: /change }
   # What the host returns goes to the builder and then straight back to the host, as in
   # deliver: our own checks approved the change and do not run again for a host fix.
@@ -308,7 +319,7 @@ bindings:
     inputs:
       item: { input: item }
       land_on: { input: land_on }
-      answers: { input: answers }
+      answers: { item: answers }
       returned: { result: /returned }
       next: host
   stage-host-after-fix:
@@ -323,11 +334,15 @@ bindings:
     inputs:
       item: { input: item }
       land_on: { input: land_on }
-      answers: { input: answers }
+      answers: { item: answers }
       change: { result: /change }
       returned_before: { result: /returned }
       builder_reply: { result: /reply }
-  # Host ready is where deliver's `ready` was: the land gate and the discoveries drain start.
+  # Landing. Host ready starts the land gate, in the checkout the host round left, so a
+  # change that goes back from landing reaches its builder on its own branch. The gate
+  # ends `land` when the project's land policy lets the change land by itself, and `ask`
+  # otherwise. Its ask and the land stage's offer one fixed set of options: `land` starts
+  # the land stage, `send-back` the builder with the answer, then the checks; `hold` nothing.
   landgate-after-stage-host:
     workflow: landgate
     resource: landgate
@@ -336,18 +351,135 @@ bindings:
     run_ended:
       workflow: stage-host
       outcome: ready
+      checkout: ended-run
     inputs:
       item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
       change: { result: /change }
       delivered: { result: "" }
-  discoveries-after-stage-host:
+  # One landing at a time: the second change is read against a branch that has the first.
+  land-after-landgate:
+    workflow: land
+    resource: land
+    capacity: 1
+    overlap: queue
+    run_ended:
+      workflow: landgate
+      outcome: land
+      checkout: ended-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      change: { result: /change }
+      noticed: { result: /noticed }
+  land-after-landgate-answers:
+    workflow: land
+    resource: land
+    capacity: 1
+    overlap: queue
+    asks_settled:
+      workflow: landgate
+      settled: answered
+      option: land
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      change: { result: /change }
+      noticed: { result: /noticed }
+  stage-build-after-landgate-answers:
+    workflow: stage-build
+    resource: stage-build
+    capacity: 5
+    overlap: queue
+    asks_settled:
+      workflow: landgate
+      settled: answered
+      option: send-back
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      returned: { result: /returned }
+      answers: { item: answers }
+  # A change that no longer merges, or whose checks are red at land time, goes to the
+  # builder and then to the host round, as a host return does, and from host ready to the
+  # gate again. An item delivered by `deliver` is on the three stages from here on.
+  stage-build-after-land:
+    workflow: stage-build
+    resource: stage-build
+    capacity: 5
+    overlap: queue
+    run_ended:
+      workflow: land
+      outcome: returned
+      checkout: ended-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      returned: { result: /returned }
+      next: host
+  # A land run that ends `stop` or `ask` leaves an ask with the same three options.
+  land-after-land-answers:
+    workflow: land
+    resource: land
+    capacity: 1
+    overlap: queue
+    asks_settled:
+      workflow: land
+      settled: answered
+      option: land
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      change: { result: /change }
+      noticed: { result: /noticed }
+  stage-build-after-land-answers:
+    workflow: stage-build
+    resource: stage-build
+    capacity: 5
+    overlap: queue
+    asks_settled:
+      workflow: land
+      settled: answered
+      option: send-back
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      returned: { result: /returned }
+      answers: { item: answers }
+  # After the merge: the landed stage reads whether the branch is still sound
+  # (`order-after-landed` above starts a fix when it is not), and the discoveries drain
+  # starts with what the checks noticed, which the gate and the land stage carried in
+  # their results. It drains here and not at host ready, so nothing is filed for a change
+  # that never merges.
+  landed-after-land:
+    workflow: landed
+    resource: landed
+    capacity: 3
+    overlap: queue
+    run_ended:
+      workflow: land
+      outcome: landed
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      change: { result: /change }
+  discoveries-after-land:
     workflow: discoveries
     resource: discoveries
     capacity: 2
     overlap: queue
     run_ended:
-      workflow: stage-host
-      outcome: ready
+      workflow: land
+      outcome: landed
     inputs:
       discoveries: { result: /noticed }
   # Asks. Every ask a stage leaves offers the same options, and the one chosen decides what
@@ -355,6 +487,7 @@ bindings:
   # (offered when the item's rounds are used up) the builder with what was returned, which
   # also raises the item's allowance by one; `replan` planning; `take-as-is` the host round;
   # `hold` nothing. On a host ask `take-as-is` starts nothing either: an operator lands it.
+  # (The land gate's and the land stage's asks have their own set; see Landing above.)
   stage-build-after-build-answers:
     workflow: stage-build
     resource: stage-build
@@ -370,7 +503,7 @@ bindings:
       land_on: { input: land_on }
       next: { input: next }
       returned: { result: /returned }
-      answers: { answers: true }
+      answers: { item: answers }
   stage-host-after-build-as-is:
     workflow: stage-host
     resource: stage-host
@@ -385,7 +518,7 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       change: { result: /change }
-      answers: { answers: true }
+      answers: { item: answers }
   plan-after-stage-build-replan:
     workflow: plan
     resource: plan
@@ -398,7 +531,7 @@ bindings:
     inputs:
       item: { input: item }
       land_on: { input: land_on }
-      answers: { answers: true }
+      answers: { item: answers }
   stage-build-after-check-answers:
     workflow: stage-build
     resource: stage-build
@@ -413,7 +546,7 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       returned: { result: /returned }
-      answers: { answers: true }
+      answers: { item: answers }
   stage-host-after-check-as-is:
     workflow: stage-host
     resource: stage-host
@@ -428,7 +561,7 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       change: { result: /change }
-      answers: { answers: true }
+      answers: { item: answers }
   plan-after-stage-check-replan:
     workflow: plan
     resource: plan
@@ -441,7 +574,7 @@ bindings:
     inputs:
       item: { input: item }
       land_on: { input: land_on }
-      answers: { answers: true }
+      answers: { item: answers }
   # After a host ask, an operator's `send-back` may change anything, so the checks look at
   # it again; `one-more-round` is one more host fix and goes straight back to the host.
   stage-build-after-host-answers:
@@ -458,7 +591,7 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       returned: { result: /returned }
-      answers: { answers: true }
+      answers: { item: answers }
   stage-build-after-host-one-more:
     workflow: stage-build
     resource: stage-build
@@ -473,7 +606,7 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       returned: { result: /returned }
-      answers: { answers: true }
+      answers: { item: answers }
       next: host
   plan-after-stage-host-replan:
     workflow: plan
@@ -487,4 +620,4 @@ bindings:
     inputs:
       item: { input: item }
       land_on: { input: land_on }
-      answers: { answers: true }
+      answers: { item: answers }

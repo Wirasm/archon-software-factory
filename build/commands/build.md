@@ -10,7 +10,7 @@ The plan:
 
 $INPUTS.plan
 
-Decisions already made:
+Decisions already made, oldest first; where two disagree, the later one holds:
 
 $INPUTS.answers
 

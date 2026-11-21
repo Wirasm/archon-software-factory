@@ -2,7 +2,8 @@ name: discoveries
 description: |
   Drain what agents noticed outside their scope: read the whole list, verify
   what is worth filing against the code, and decide what becomes a work item.
-  Changes nothing.
+  It creates up to three of those items in the project's tracker, when there is one,
+  and changes nothing else.
 
 model: ['@manager', large]
 
@@ -55,7 +56,9 @@ nodes:
               item: { type: string, description: 'The work item as text.' }
               seen_by: { type: array, items: { type: string }, description: 'The entries this came from.' }
               verified: { type: string, description: 'What you ran or read to confirm it, and what it showed.' }
-            required: [title, kind, item, seen_by, verified]
+              key: { type: string, description: 'The short kebab-case name in its marker.' }
+              filed_at: { type: string, description: 'Where it was filed in the tracker. Empty when nothing was written.' }
+            required: [title, kind, item, seen_by, verified, key, filed_at]
         folded:
           type: array
           items:
@@ -73,7 +76,7 @@ nodes:
             additionalProperties: false
             properties:
               what: { type: string }
-              until: { type: string }
+              until: { type: string, description: 'What would change that. For one held only because three were filed this run: say so.' }
             required: [what, until]
         dropped:
           type: array

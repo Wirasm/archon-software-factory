@@ -20,7 +20,7 @@ Read the whole list before deciding anything. Several entries may be the same th
 
 A real defect in behaviour that matters comes first. Everything else is ranked by that taste: what moves the project the way it wants to go, and what keeps its code the way its maintainers want it.
 
-You are in a checkout of the project. Change nothing.
+You are in a checkout of the project. Change nothing in it.
 
 Decide, for each thing worth deciding:
 
@@ -30,3 +30,7 @@ Decide, for each thing worth deciding:
 - **drop**: it is not worth the project's attention. Say why in a line.
 
 Rank what you file, most valuable first.
+
+When the project has a tracker, write what you file there: `archon forge resolve` on the checkout's remote says whether it has one, and `archon forge workitem.create` creates an item. Create at most three in one run, the most valuable first. What you would file beyond three you hold, and say that the limit is why. Give each a `key`: a short name in kebab-case for the thing itself, the place and the fault, that anyone seeing the same thing again would give it. The first line of the item's body is the marker `<!-- software-factory:discovery <key> -->`, so a run that files the same thing again gets the item that exists and does not create a second. Say where each was filed.
+
+When the project has no tracker, or an item could not be created, write nothing there, leave where it was filed empty, and say so in your summary: an operator files it.

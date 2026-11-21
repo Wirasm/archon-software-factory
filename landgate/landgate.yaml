@@ -1,9 +1,9 @@
 name: landgate
 description: |
-  Shadow measurement, since 2026-11-16: may this ready change land without an
-  operator being asked? It reads the change's state on the host and the
-  project's land policy, and says what it would do. It lands nothing, writes
-  nothing, and nothing acts on its result.
+  May this ready change land without an operator being asked? It reads the change's
+  state on the host and the project's land policy, and decides: land now, or ask. It
+  lands nothing and writes nothing itself. The pack's bindings start the land stage
+  when it says land, or when an operator's answer chose it.
 
 model: ['@judge', medium]
 
@@ -13,9 +13,15 @@ inputs:
   change:
     description: Where the change is proposed.
   delivered:
-    description: What deliver ended with, as its result.
+    description: What delivery ended with, as its result.
+  land_on:
+    default: ""
+    description: The branch this item's change lands on. Empty means the project's base branch.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
 
-returns: gate
+returns: { node: end, outcome: outcome, asks: asks }
 
 nodes:
   - id: gate
@@ -41,30 +47,46 @@ nodes:
           required: [checks, head, merges, size, protected]
         asks:
           type: array
-          description: 'When it is an ask: the one question you would put to the operator. Empty when auto.'
+          description: 'When it is an ask: the one question you put to the operator. Empty when auto.'
           items:
             type: object
             additionalProperties: false
             properties:
               question: { type: string }
               context: { type: string }
-              options:
-                type: array
-                items:
-                  type: object
-                  additionalProperties: false
-                  properties:
-                    id: { type: string, description: 'kebab-case, one token, such as keep-the-flag. The answer names it.' }
-                    does: { type: string }
-                    cost: { type: string }
-                  required: [id, does, cost]
               recommendation:
                 type: object
                 additionalProperties: false
                 properties:
-                  option: { type: string, description: 'The id of the option you would take. It is one of the options above.' }
+                  option:
+                    type: string
+                    enum: [land, send-back, hold]
+                    description: 'What you would do: land merges it now, send-back gives it to its builder with what the operator says, hold waits for the operator.'
                   why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind.' }
                 required: [option, why]
-            required: [question, context, options, recommendation]
+            required: [question, context, recommendation]
         sure: { type: string, enum: [high, medium, low] }
       required: [land, criterion, why, facts, asks, sure]
+
+  # The outcome the bindings route on, and the asks with the options the bindings name.
+  # The engine defines the `asks` property of the result, so the output format leaves it out.
+  - id: end
+    depends_on: [gate]
+    runtime: bun
+    script: landing
+    with:
+      stage: landgate
+      last: $gate.output
+      change: $INPUTS.change
+      delivered: $INPUTS.delivered
+      land_on: ""   # land stage only
+      noticed: ""   # land stage only
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [land, ask] }
+        change: { type: string }
+        summary: { type: string }
+        returned: { type: string, description: 'What the builder gets when an operator sends the change back.' }
+        noticed: { type: array, description: 'What the checks noticed that this change did not cause, carried on to the land stage.' }
+      required: [outcome, change, summary, returned, noticed]

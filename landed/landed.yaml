@@ -13,6 +13,9 @@ inputs:
     description: The work item as text.
   change:
     description: Where the change was proposed.
+  land_on:
+    default: ""
+    description: The branch this item's change landed on. Empty means the project's base branch. Passed on to the work order a break starts.
 
 returns: { node: landed, outcome: outcome }
 

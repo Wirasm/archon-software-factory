@@ -2,7 +2,7 @@
 
 A software factory that runs on [Archon](https://github.com/coleam00/Archon): it takes work items from a forge, turns each into a merged change, and asks a person only when a decision is theirs.
 
-**Status: early, and it runs.** It has delivered real changes to Archon since 2026-11-13: triage, plan, build, three checks, a verdict and a read of the project's own CI, with asks where a decision belongs to an operator, and an answer that starts the next stage. It does not merge yet, and nothing enters on its own. See [what is not there yet](#what-is-not-there-yet).
+**Status: early, and it runs.** It has delivered real changes to Archon since 2026-11-13: triage, plan, build, three checks, a verdict and a read of the project's own CI, with asks where a decision belongs to an operator, and an answer that starts the next stage. On the three-stage shape it merges a ready change when the project's land policy or an operator says so. Nothing enters on its own. See [what is not there yet](#what-is-not-there-yet).
 
 ## What it is for
 
@@ -19,10 +19,10 @@ Someone installs Archon, points it at their forge and their CI, and work flows f
 
 ## Run it
 
-You need Archon from its `dev` branch, a checkout of your project, the database store (the default), and a forge plugin for the project's host. The first work order registers the project with Archon; there is no separate step. This checks the plugin and its credential for what the pack's scripts call:
+You need Archon from its `dev` branch, a checkout of your project, the database store (the default), and a forge plugin for the project's host. The first work order registers the project with Archon; there is no separate step. This checks the plugin and its credential for what the pack's scripts and its land and drain stages call:
 
 ```bash
-archon forge check --data '{"repo":"github.com/<owner>/<name>","operations":["pr.view","pr.review.submit","workitem.view","workitem.comments","workitem.comment.upsert"]}'
+archon forge check --data '{"repo":"github.com/<owner>/<name>","operations":["pr.view","pr.review.submit","pr.merge-state","pr.merge","workitem.view","workitem.comments","workitem.comment.upsert","workitem.create"]}'
 ```
 
 The commands below are written for a POSIX shell.
@@ -65,7 +65,7 @@ ARCHON_TRIGGER_HOST=<host-id> archon trigger fire \
   --config <that directory>/<the order file> --inputs order.json
 ```
 
-The order becomes a work item, and the engine starts each next stage when the one before ends: triage, plan, deliver, then the land gate and the discoveries drain. `archon workflow runs --item issue-123` shows where it is. For a few seconds after a stage ends, the next one reads as admitted and not started; it starts by itself.
+The order becomes a work item, and the engine starts each next stage when the one before ends: triage, plan, deliver, the land gate, and on the three-stage shape the land stage, the landed check and the discoveries drain. `archon workflow runs --item issue-123` shows where it is. For a few seconds after a stage ends, the next one reads as admitted and not started; it starts by itself.
 
 **4. Answer what it asks.** A stage that needs a decision ends and leaves an ask with options and a recommendation.
 
@@ -74,7 +74,7 @@ archon workflow attention
 archon workflow answer --ref <ask ref> --choose <option id> --text "why"
 ```
 
-The answer starts what comes next, and what you wrote reaches that run as a decision already made. An ask from plan starts plan again. An ask from delivery offers four options, and the one you choose decides:
+The answer starts what comes next, and what you wrote reaches that run as a decision already made. An ask from plan starts plan again. An ask from the land gate or the land stage offers `land`, `send-back` and `hold`. An ask from delivery offers four options, and the one you choose decides:
 
 | Option | What starts |
 |---|---|
@@ -107,12 +107,12 @@ archon workflow run stage-build --item <key> --input-file item=<the item's text>
 
 ## What is not there yet
 
-- **It does not merge.** The land gate runs after a ready change and records what it would do. A person merges.
+- **It merges only on the three-stage shape, and only what was allowed.** After a ready change the land gate decides: it ends `land` when the project's land policy lets the change land by itself, and asks otherwise, always when the project names no land policy. The land stage then merges the change into its landing branch through the forge, when it still merges and the host's checks at its head are green; a change that does not goes back to its builder. Not there yet: `take-as-is` on a host ask still starts nothing, a land return on an item built by `deliver` continues on the three stages and has not been tried, and landing is not waited for by anything that depends on the item.
 - **Nothing enters on its own.** Every item starts with a work order. A standing intake is being tried as a shadow.
 - **Admit is recorded, not acted on.** Triage records whether an item could have started without asking; nothing uses it yet.
-- **Nothing files an item.** The discoveries drain decides what should become a work item, including what triage left out when it narrowed one. Its result says so; an operator files it.
+- **The drain files at most three items a run.** The discoveries drain decides what should become a work item, including what triage left out when it narrowed one. When the project has a tracker it creates the three most valuable there, and holds the rest; its result says where each was filed. With no tracker it writes nothing and an operator files them. On the three-stage shape it starts when the change has landed; on `deliver` it still starts at `ready`.
 - **Changes built side by side can conflict.** A change that was ready stops merging when a sibling lands first. Nothing brings it up to date yet.
-- **The landing branch is carried, not enforced.** `land_on` reaches the builder and the checks, but the engine still cuts the worktree from the base branch.
+- **The landing branch is enforced at the merge, not before it.** `land_on` reaches every stage, and the land stage merges only a change proposed against it: one proposed against another branch stops with an ask. Not enforced: the engine still cuts the first worktree from the base branch, and nothing makes the builder propose against `land_on`. The land stage records the branch on the item after the merge, so later work on the item is cut from it.
 - **No screenshots in the report.** The forge has no way to attach a file.
 
 ## License

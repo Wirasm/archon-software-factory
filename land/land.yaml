@@ -1,20 +1,35 @@
 name: land
 description: |
-  Land one built change on its landing branch, after checking the tree that
-  would land. With no forge, the landing branch is a local branch. Pushes nothing.
+  Land one ready change on its landing branch. On a host, that is merging the proposed
+  change into the branch it targets, when that is the landing branch, it still merges
+  and the host's checks at its head are green. With no host, the landing branch is a
+  local branch, moved after checking the tree that would land, and nothing is pushed.
 
 model: ['@lander', medium]
 
 inputs:
   item:
     description: The work item as text.
+  change:
+    default: ""
+    description: Where the change is proposed. Empty when the project has no host.
+  land_on:
+    default: ""
+    description: The branch this item's change lands on. Empty means the project's base branch.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
+  noticed:
+    default: "[]"
+    description: What the checks noticed that this change did not cause. Carried to the discoveries drain, which starts when the change has landed.
   build:
-    description: What build concluded, as its result. It holds the commit to land.
+    default: ""
+    description: What build concluded, as its result, for a start by hand with no host. It holds the commit to land.
   landing_branch:
     default: ""
-    description: The branch this change lands on. Empty means the project's base branch.
+    description: The older name of `land_on`, for a start by hand.
 
-returns: { node: land, outcome: outcome }
+returns: { node: end, outcome: outcome, asks: asks }
 
 nodes:
   - id: land
@@ -27,8 +42,8 @@ nodes:
         summary: { type: string, description: 'For a maintainer who has not followed the item.' }
         landing_branch: { type: string, description: 'The branch it landed on, or would have.' }
         from: { type: string, description: 'The commit the landing branch pointed at when you started.' }
-        to: { type: string, description: 'The commit it points at now. Empty unless landed.' }
-        checked: { type: string, description: 'The command run on the combined tree, and what it showed.' }
+        to: { type: string, description: 'The commit it points at now: on a host, the commit the change landed as. Empty unless landed.' }
+        checked: { type: string, description: 'On a host: the state of its checks at the head commit you merged. With no host: the command run on the combined tree, and what it showed.' }
         returned: { type: string, description: 'With returned: what a builder needs to fix. Empty otherwise.' }
         stop: { type: string, description: 'With stop: what prevents landing, and what you recommend. Empty otherwise.' }
         asks:
@@ -40,24 +55,42 @@ nodes:
             properties:
               question: { type: string }
               context: { type: string }
-              options:
-                type: array
-                items:
-                  type: object
-                  additionalProperties: false
-                  properties:
-                    id: { type: string, description: 'kebab-case, one token, such as keep-the-flag. The answer names it.' }
-                    does: { type: string }
-                    cost: { type: string }
-                  required: [id, does, cost]
               recommendation:
                 type: object
                 additionalProperties: false
                 properties:
-                  option: { type: string, description: 'The id of the option you would take. It is one of the options above.' }
+                  option:
+                    type: string
+                    enum: [land, send-back, hold]
+                    description: 'What you would do: land tries the landing again, send-back gives the change to its builder with what the operator says, hold waits for the operator.'
                   why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind.' }
                 required: [option, why]
-            required: [question, context, options, recommendation]
+            required: [question, context, recommendation]
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
         for_next: { type: string, description: 'Anything whoever works on this project next needs from you that has no field here. Write it to them.' }
       required: [outcome, summary, landing_branch, from, to, checked, returned, stop, asks, notes, for_next]
+
+  # The outcome the bindings route on, the asks with the options the bindings name, and,
+  # after a merge, the record on the item of what the host says landed.
+  # The engine defines the `asks` property of the result, so the output format leaves it out.
+  - id: end
+    depends_on: [land]
+    runtime: bun
+    script: landing
+    with:
+      stage: land
+      last: $land.output
+      change: $INPUTS.change
+      land_on: $INPUTS.land_on
+      noticed: $INPUTS.noticed
+      delivered: ""   # gate only
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [landed, returned, stop, ask] }
+        change: { type: string }
+        summary: { type: string }
+        returned: { type: string, description: 'What goes back to the builder: why the change did not land.' }
+        noticed: { type: array, description: 'What the checks noticed that this change did not cause. The discoveries stage starts from it when the change has landed.' }
+        recorded: { type: string, description: 'After a landing: what was recorded on the item from what the host reported, or why nothing was.' }
+      required: [outcome, change, summary, returned, noticed, recorded]
