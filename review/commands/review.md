@@ -44,7 +44,7 @@ Report everything you can find in this reading. Each round costs the builder a f
 
 Something wrong that this change did not cause is not a finding against it. Code that came in through a merge of the branch the change is proposed against is not this change either, unless the way a conflict was resolved made it wrong. Report it as noticed. When what you found sits next to the change, check the commit it was built on before you decide which it is.
 
-When what you are about to return is the same kind of thing you returned before, one more place with the same fault, name the kind and ask whether that case should exist at all.
+When what you are about to return is another case of a kind of fault that was returned before and fixed, do not return the case. The change decides that thing in more than one place, and fixing cases will not end it. Return the cause as one finding: name the kind, the places that decide it now, and the one place that should. Keep the new case as its evidence. When no single place can decide it under this approach, that is a replan.
 
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 

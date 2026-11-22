@@ -30,7 +30,7 @@ Use `archon forge` to read the host; run `archon forge --help` once to see what 
 
 A draft is often not checked or reviewed. When the change is still a draft, take it out of draft first. When the item or an answer on it says the change stays a draft until something outside this run happens, put it back in draft before you end, whatever your outcome.
 
-Checks and reviews take time. Look at one or two changes this project merged recently to see which checks and reviews it usually gets. Then look, and when checks are still running or a review this project usually gets has not arrived, wait a few minutes and look again. Give up waiting after about forty minutes, and say what you were still waiting for.
+Checks and reviews take time. Look at one or two changes this project merged recently to see which checks and reviews it usually gets. Then look, and when checks are still running or a review this project usually gets has not arrived, wait a few minutes and look again. A reviewer that says it is paused, rate limited or not reviewing this change is not coming: do not wait for it, and say so in your notes. Give up waiting after about forty minutes, and say what you were still waiting for.
 
 Then judge what is there:
 

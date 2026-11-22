@@ -74,7 +74,7 @@ archon workflow attention
 archon workflow answer --ref <ask ref> --choose <option id> --text "why"
 ```
 
-The answer starts what comes next, and what you wrote reaches that run as a decision already made. An ask from plan starts plan again. An ask from the land gate or the land stage offers `land`, `send-back` and `hold`. An ask from delivery offers four options, and the one you choose decides:
+The answer starts what comes next, and what you wrote reaches that run as a decision already made. Rule by answering: a run reads the item as it was ordered, so an edit or a comment on the issue after the order reaches no later stage. A stage takes a returned change out of draft and leaves it out, so the host checks the next push. An ask from plan starts plan again. An ask from the land gate or the land stage offers `land`, `send-back` and `hold`. An ask from delivery offers four options, and the one you choose decides:
 
 | Option | What starts |
 |---|---|
@@ -130,7 +130,7 @@ archon workflow run stage-build --item <key> --input-file item=<the item's text>
 - **Admit is recorded, not acted on.** Triage records whether an item could have started without asking; nothing uses it yet.
 - **The drain files at most three items a run.** The discoveries drain decides what should become a work item. When the project has a tracker it creates the three most valuable there, and holds the rest; its result says where each was filed. With no tracker it writes nothing and an operator files them. On the three-stage shape it starts when the change has landed; on `deliver` it still starts at `ready`.
 - **A split starts its first members and nothing after them.** A member that waits on a signal, or on another member landing, starts only when the split runs again, by an answer or by hand. The members' landing branch reaches them as `land_on`; the split does not create the branch or record it on the item.
-- **Changes built side by side can conflict.** A change that was ready stops merging when a sibling lands first. Nothing brings it up to date yet.
+- **Changes built side by side can conflict.** A change that was ready stops merging when a sibling lands first. The land gate names the other open changes that touch the same files and the order it would land them in; nothing brings the later one up to date before its land is refused and it goes back to its builder.
 - **The landing branch is enforced at the merge, not before it.** `land_on` reaches every stage, and the land stage merges only a change proposed against it: one proposed against another branch stops with an ask. Not enforced: the engine still cuts the first worktree from the base branch, and nothing makes the builder propose against `land_on`. The land stage records the branch on the item after the merge, so later work on the item is cut from it.
 - **No screenshots in the report.** The forge has no way to attach a file.
 
