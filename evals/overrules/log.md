@@ -147,3 +147,18 @@
 - **Kind:** `not worth the round`.
 - **What it says about the stage:** the host held bot comments to "does it reproduce", not "would someone meet it". Fixed in `host/commands/host.md` the same hour: a comment that asks for a guard against a case nobody realistically reaches is declined, and a reviewer that answers each fix with the next case of one kind is named and declined once. The subtract rule has to hold at every place a finding can enter, not only in our own review.
 - **Run data:** review rounds 1, host rounds 3 (11:05 to 12:06 UTC), about two hours wall time.
+
+## 2026-11-22, issue 5995 (PR 5999): host ended `waiting` on a paused review bot; merged by hand by the factory manager
+
+- **Stage overruled:** host (run bdf76d0d, round 6 of an allowance of 4). All 21 checks passed or were skipped and the change merged cleanly. The host waited about 40 minutes for CodeRabbit to review head a811934e7, which never came because CodeRabbit had paused automatic reviews on the pull request. The run ended `waiting` with no ask and no next stage, so the item had no way forward.
+- **What I did:** read the hand-resolved part of the merge commit (51 lines over five files: trigger check uses base-plus-local discovery and keeps the fire-binding check from PR 6039), marked the pull request ready, squash-merged it into dev, and recorded the merge on the item with `archon workflow merged`.
+- **Why:** Rasmus approved landing it that morning. It had bounced from the land stage twice because another pull request landed first, and two more pull requests at the gate (6040, 6044) conflicted with it. The earlier, larger merge resolution was reviewed independently and found safe.
+- **Kind:** `stage had no way forward`.
+- **What it says about the stage:** a review bot that has paused itself is not a review that is still coming. The host should read the bot's pause notice as "no review will arrive" and go on, not wait and end `waiting`. Also the round allowance (4) did not stop round 6. And the land order matters: when several changes are at the gate, the land stage has no notion of which one the others conflict with.
+- **Run data:** six host and build rounds since the first landgate ask at 06:48 UTC; landed 11:54 UTC.
+
+## 2026-11-22, issue 5978 (PR 6027): check recommended a sixth round for one wiring test; taken as is
+
+- Stage: stage-check run 9f417ddd, round 5 of 4 allowed. Review and product review approved; the test check returned one gap (no test that `wake-observation.ts` passes `{ observingOnly: true }`).
+- Ruling: take-as-is. The behaviour is in place, the item is past its allowance, and the live round trip before merge is the proof.
+- Kind: `recommendation not followed`.

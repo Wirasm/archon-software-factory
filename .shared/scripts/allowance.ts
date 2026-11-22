@@ -4,14 +4,17 @@
 // of those runs left. Both are read from the item, so nothing is stored that could
 // disagree with it. Inputs: `stage`, the workflow's name; `last`, what this round ended with.
 import { emit, input, item } from 'archon:script';
-const stage = input('stage').trim();
+// On a pack installed with `archon plugin add`, a run's workflow is the namespaced name
+// (`<owner>/<pack>:stage-check`); in a project's own copy it is bare. Compare the last part.
+const bare = (name: string) => name.slice(name.lastIndexOf(':') + 1);
+const stage = bare(input('stage').trim());
 const said = String(JSON.parse(input('last') || '{}')?.outcome ?? '');
 const read = item();
 const runs = read?.runs ?? [];
 const planned = runs
-  .filter(run => run.workflow === 'plan' && run.status === 'completed')
+  .filter(run => bare(run.workflow) === 'plan' && run.status === 'completed')
   .map(run => run.completedAt ?? '').sort().at(-1) ?? '';
-const earlier = runs.filter(run => run.workflow === stage && run.status === 'completed' && run.startedAt > planned);
+const earlier = runs.filter(run => bare(run.workflow) === stage && run.status === 'completed' && run.startedAt > planned);
 const round = earlier.length + 1;
 const raised = (read?.answers ?? []).filter(answer =>
   answer.kind === 'ask' && answer.chosen?.id === 'one-more-round' && earlier.some(run => run.id === answer.runId)).length;

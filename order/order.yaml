@@ -58,7 +58,7 @@ nodes:
         const read = item();
         const mine = JSON.parse(listed).find((m: any) => m.key === read?.item.key);
         if (!mine) refused('The split that ended started other members, not this item.');
-        else if ((read?.runs ?? []).some(run => run.workflow === 'order' && run.outcome === 'ready')) refused('This member was ordered before.');
+        else if ((read?.runs ?? []).some(run => run.workflow.slice(run.workflow.lastIndexOf(':') + 1) === 'order' && run.outcome === 'ready')) refused('This member was ordered before.');
         else emit({ outcome: 'ready', item: `# ${mine.title}\n\n${mine.brief}\n\nThis is one piece of the larger item \`${order.part_of}\`, which was split into members that are each built on their own.`, ...order, why: '' });
       } else if (!source && !text) {
         refused('The order names no work: give a source, text, or both.');
