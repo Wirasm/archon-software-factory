@@ -26,7 +26,7 @@ nodes:
       properties:
         recommend:
           type: string
-          enum: &verbs [build, narrow, split, recipe, native, fold, park, deprecate, decline, close]
+          enum: &verbs [build, narrow, split, shape, recipe, native, fold, park, deprecate, decline, close]
           description: 'The option you recommend. It is one of the options below.'
         why: { type: string, description: 'One line: why this one.' }
         options:
@@ -50,5 +50,9 @@ nodes:
           items: { type: string }
           description: 'What the result rests on: files, docs, commits, other items.'
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
+        open_questions:
+          type: array
+          items: { type: string }
+          description: 'For shape: what a maintainer has to decide before this can be planned, the questions that decide the most first. Otherwise empty.'
         for_next: { type: string, description: 'Anything the engineer who plans this item needs from you that has no field here. Write it to them.' }
-      required: [recommend, why, options, summary, size, cites, notes, for_next]
+      required: [recommend, why, options, summary, size, cites, notes, open_questions, for_next]

@@ -18,7 +18,8 @@ What can happen to an item:
 - **recipe**: write no code; show how to get it with what already exists.
 - **native**: leave it to what the platform or provider already gives.
 - **fold**: it belongs with another item.
-- **park**: worth doing, but not ready to build; it needs shaping first.
+- **shape**: worth doing, and it cannot be planned yet: it is too large or leaves too many details open for one engineer to settle alone. It needs shaping with a maintainer first. List the open questions, each as one a maintainer could answer, the ones that decide the most first.
+- **park**: worth doing, and not now. Say what would have to change for it to start.
 - **deprecate**: remove or stop maintaining the thing it touches, instead of fixing it.
 - **decline**: not this project's job.
 - **close**: already done, or nothing to act on.
