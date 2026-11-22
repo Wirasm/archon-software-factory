@@ -162,3 +162,17 @@
 - Stage: stage-check run 9f417ddd, round 5 of 4 allowed. Review and product review approved; the test check returned one gap (no test that `wake-observation.ts` passes `{ observingOnly: true }`).
 - Ruling: take-as-is. The behaviour is in place, the item is past its allowance, and the live round trip before merge is the proof.
 - Kind: `recommendation not followed`.
+
+## 2026-11-22, issue 6072 windowless tick (PR 6077): host recommended send-back for a lost exit status; taken as is and merged by hand
+
+- Stage: stage-host run 23049cd3. `conhost --headless` drops the launcher's exit status, so Task Scheduler can show success for a failed tick.
+- Ruling: take-as-is, on the maintainer's ruling that the change merges and is tried on a real Windows desktop from dev. No Windows machine was available to the builder, so another mechanism could not be run either. Filed as issue 6088.
+- Merged by hand: a host `take-as-is` starts nothing, so there was no land stage to run.
+- Kind: `recommendation not followed`, `stage had no way forward`.
+
+## 2026-11-22, issue 6069 delete guard (PR 6085): land gate recommended land; sent back to remove locking
+
+- Stage: landgate run 30eaa45f recommended land. Checks green, two review rounds done.
+- What happened in delivery: the item asked for one check (refuse deleting a run with a live sub-run). Three reviews each returned a P1 PostgreSQL race between deletion and a concurrent sub-run start or resume, and the change grew to +683/-70 with a recursive tree lock, the admission lock in deletion, and a lock order that can deadlock with resume.
+- Ruling: send-back to keep the check and remove the locks. The race needs an operator to delete a run in the instant a sub-run starts, and costs a run limit reading one too high until the tree ends.
+- Kind: `recommendation not followed`, `over-build from review findings`. Pack note: the review asks "who meets the failure and how" for guards the builder adds, but returned races of its own that nobody meets; the same test should apply to its own findings.

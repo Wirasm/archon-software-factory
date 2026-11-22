@@ -42,6 +42,8 @@ Other checks may be working in this checkout at the same time as you. Do anythin
 
 Report everything you can find in this reading. Each round costs the builder a fix and every check another run, so a finding held back for later is the expensive kind.
 
+Hold your own findings to the test you hold the builder's guards to. For each one, say who meets the fault in ordinary use, how, and what it costs them. A fault that needs two things to happen in the same instant, an input nobody sends, or a state only a test can build, and that costs little when it does happen, is a note: say what would have to be added to close it, so the maintainer can see the price. A change that grows a lock, a retry or a state to answer a finding like that has been made worse by the review.
+
 Something wrong that this change did not cause is not a finding against it. Code that came in through a merge of the branch the change is proposed against is not this change either, unless the way a conflict was resolved made it wrong. Report it as noticed. When what you found sits next to the change, check the commit it was built on before you decide which it is.
 
 When what you are about to return is another case of a kind of fault that was returned before and fixed, do not return the case. The change decides that thing in more than one place, and fixing cases will not end it. Return the cause as one finding: name the kind, the places that decide it now, and the one place that should. Keep the new case as its evidence. When no single place can decide it under this approach, that is a replan.
