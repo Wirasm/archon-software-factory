@@ -444,7 +444,7 @@ nodes:
         { id: 'send-back', does: 'The same builder continues on the change with what you say in your answer.', cost: 'One more delivery run.' },
         { id: 'replan', does: 'The item goes back to planning with what you say in your answer.', cost: 'The work so far may be discarded.' },
         { id: 'take-as-is', does: 'The change stands as it is; nothing more is built. An operator lands it or closes it.', cost: 'What the checks returned stays unfixed.' },
-        { id: 'hold', does: 'Nothing proceeds until an operator says more.', cost: 'The item waits.' },
+        { id: 'hold', does: 'Nothing starts, and this ask is closed: nothing can be started from it later. To keep the item waiting, leave the ask open and answer when you know.', cost: 'The item waits.' },
       ];
       const asks = left.map((ask: any) => {
         const offered = (ask.options ?? []).map((o: any) => `- ${String(o.id ?? '')}: ${String(o.does ?? '')}${o.cost ? ` (cost: ${String(o.cost)})` : ''}`);

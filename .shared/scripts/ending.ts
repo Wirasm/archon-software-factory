@@ -37,7 +37,7 @@ const forward = stage === 'stage-host'
   ? { id: 'take-as-is', does: 'The change stands as it is and nothing more runs. An operator lands it or closes it.', cost: 'What the host returned stays unfixed.' }
   : { id: 'take-as-is', does: 'The change goes on to the host round as it is.', cost: 'What was returned stays unfixed.' };
 const replan = { id: 'replan', does: 'The item goes back to planning with what you say in your answer.', cost: 'The work so far may be discarded.' };
-const hold = { id: 'hold', does: 'Nothing proceeds until an operator says more.', cost: 'The item waits.' };
+const hold = { id: 'hold', does: 'Nothing starts, and this ask is closed: nothing can be started from it later. To keep the item waiting, leave the ask open and answer when you know.', cost: 'The item waits.' };
 const routes = usedUp
   ? [{ id: 'one-more-round', does: 'This item is allowed one more round: the same builder fixes what was returned, and it is looked at again.', cost: 'One build run and one more round.' }, forward, replan, hold]
   : [{ id: 'send-back', does: 'The same builder continues on the change with what you say in your answer, and the checks look at it again.', cost: 'One build run and one check round.' }, replan, forward, hold];

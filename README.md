@@ -81,7 +81,7 @@ The answer starts what comes next, and what you wrote reaches that run as a deci
 | `send-back` | Delivery, in the checkout it left, with the same builder. |
 | `replan` | Plan, then delivery. |
 | `take-as-is` | Nothing. The change stands; you land it or close it. |
-| `hold` | Nothing, until you say more. |
+| `hold` | Nothing, and the ask is closed. To keep an item waiting, leave its ask open instead. |
 
 **5. Read the report.** Delivery keeps one report on the pull request and replaces it after every round: the rounds, what is still to change, what the item asks for and how each was checked, and how the run ended.
 

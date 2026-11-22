@@ -23,7 +23,7 @@ const summary = String(gate ? last.why ?? '' : last.summary || last.stop || '');
 const routes = [
   { id: 'land', does: 'The land stage merges the change into its landing branch, when it still merges and its checks are green.', cost: 'The change is on the branch everyone builds on.' },
   { id: 'send-back', does: 'The same builder continues on the change with what you say in your answer, and the checks look at it again.', cost: 'One build run and one check round before it can land.' },
-  { id: 'hold', does: 'Nothing proceeds until an operator says more.', cost: 'The item waits, and the change can stop merging while it does.' },
+  { id: 'hold', does: 'Nothing starts, and this ask is closed: nothing can be started from it later. To keep the item waiting, leave the ask open and answer when you know.', cost: 'The item waits, and the change can stop merging while it does.' },
 ];
 const asks = handsOn ? [] : (last.asks ?? []).map((ask: any) => {
   const wanted = String(ask.recommendation?.option ?? '');
