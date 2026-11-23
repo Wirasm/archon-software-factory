@@ -14,6 +14,8 @@ The other open items:
 
 $INPUTS.open_items
 
+When none are listed above, find them yourself: read the project's tracker for the open items that touch the same code or behaviour as this one, and for anything this item says it builds on. You do not need to read every open item. Say in `notes` how you searched, so a link you did not find can be told from one that is not there.
+
 Relations the tracker already holds for this item:
 
 $INPUTS.relations
