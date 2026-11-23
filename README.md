@@ -2,7 +2,7 @@
 
 A software factory that runs on [Archon](https://github.com/coleam00/Archon): it takes work items from a forge, turns each into a merged change, and asks a person only when a decision is theirs.
 
-**Status: early, and it runs.** It has delivered real changes to Archon since 2026-11-13: triage, plan, build, three checks, a verdict and a read of the project's own CI, with asks where a decision belongs to an operator, and an answer that starts the next stage. On the three-stage shape it merges a ready change when the project's land policy or an operator says so. Nothing enters on its own. See [what is not there yet](#what-is-not-there-yet).
+**Status: early, and it runs.** It has delivered real changes to Archon since 2026-11-13: triage, plan, build, three checks, a verdict and a read of the project's own CI, with asks where a decision belongs to an operator, and an answer that starts the next stage. It merges a ready change when the project's land policy or an operator says so. Nothing enters on its own. See [what is not there yet](#what-is-not-there-yet).
 
 ## What it is for
 
@@ -65,7 +65,7 @@ ARCHON_TRIGGER_HOST=<host-id> archon trigger fire \
   --config <that directory>/<the order file> --inputs order.json
 ```
 
-The order becomes a work item, and the engine starts each next stage when the one before ends: triage, the split when triage calls for one, plan, deliver, the land gate, and on the three-stage shape the land stage, the landed check and the discoveries drain. `archon workflow runs --item issue-123` shows where it is. For a few seconds after a stage ends, the next one reads as admitted and not started; it starts by itself.
+The order becomes a work item, and the engine starts each next stage when the one before ends: triage, the split when triage calls for one, plan, build, check and host rounds, the land gate, the land stage, the landed check and the discoveries drain. `archon workflow runs --item issue-123` shows where it is. For a few seconds after a stage ends, the next one reads as admitted and not started; it starts by itself.
 
 **4. Answer what it asks.** A stage that needs a decision ends and leaves an ask with options and a recommendation.
 
@@ -114,13 +114,13 @@ To split an epic or a PRD without triage, start the stage on its item. With the 
 archon workflow run split --item <key> --input-file item=<the item's text>
 ```
 
-## Delivery as three stages (trial)
+## Delivery as three stages
 
-`deliver` is one run, so an answer on its ask can only start the whole delivery again. On trial beside it: `stage-build`, `stage-check` and `stage-host`, each a run of its own on the item, started by the pack's bindings. A check that returns the change starts the builder in the session it last had on the item; an approval starts the host round; and an answer starts only the stage its option names (`send-back`, `one-more-round`, `replan`, `take-as-is`, `drop`, `reshape`).
+Delivery is three stages, `stage-build`, `stage-check` and `stage-host`, each a run of its own on the item, started by the pack's bindings. A check that returns the change starts the builder in the session it last had on the item; an approval starts the host round; and an answer starts only the stage its option names (`send-back`, `one-more-round`, `replan`, `take-as-is`, `drop`, `reshape`).
 
-An item is allowed three check rounds. When a check would return the change with the rounds used up, it ends in an ask, and `one-more-round` allows the item one more. When the rounds are used up, the same judgment as in `deliver` recommends one of the options. Each check run leaves the report on the pull request, as `deliver` does after each round, and the host stage closes it. Each check run's result says which round it was and how many the item is allowed (`archon workflow get <run-id> --json`, under `terminal_record.returns.value`).
+An item is allowed three check rounds. When a check would return the change with the rounds used up, it ends in an ask, and `one-more-round` allows the item one more. An agent then recommends one of the options. Each check run leaves the report on the pull request, and the host stage closes it. Each check run's result says which round it was and how many the item is allowed (`archon workflow get <run-id> --json`, under `terminal_record.returns.value`).
 
-Both shapes are declared. A repository takes one at the hand-off from plan: register `deliver-after-plan` or `stage-build-after-plan`, not both. Write the files of the new shape with `--only`, naming every binding in [`.pack/pack.yaml`](.pack/pack.yaml) below the "Delivery as three stages" comment, and add each. To try a single item on the new shape while the repository stays on `deliver`, leave `stage-build-after-plan` unregistered. The item's `deliver` run still starts when it is planned: cancel it, or withdraw its start while it is queued, then start the build by hand. Every later stage on the item is started by the bindings.
+To start a build by hand on an item:
 
 ```bash
 archon workflow run stage-build --item <key> --input-file item=<the item's text>
@@ -128,7 +128,7 @@ archon workflow run stage-build --item <key> --input-file item=<the item's text>
 
 ## What is not there yet
 
-- **It merges only on the three-stage shape, and only what was allowed.** After a ready change the land gate decides: it ends `land` when the project's land policy lets the change land by itself, and asks otherwise, always when the project names no land policy. The land stage then merges the change into its landing branch through the forge, when it still merges and the host's checks at its head are green; a change that does not goes back to its builder. Not there yet: `take-as-is` on a host ask still starts nothing, a land return on an item built by `deliver` continues on the three stages and has not been tried, and landing is not waited for by anything that depends on the item.
+- **It merges only what was allowed.** After a ready change the land gate decides: it ends `land` when the project's land policy lets the change land by itself, and asks otherwise, always when the project names no land policy. The land stage then merges the change into its landing branch through the forge, when it still merges and the host's checks at its head are green; a change that does not goes back to its builder. Not there yet: `take-as-is` on a host ask still starts nothing, a land return on an item built by `deliver` continues on the three stages and has not been tried, and landing is not waited for by anything that depends on the item.
 - **`shape` starts nothing yet.** Triage ends `shape` for an item that is worth doing and cannot be planned until a maintainer has settled its open questions, and lists them. Nothing runs the shaping: an operator does it and orders the item again.
 - **A label is a work order.** The `order-on-label` binding orders an issue when the label `factory` is added to it. It is an event binding: add its generated object to the GitHub source plugin's `bindings` in the file `ARCHON_WEBHOOK_SOURCES` names. An install that receives no webhooks sets `observe` on that source and reads the label on its wake timer. Labels already on issues when the binding is first seen start nothing.
 - **Nothing enters on its own.** Every item starts because an operator ordered it, by hand or with the label. Whether an item could be admitted without an operator is recorded by triage as a shadow.

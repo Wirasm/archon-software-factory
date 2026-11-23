@@ -107,8 +107,7 @@ nodes:
 
   # The rounds this item is allowed are used up and the change is still returned. One more
   # round is not automatic: an agent reads what is left and recommends what to do, with
-  # deliver's own prompt (commands/exhausted.md is deliver's file, copied unchanged because
-  # a command resolves only from its own workflow). The options are the script's: the recommendation names one.
+  # the prompt in commands/exhausted.md. The options are the script's: the recommendation names one.
   - id: exhausted
     depends_on: [allowance]
     when: "$allowance.output.state == 'used_up'"

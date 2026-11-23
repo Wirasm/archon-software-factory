@@ -28,7 +28,7 @@ inputs:
 returns: { node: end, outcome: outcome, asks: asks }
 
 nodes:
-  # The host read. Its id is `rounds` because deliver's exhausted prompt, used below
+  # The host read. Its id is `rounds` because the exhausted prompt, used below
   # unchanged, reads what was returned as `$rounds.output`.
   - id: rounds
     include: host
@@ -58,7 +58,7 @@ nodes:
 
   # The rounds this item is allowed are used up and the change is still returned. One more
   # round is not automatic: an agent reads what is left and recommends what to do, with
-  # deliver's own prompt (commands/exhausted.md is deliver's file, copied unchanged because
+  # the prompt in commands/exhausted.md (a copy of the check stage's, because
   # a command resolves only from its own workflow; it reads `$rounds.output`, which is why
   # the node above has that id). The options are the script's: the recommendation names one.
   - id: exhausted

@@ -208,20 +208,6 @@ bindings:
       item: { input: item }
       land_on: { input: land_on }
       answers: { item: answers }
-  deliver-after-plan:
-    workflow: deliver
-    resource: deliver
-    capacity: 5
-    overlap: queue
-    run_ended:
-      workflow: plan
-      outcome: planned
-    inputs:
-      item: { input: item }
-      land_on: { input: land_on }
-      plan: { result: "" }
-      # What an operator answered while the item was planned is a decision delivery holds to.
-      answers: { input: answers }
   # After a change landed: when the landed stage finds the change broke its branch and
   # writes a work order, the order starts as new work on the landed check's own item.
   # An empty work order (roll back, ask) is refused by the order stage and starts nothing.
@@ -236,35 +222,6 @@ bindings:
     inputs:
       text: { result: /work_order }
       land_on: { input: land_on }
-  # The gate works in the checkout delivery left, so a change that goes back from landing
-  # reaches its builder on its own branch.
-  landgate-after-deliver:
-    workflow: landgate
-    resource: landgate
-    capacity: 3
-    overlap: queue
-    run_ended:
-      workflow: deliver
-      outcome: ready
-      checkout: ended-run
-    inputs:
-      item: { input: item }
-      land_on: { input: land_on }
-      answers: { item: answers }
-      change: { result: /change }
-      delivered: { result: "" }
-  # This start predates landing: it drains at `ready`, so it can file a follow-up for a
-  # change that then never merges. The staged shape drains when the change has landed.
-  discoveries-after-deliver:
-    workflow: discoveries
-    resource: discoveries
-    capacity: 2
-    overlap: queue
-    run_ended:
-      workflow: deliver
-      outcome: ready
-    inputs:
-      discoveries: { result: /noticed }
   plan-after-answers:
     workflow: plan
     resource: plan
@@ -278,42 +235,8 @@ bindings:
       land_on: { input: land_on }
       links: { input: links }
       answers: { item: answers }
-  # A delivery's asks all offer the same options, and the option chosen decides what starts:
-  # `send-back` continues delivery in the checkout it left, `replan` starts planning again
-  # with the answer, and `take-as-is` starts nothing. `drop` and `reshape` start the close
-  # step, as for the staged shape below.
-  plan-after-deliver-replan:
-    workflow: plan
-    resource: plan
-    capacity: 3
-    overlap: queue
-    asks_settled:
-      workflow: deliver
-      settled: answered
-      option: replan
-    inputs:
-      item: { input: item }
-      land_on: { input: land_on }
-      answers: { item: answers }
-  deliver-after-answers:
-    workflow: deliver
-    resource: deliver
-    capacity: 5
-    overlap: queue
-    asks_settled:
-      workflow: deliver
-      settled: answered
-      option: send-back
-      checkout: asking-run
-    inputs:
-      item: { input: item }
-      land_on: { input: land_on }
-      answers: { answers: true }
-
   # Delivery as three stages: build, check and host are each a run of their own on the item,
-  # so an answer starts the stage it belongs to and nothing already done runs again. These
-  # bindings stand beside deliver's: register `deliver-after-plan` or `stage-build-after-plan`
-  # for a repository, not both, and an item stays on the shape its build started on.
+  # so an answer starts the stage it belongs to and nothing already done runs again.
   # Every stage after the first build works in the checkout the run before it left.
   stage-build-after-plan:
     workflow: stage-build
@@ -374,8 +297,8 @@ bindings:
       land_on: { input: land_on }
       answers: { item: answers }
       change: { result: /change }
-  # What the host returns goes to the builder and then straight back to the host, as in
-  # deliver: our own checks approved the change and do not run again for a host fix.
+  # What the host returns goes to the builder and then straight back to the host, because
+  # our own checks approved the change and do not run again for a host fix.
   stage-build-after-host:
     workflow: stage-build
     resource: stage-build
@@ -477,7 +400,7 @@ bindings:
       answers: { item: answers }
   # A change that no longer merges, or whose checks are red at land time, goes to the
   # builder and then to the host round, as a host return does, and from host ready to the
-  # gate again. An item delivered by `deliver` is on the three stages from here on.
+  # gate again.
   stage-build-after-land:
     workflow: stage-build
     resource: stage-build
@@ -694,18 +617,6 @@ bindings:
       land_on: { input: land_on }
       answers: { item: answers }
   # An operator's `drop` or `reshape` on any stage's ask starts the close step on the item.
-  close-after-deliver-answers:
-    workflow: close
-    resource: close
-    capacity: 2
-    overlap: queue
-    asks_settled:
-      workflow: deliver
-      settled: answered
-      option: [drop, reshape]
-    inputs:
-      change: { result: /change }
-      answers: { answers: true }
   close-after-build-answers:
     workflow: close
     resource: close

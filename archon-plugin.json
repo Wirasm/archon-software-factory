@@ -21,7 +21,6 @@
     "verdict": "verdict/verdict.yaml",
     "product": "product/product.yaml",
     "investigate": "investigate/investigate.yaml",
-    "deliver": "deliver/deliver.yaml",
     "host": "host/host.yaml",
     "inspect": "inspect/inspect.yaml",
     "split": "split/split.yaml",
