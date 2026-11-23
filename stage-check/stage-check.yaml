@@ -38,52 +38,6 @@ nodes:
       [ -n "$onto" ] || onto=$BASE_BRANCH
       git merge-base HEAD "origin/$onto" 2>/dev/null || git merge-base HEAD "$onto"
 
-  # Shadow, as in deliver since 2026-11-18: the checks the project declares, each run to
-  # its end on this round's commit, beside the three reviews. Nothing reads the result
-  # yet, and it never fails the round. The script is deliver's, copied because deliver
-  # stays as it is on this branch.
-  - id: checks
-    depends_on: [base]
-    runtime: bun
-    with:
-      file: $INPUTS.checks_file
-      change: $INPUTS.change
-    script: |
-      import { existsSync, readFileSync } from 'node:fs';
-      import { input } from 'archon:script';
-      const results: { name: string; passed: boolean; exit: number | null; seconds: number; tail: string }[] = [];
-      let problem = '';
-      try {
-        const file = input('file').trim();
-        if (file && existsSync(file)) {
-          const declared = (Bun.YAML.parse(readFileSync(file, 'utf8')) as any)?.checks ?? [];
-          for (const check of declared) {
-            const started = Date.now();
-            const ran = Bun.spawnSync(['sh', '-c', String(check.run)], { stdout: 'pipe', stderr: 'pipe', timeout: 15 * 60 * 1000 });
-            const text = `${ran.stdout?.toString() ?? ''}\n${ran.stderr?.toString() ?? ''}`.trim();
-            results.push({
-              name: String(check.name),
-              passed: ran.exitCode === 0,
-              exit: ran.exitCode,
-              seconds: Math.round((Date.now() - started) / 1000),
-              tail: ran.exitCode === 0 ? '' : text.slice(-1500),
-            });
-          }
-        } else if (file) problem = `no checks file at ${file}`;
-      } catch (error) {
-        problem = error instanceof Error ? error.message : String(error);
-      }
-      const failed = results.filter(r => !r.passed).map(r => r.name);
-      console.log(JSON.stringify({
-        declared: results.length,
-        failed,
-        results,
-        problem,
-        metrics: results.length
-          ? [{ name: 'sf.checks_failed', unit: 'checks', subject: (input('change').trim() || null), kind: 'count', value: failed.length }]
-          : [],
-      }));
-
   # Each check starts with a fresh context and is told what was returned last round and
   # what the builder says it did about it. Both arrive as this run's inputs, from the
   # result of the build run that ended before it.
@@ -141,10 +95,9 @@ nodes:
   # Shows this round's verdict where the change is proposed: one report comment, replaced
   # after every round, and findings and notes on their lines. The script is deliver's
   # `shown` body, unchanged; it hands the verdict on with the report and the running
-  # totals. It waits for the shadow checks too, whatever became of them.
+  # totals.
   - id: rounds
-    depends_on: [verdict, checks]
-    trigger_rule: all_done
+    depends_on: [verdict]
     runtime: bun
     script: shown
     with:
