@@ -176,3 +176,10 @@
 - What happened in delivery: the item asked for one check (refuse deleting a run with a live sub-run). Three reviews each returned a P1 PostgreSQL race between deletion and a concurrent sub-run start or resume, and the change grew to +683/-70 with a recursive tree lock, the admission lock in deletion, and a lock order that can deadlock with resume.
 - Ruling: send-back to keep the check and remove the locks. The race needs an operator to delete a run in the instant a sub-run starts, and costs a run limit reading one too high until the tree ends.
 - Kind: `recommendation not followed`, `over-build from review findings`. Pack note: the review asks "who meets the failure and how" for guards the builder adds, but returned races of its own that nobody meets; the same test should apply to its own findings.
+
+## 2026-11-23 issue 6099 / PR 6100, stage-check round 3
+
+- Stage said: one-more-round (same-second remove and re-add reuses the remembered answer; silent miss).
+- I said: take-as-is, no follow-up.
+- Why: the finding names no one who meets it in ordinary use. It needs a remove and re-add inside the second of a change already read. The review reproduced it only with a simulated forge. The stage weighed "the item states the invariant outright" above who is harmed.
+- Run: 3b7536d9 (stage-check), ask 2f5ddae6.
