@@ -114,5 +114,15 @@ emit({
         allowance,
       }),
   asks,
-  metrics: outcome === 'ready' ? [count('sf.ended_ready', 'runs', 1)] : [],
+  metrics: [
+    ...(outcome === 'ready' ? [count('sf.ended_ready', 'runs', 1)] : []),
+    // One check round, as records for `archon metrics`: how many rounds the change has had
+    // (latest wins per change), and what this round found (one record per round, so the
+    // metric's sum is everything found and nothing is counted across runs here).
+    ...(stage === 'stage-check' && change ? [
+      count('sf.review_rounds', 'rounds', round),
+      { ...count('sf.round_findings', 'findings', (last.findings ?? []).length), subject: `${change}#round-${round}` },
+      { ...count('sf.round_notes', 'notes', (last.notes ?? []).length), subject: `${change}#round-${round}` },
+    ] : []),
+  ],
 });
