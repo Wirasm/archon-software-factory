@@ -18,7 +18,7 @@ What can happen to an item:
 - **recipe**: write no code; show how to get it with what already exists.
 - **native**: leave it to what the platform or provider already gives.
 - **fold**: it belongs with another item.
-- **shape**: worth doing, and it cannot be planned yet: it is too large or leaves too many details open for one engineer to settle alone. It needs shaping with a maintainer first. List the open questions, each as one a maintainer could answer, the ones that decide the most first.
+- **shape**: worth doing, and it cannot be planned yet: it is too large or leaves too many details open for one engineer to settle alone. It needs shaping with a maintainer first. So does an item where what gets built is a design the maintainers would want to choose themselves and the item does not settle it: a new screen or way of working an operator has to learn, a new command or surface, a vocabulary many places will share. An engineer could pick one; they should not pick alone. An idea a maintainer raised is not closed or answered with a workaround because part of it exists already: say what exists, and shape what is left. List the open questions, each as one a maintainer could answer, the ones that decide the most first.
 - **park**: worth doing, and not now. Say what would have to change for it to start.
 - **deprecate**: remove or stop maintaining the thing it touches, instead of fixing it.
 - **decline**: not this project's job.
