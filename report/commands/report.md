@@ -32,7 +32,7 @@ It is one comment on the change, and it is replaced, never added to: `archon for
 
 A maintainer should find in it, in this order and only when there is something to say:
 
-- A heading that says where the change stands: `## Factory report: ` and then, in a few words, the round and its result, or how delivery ended (ready for a maintainer, returned with findings open, waiting for the project's checks, needs a different approach, a decision is needed).
+- A heading that says where the change stands: `## Factory report: ` and then, in a few words, the round and its result, or how delivery ended (our checks approve and the project's own checks are next, ready for a maintainer, returned with findings open, waiting for the project's checks, needs a different approach, a decision is needed).
 - When an operator must decide something: the questions, first, so they are not missed.
 - The verdict's summary.
 - The rounds so far, as a table: round, result, how many things to change, how many notes, and what the builder did before that round. Keep the earlier rows as they are and add this round.
