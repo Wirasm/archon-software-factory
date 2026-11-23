@@ -98,8 +98,7 @@ nodes:
   # item. Recording the link writes the member's item when nothing has named it yet, and
   # recording it again leaves the one link. It starts nothing: the `order-after-split`
   # binding starts the order stage on every item that is part of this one, and the order
-  # stage takes only a member listed in `start`, once. The link goes through the CLI
-  # because `archon:script` has no call that records one.
+  # stage takes only a member listed in `start`, once.
   - id: members
     depends_on: [cut]
     runtime: bun
@@ -108,7 +107,7 @@ nodes:
       cut: $cut.output
       land_on: $INPUTS.land_on
     script: |
-      import { emit, input, item } from 'archon:script';
+      import { emit, input, item, linkItem } from 'archon:script';
       const cut = JSON.parse(input('cut'));
       const parent = item()?.item.key;
       if (!parent) throw new Error('split: the run is on no item, so its members cannot be part of one');
@@ -129,11 +128,8 @@ nodes:
         };
       });
       const start = members.filter((m: any) => m.start === 'now');
-      const cli: string[] = JSON.parse(process.env.ARCHON_CLI_COMMAND ?? '[]');
-      for (const m of start) {
-        const ran = Bun.spawnSync([...cli, 'workflow', 'link', '--item', m.key, '--kind', 'part_of', '--to', parent, '--json'], { env: process.env, stdout: 'pipe', stderr: 'pipe' });
-        if (ran.exitCode !== 0) throw new Error(`split: ${m.key} was not recorded as part of ${parent}: ${ran.stderr.toString().trim() || ran.stdout.toString().trim()}`);
-      }
+      // Each member that starts now is recorded as part of this run's own item.
+      for (const m of start) linkItem({ kind: 'part_of', from: m.key });
       emit({
         outcome: whole ? 'whole' : start.length ? 'split' : 'waiting',
         kind: cut.kind,

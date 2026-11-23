@@ -6,7 +6,7 @@
 // where the change is proposed; `land_on`, the item's landing branch (land stage only);
 // `delivered`, gate only, what the host round ended with; `noticed`, land only, what the
 // checks noticed, carried to the discoveries drain that starts when the change has landed.
-import { emit, forge, input, item } from 'archon:script';
+import { emit, forge, input, item, recordLanding, recordMerge } from 'archon:script';
 const parse = (name: string) => { try { return JSON.parse(input(name) || 'null'); } catch { return null; } };
 const stage = input('stage').trim();
 const last = parse('last') ?? {};
@@ -62,11 +62,6 @@ if (!handsOn && asks.length === 0) {
 let recorded = '';
 if (stage === 'land' && outcome === 'landed') {
   try {
-    const cli: string[] = JSON.parse(process.env.ARCHON_CLI_COMMAND ?? '');
-    const host = (args: string[]) => {
-      const ran = Bun.spawnSync([...cli, 'workflow', ...args, '--json'], { env: process.env, stdout: 'pipe', stderr: 'pipe' });
-      if (ran.exitCode !== 0) throw new Error(`archon workflow ${args[0]}: ${ran.stderr.toString().trim() || ran.stdout.toString().trim()}`);
-    };
     const key = item()?.item.key;
     const where = change ? forge('resolve', { remote: change, web: true }) : null;
     if (!key) recorded = 'not recorded: the run is on no item';
@@ -78,11 +73,11 @@ if (stage === 'land' && outcome === 'landed') {
       if (seen?.pr.state !== 'merged' || !at) recorded = `not recorded: the host says the change is ${seen?.pr.state ?? 'unknown'}`;
       else {
         const commit = forge('pr.merge-state', { ref }).merge_commit;
-        host(['merged', '--item', key, '--change', seen.pr.url, '--at', at, ...(commit ? ['--commit', commit] : [])]);
+        recordMerge({ change: seen.pr.url, at, commit: commit ?? null });
         // Later work on the item, such as a fix after the landed check, is cut from the
         // branch the change landed on. With no landing branch set that is the base branch
         // already, and nothing is recorded.
-        if (input('land_on').trim()) host(['landing', '--item', key, '--branch', seen.pr.base]);
+        if (input('land_on').trim()) recordLanding(seen.pr.base);
         recorded = `merged into ${seen.pr.base}${commit ? ` as ${commit}` : ''}`;
       }
     }
