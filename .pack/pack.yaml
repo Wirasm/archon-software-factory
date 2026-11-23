@@ -112,6 +112,23 @@ bindings:
     capacity: 3
     overlap: queue
     item: { field: key }
+  # A label is a work order too: adding the label `factory` to an issue orders that issue,
+  # on its item `issue-<number>`. Add the generated binding to the GitHub source plugin's
+  # bindings; the source receives the label by webhook or, with `observe`, reads it.
+  order-on-label:
+    workflow: order
+    resource: order
+    capacity: 3
+    overlap: queue
+    event:
+      kind: label.changed
+      actions: [added]
+      predicates: [{ field: label.name, equals: factory }]
+    item: { field: subject.number, prefix: issue- }
+    inputs:
+      issue: { event: subject.number }
+      repo_host: { repo: host }
+      repo_path: { repo: path }
   triage-after-order:
     workflow: triage
     resource: triage

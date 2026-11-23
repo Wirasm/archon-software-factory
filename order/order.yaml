@@ -13,6 +13,15 @@ inputs:
   source:
     default: ""
     description: A link to the work item on the project's forge (an issue, for example). Empty when the work lives in no tracker.
+  issue:
+    default: ""
+    description: The number of the issue this order is about, on the repository `repo_host` and `repo_path` name. Set by the binding that orders an issue when a label is put on it; an order by hand gives `source`.
+  repo_host:
+    default: ""
+    description: The host of the project's repository, such as github.com. Read with `issue`.
+  repo_path:
+    default: ""
+    description: The path of the project's repository on its host, such as acme/widgets. Read with `issue`.
   text:
     default: ""
     description: The work as text. With a source, it is added below what the source says, as the operator's own words.
@@ -40,6 +49,9 @@ nodes:
     mutates_checkout: false
     with:
       source: $INPUTS.source
+      issue: $INPUTS.issue
+      repo_host: $INPUTS.repo_host
+      repo_path: $INPUTS.repo_path
       text: $INPUTS.text
       land_on: $INPUTS.land_on
       part_of: $INPUTS.part_of
@@ -47,6 +59,11 @@ nodes:
     script: |
       import { emit, forge, input, item } from 'archon:script';
       const source = input('source').trim();
+      // A label binding names the issue by its number on the project's repository.
+      const issue = Number(input('issue').trim());
+      const labelled = Number.isInteger(issue) && issue > 0
+        ? { repo: { host: input('repo_host').trim(), path: input('repo_path').trim() }, number: issue }
+        : null;
       const text = input('text').trim();
       const order = { land_on: input('land_on').trim(), part_of: input('part_of').trim() };
       const refused = (why: string) => emit({ outcome: 'refused', item: '', ...order, why });
@@ -60,15 +77,17 @@ nodes:
         if (!mine) refused('The split that ended started other members, not this item.');
         else if ((read?.runs ?? []).some(run => run.workflow.slice(run.workflow.lastIndexOf(':') + 1) === 'order' && run.outcome === 'ready')) refused('This member was ordered before.');
         else emit({ outcome: 'ready', item: `# ${mine.title}\n\n${mine.brief}\n\nThis is one piece of the larger item \`${order.part_of}\`, which was split into members that are each built on their own.`, ...order, why: '' });
-      } else if (!source && !text) {
+      } else if (!source && !text && !labelled) {
         refused('The order names no work: give a source, text, or both.');
-      } else if (!source) {
+      } else if (!source && !labelled) {
         emit({ outcome: 'ready', item: text, ...order, why: '' });
       } else {
         let item = '';
         let why = '';
         try {
-          const where = forge('resolve', { remote: source, web: true });
+          const where = labelled
+            ? { kind: 'resolved', repo: labelled.repo, subject: { kind: 'issue', number: labelled.number } }
+            : forge('resolve', { remote: source, web: true });
           if (where.kind !== 'resolved' || !where.subject) {
             why = `The source is not an item on a forge this install can read: ${source}`;
           } else {
