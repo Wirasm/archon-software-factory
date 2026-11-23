@@ -26,17 +26,18 @@ const routes = [
   { id: 'drop', does: 'The change is closed without merging and the item ends here. Your answer is written on the change as the reason.', cost: 'The work on this change is given up; its branch stays.' },
   { id: 'reshape', does: 'The change stays open as a draft and nothing more is built until the item is shaped again. Your answer is written on the change.', cost: 'The item waits for shaping, and the draft can stop merging while it does.' },
 ];
+// An ask with no recommendation says why in its context: the engine keeps a reason only
+// beside a recommended option.
+const unrecommended = (why: unknown) => `No recommendation: ${String(why ?? '').trim() || 'the stage gave no reason.'}`;
 const asks = handsOn ? [] : (last.asks ?? []).map((ask: any) => {
   const wanted = String(ask.recommendation?.option ?? '');
+  // The stage names no option of this ask with `none`, and says why it cannot choose.
+  const recommends = routes.some(r => r.id === wanted);
   return {
     question: String(ask.question ?? ''),
-    context: String(ask.context ?? ''),
+    context: [String(ask.context ?? ''), recommends ? '' : unrecommended(ask.recommendation?.why)].filter(Boolean).join('\n\n'),
     options: routes,
-    recommendation: routes.some(r => r.id === wanted)
-      ? { option: wanted, why: String(ask.recommendation?.why ?? '') }
-      // The stage named no option of this ask (`none` is how it says so): the ask carries no
-      // recommendation, and the operator sees that it has none.
-      : null,
+    recommendation: recommends ? { option: wanted, why: String(ask.recommendation?.why ?? '') } : null,
     artifacts: [],
   };
 });
@@ -44,7 +45,10 @@ const asks = handsOn ? [] : (last.asks ?? []).map((ask: any) => {
 if (!handsOn && asks.length === 0) {
   asks.push({
     question: gate ? 'This change is ready. May it land?' : 'Landing this change stopped. What should happen to it now?',
-    context: [`${stage} ended as ${outcome} and attached no question.`, summary, String(last.for_next ?? '')].filter(Boolean).join(' '),
+    context: [
+      [`${stage} ended as ${outcome} and attached no question.`, summary, String(last.for_next ?? '')].filter(Boolean).join(' '),
+      unrecommended('the stage left no question, so no judgment of the options exists.'),
+    ].join('\n\n'),
     options: routes,
     recommendation: null,
     artifacts: [],

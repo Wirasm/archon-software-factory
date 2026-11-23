@@ -50,7 +50,7 @@ What must hold:
 
 ## How it ends
 
-Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, and what we expect in one. The options of an ask here are fixed, so you write none: `land` (this stage tries again), `send-back` (the builder continues with what the operator says), `drop` (the change is closed without merging) and `reshape` (the change stays open as a draft until the item is shaped again). Recommend one. When you have no basis to choose, recommend `none`: the operator then sees that the ask has no recommendation, which is better than a guess.
+Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, and what we expect in one. The options of an ask here are fixed, so you write none: `land` (this stage tries again), `send-back` (the builder continues with what the operator says), `drop` (the change is closed without merging) and `reshape` (the change stays open as a draft until the item is shaped again). Recommend one. When you have no basis to choose, recommend `none`: the operator then sees that the ask has no recommendation, which is better than a guess. Say why you cannot choose and what you would need to know to choose: the operator reads that in place of a recommendation.
 
 End in one of four outcomes:
 

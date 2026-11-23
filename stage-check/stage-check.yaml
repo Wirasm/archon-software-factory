@@ -202,8 +202,8 @@ nodes:
                   option:
                     type: string
                     enum: [one-more-round, take-as-is, replan, drop, reshape, none]
-                    description: 'What you would do: one-more-round sends it back once more, take-as-is lets the change go on as it is, replan sends the item back to planning, drop closes the change without merging, reshape leaves it open as a draft until the item is shaped again. none when you have no basis to choose: the ask then carries no recommendation. When you would split the change, recommend replan and say so.'
-                  why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind.' }
+                    description: 'What you would do: one-more-round sends it back once more, take-as-is lets the change go on as it is, replan sends the item back to planning, drop closes the change without merging, reshape leaves it open as a draft until the item is shaped again. none when you have no basis to choose: the ask then carries no recommendation, and your why says what stops you. When you would split the change, recommend replan and say so.'
+                  why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind. With none: why you cannot choose, and what you would need to know to choose. The operator reads it in place of a recommendation.' }
                 required: [option, why]
             required: [question, context, recommendation]
         same_kind: { type: string, description: 'Whether what is left is the same kind of finding the earlier round returned, and how you know. Say so plainly when you cannot tell.' }

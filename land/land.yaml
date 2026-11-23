@@ -62,8 +62,8 @@ nodes:
                   option:
                     type: string
                     enum: [land, send-back, drop, reshape, none]
-                    description: 'What you would do: land tries the landing again, send-back gives the change to its builder with what the operator says, drop closes the change without merging, reshape leaves it open as a draft until the item is shaped again. none when you have no basis to choose: the ask then carries no recommendation.'
-                  why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind.' }
+                    description: 'What you would do: land tries the landing again, send-back gives the change to its builder with what the operator says, drop closes the change without merging, reshape leaves it open as a draft until the item is shaped again. none when you have no basis to choose: the ask then carries no recommendation, and your why says what stops you.'
+                  why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind. With none: why you cannot choose, and what you would need to know to choose. The operator reads it in place of a recommendation.' }
                 required: [option, why]
             required: [question, context, recommendation]
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }

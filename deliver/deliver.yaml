@@ -355,8 +355,8 @@ nodes:
                 type: object
                 additionalProperties: false
                 properties:
-                  option: { type: string, description: 'The id of the option you would take. It is one of the options above.' }
-                  why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind.' }
+                  option: { type: string, description: 'The id of the option you would take. It is one of the options above, or none when you have no basis to choose.' }
+                  why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind. With none: why you cannot choose, and what you would need to know to choose. The operator reads it in place of a recommendation.' }
                 required: [option, why]
             required: [question, context, options, recommendation]
         same_kind: { type: string, description: 'Whether what is left is the same kind of finding the earlier round returned, and how you know. Say so plainly when you cannot tell.' }
@@ -452,14 +452,19 @@ nodes:
         const wanted = token(ask.recommendation?.option);
         const why = String(ask.recommendation?.why ?? '');
         const route = routes.some(r => r.id === wanted) ? wanted : 'send-back';
+        // `none` is how a stage says it has no basis to choose; its reason goes in the
+        // context, since the engine keeps a reason only beside a recommended option.
+        const unrecommended = wanted === 'none';
         return {
           question: String(ask.question ?? ''),
           context: [
             ask.from ? `${ask.context ?? ''} (Left by: ${ask.from}.)` : String(ask.context ?? ''),
             offered.length ? `The stage offered these, in its own words; say which in your answer:\n${offered.join('\n')}` : '',
+            unrecommended ? `No recommendation: ${why.trim() || 'the stage gave no reason.'}` : '',
           ].filter(Boolean).join('\n\n'),
           options: routes,
-          recommendation: { option: route, why: ask.recommendation?.option ? `The stage recommends "${ask.recommendation.option}". ${why}` : why },
+          recommendation: unrecommended ? null
+            : { option: route, why: ask.recommendation?.option ? `The stage recommends "${ask.recommendation.option}". ${why}` : why },
           artifacts: [],
         };
       });
@@ -474,7 +479,7 @@ nodes:
         asks.push({
           question: 'Delivery of this item stopped. What should happen to the change now?',
           context: [said[outcome] ?? `Delivery ended as ${outcome}.`, String(last.summary ?? ''), String(last.for_next ?? '')]
-            .filter(Boolean).join(' '),
+            .filter(Boolean).join(' ') + '\n\nNo recommendation: the stage left no question, so no judgment of the options exists.',
           options: routes,
           recommendation: null,
           artifacts: [],

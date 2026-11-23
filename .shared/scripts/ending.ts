@@ -49,15 +49,20 @@ const summary = String(last.summary || last.stop || '');
 // node's judgment. Its recommendation names one of the options above by schema.
 const judged = parse('exhausted');
 const left = judged?.asks?.[0];
+// An ask with no recommendation says why in its context: the engine keeps a reason only
+// beside a recommended option.
+const unrecommended = (why: unknown) => `No recommendation: ${String(why ?? '').trim() || 'the stage gave no reason.'}`;
+const judgedRoute = routes.some(r => r.id === left?.recommendation?.option);
 const asks = usedUp
   ? [{
       question: String(left?.question || 'The rounds allowed on this item are used up and the change is still returned. What should happen to it now?'),
-      context: [`Round ${round} of ${allowance} allowed on this item.`, left?.context ?? summary, judged?.same_kind].filter(Boolean).join('\n\n'),
+      context: [
+        `Round ${round} of ${allowance} allowed on this item.`, left?.context ?? summary, judged?.same_kind,
+        // The judgment named none of the options and says why, or it did not run.
+        judgedRoute ? '' : unrecommended(left ? left.recommendation?.why : 'the judgment of what is left did not run.'),
+      ].filter(Boolean).join('\n\n'),
       options: routes,
-      recommendation: routes.some(r => r.id === left?.recommendation?.option)
-        ? { option: left.recommendation.option, why: String(left.recommendation.why ?? '') }
-        // The judgment did not run, or named none of the options: no recommendation.
-        : null,
+      recommendation: judgedRoute ? { option: left.recommendation.option, why: String(left.recommendation.why ?? '') } : null,
       artifacts: [],
     }]
   : handsOn ? []
@@ -83,7 +88,10 @@ const asks = usedUp
 if (!handsOn && asks.length === 0) {
   asks.push({
     question: 'Work on this item stopped. What should happen to the change now?',
-    context: [`${stage} ended as ${outcome} and attached no question.`, summary, String(last.for_next ?? '')].filter(Boolean).join(' '),
+    context: [
+      [`${stage} ended as ${outcome} and attached no question.`, summary, String(last.for_next ?? '')].filter(Boolean).join(' '),
+      unrecommended('the stage left no question, so no judgment of the options exists.'),
+    ].join('\n\n'),
     options: routes,
     recommendation: null,
     artifacts: [],

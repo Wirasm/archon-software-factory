@@ -84,7 +84,7 @@ The answer starts what comes next, and what you wrote reaches that run as a deci
 | `drop` | The close step: the change is closed without merging, with your answer written on it. The item ends. |
 | `reshape` | The close step: the change stays open as a draft, with your answer written on it. Nothing more is built until the item is shaped again. |
 
-Every option leads somewhere. To keep an item waiting, leave its ask open and answer when you know. A stage that has no basis to choose leaves its ask without a recommendation; it does not guess one.
+Every option leads somewhere. To keep an item waiting, leave its ask open and answer when you know. A stage that has no basis to choose leaves its ask without a recommendation and says in the ask's context why it cannot choose; it does not guess one.
 
 **5. Read the report.** Delivery keeps one report on the pull request and replaces it after every round: the rounds, what is still to change, what the item asks for and how each was checked, and how the run ended.
 
