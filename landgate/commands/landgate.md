@@ -28,4 +28,4 @@ Other changes may be waiting to land on the same branch. Where the host lists th
 
 Change nothing: not the checkout, not the host.
 
-When it is an ask, write the question and the context the way `$PACK_DIR/.shared/ask.md` says, with the facts you read. The options are fixed, so you write none: `land` (the land stage merges it), `send-back` (its builder continues with what the operator says) and `hold`. Recommend one and say why.
+When it is an ask, write the question and the context the way `$PACK_DIR/.shared/ask.md` says, with the facts you read. The options are fixed, so you write none: `land` (the land stage merges it), `send-back` (its builder continues with what the operator says), `drop` (the change is closed without merging) and `reshape` (the change stays open as a draft until the item is shaped again). Recommend one and say why. When you have no basis to choose, recommend `none`: the operator then sees that the ask has no recommendation, which is better than a guess.

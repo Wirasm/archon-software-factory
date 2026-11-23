@@ -37,10 +37,11 @@ const forward = stage === 'stage-host'
   ? { id: 'take-as-is', does: 'The change stands as it is and nothing more runs. An operator lands it or closes it.', cost: 'What the host returned stays unfixed.' }
   : { id: 'take-as-is', does: 'The change goes on to the host round as it is.', cost: 'What was returned stays unfixed.' };
 const replan = { id: 'replan', does: 'The item goes back to planning with what you say in your answer.', cost: 'The work so far may be discarded.' };
-const hold = { id: 'hold', does: 'Nothing starts, and this ask is closed: nothing can be started from it later. To keep the item waiting, leave the ask open and answer when you know.', cost: 'The item waits.' };
+const drop = { id: 'drop', does: 'The change is closed without merging and the item ends here. Your answer is written on the change as the reason.', cost: 'The work on this change is given up; its branch stays.' };
+const reshape = { id: 'reshape', does: 'The change stays open as a draft and nothing more is built until the item is shaped again. Your answer is written on the change.', cost: 'The item waits for shaping, and the draft can stop merging while it does.' };
 const routes = usedUp
-  ? [{ id: 'one-more-round', does: 'This item is allowed one more round: the same builder fixes what was returned, and it is looked at again.', cost: 'One build run and one more round.' }, forward, replan, hold]
-  : [{ id: 'send-back', does: 'The same builder continues on the change with what you say in your answer, and the checks look at it again.', cost: 'One build run and one check round.' }, replan, forward, hold];
+  ? [{ id: 'one-more-round', does: 'This item is allowed one more round: the same builder fixes what was returned, and it is looked at again.', cost: 'One build run and one more round.' }, forward, replan, drop, reshape]
+  : [{ id: 'send-back', does: 'The same builder continues on the change with what you say in your answer, and the checks look at it again.', cost: 'One build run and one check round.' }, replan, forward, drop, reshape];
 const token = (id: unknown) =>
   String(id ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'option';
 const summary = String(last.summary || last.stop || '');
@@ -55,7 +56,8 @@ const asks = usedUp
       options: routes,
       recommendation: routes.some(r => r.id === left?.recommendation?.option)
         ? { option: left.recommendation.option, why: String(left.recommendation.why ?? '') }
-        : { option: 'hold', why: 'The judgment of what is left did not run, so the run does not guess a way forward.' },
+        // The judgment did not run, or named none of the options: no recommendation.
+        : null,
       artifacts: [],
     }]
   : handsOn ? []
@@ -63,7 +65,9 @@ const asks = usedUp
       const offered = (ask.options ?? []).map((o: any) => `- ${String(o.id ?? '')}: ${String(o.does ?? '')}${o.cost ? ` (cost: ${String(o.cost)})` : ''}`);
       const wanted = token(ask.recommendation?.option);
       const why = String(ask.recommendation?.why ?? '');
-      const route = routes.some(r => r.id === wanted) ? wanted : wanted.startsWith('hold') ? 'hold' : 'send-back';
+      // What the stage recommends in its own words is kept beside the route: `send-back`
+      // carries the operator's answer to the builder, whatever the stage called it.
+      const route = routes.some(r => r.id === wanted) ? wanted : 'send-back';
       return {
         question: String(ask.question ?? ''),
         context: [
@@ -81,7 +85,7 @@ if (!handsOn && asks.length === 0) {
     question: 'Work on this item stopped. What should happen to the change now?',
     context: [`${stage} ended as ${outcome} and attached no question.`, summary, String(last.for_next ?? '')].filter(Boolean).join(' '),
     options: routes,
-    recommendation: { option: 'hold', why: 'No stage recommended a way forward, so the run does not guess one.' },
+    recommendation: null,
     artifacts: [],
   });
 }

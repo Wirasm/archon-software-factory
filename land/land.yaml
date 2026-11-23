@@ -61,8 +61,8 @@ nodes:
                 properties:
                   option:
                     type: string
-                    enum: [land, send-back, hold]
-                    description: 'What you would do: land tries the landing again, send-back gives the change to its builder with what the operator says, hold waits for the operator.'
+                    enum: [land, send-back, drop, reshape, none]
+                    description: 'What you would do: land tries the landing again, send-back gives the change to its builder with what the operator says, drop closes the change without merging, reshape leaves it open as a draft until the item is shaped again. none when you have no basis to choose: the ask then carries no recommendation.'
                   why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind.' }
                 required: [option, why]
             required: [question, context, recommendation]

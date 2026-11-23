@@ -74,14 +74,17 @@ archon workflow attention
 archon workflow answer --ref <ask ref> --choose <option id> --text "why"
 ```
 
-The answer starts what comes next, and what you wrote reaches that run as a decision already made. Rule by answering: a run reads the item as it was ordered, so an edit or a comment on the issue after the order reaches no later stage. A stage takes a returned change out of draft and leaves it out, so the host checks the next push. An ask from plan starts plan again. An ask from the land gate or the land stage offers `land`, `send-back` and `hold`. An ask from delivery offers four options, and the one you choose decides:
+The answer starts what comes next, and what you wrote reaches that run as a decision already made. Rule by answering: a run reads the item as it was ordered, so an edit or a comment on the issue after the order reaches no later stage. A stage takes a returned change out of draft and leaves it out, so the host checks the next push. An ask from plan starts plan again. An ask from the land gate or the land stage offers `land`, `send-back`, `drop` and `reshape`. An ask from delivery offers four options, and the one you choose decides:
 
 | Option | What starts |
 |---|---|
 | `send-back` | Delivery, in the checkout it left, with the same builder. |
 | `replan` | Plan, then delivery. |
 | `take-as-is` | Nothing. The change stands; you land it or close it. |
-| `hold` | Nothing, and the ask is closed. To keep an item waiting, leave its ask open instead. |
+| `drop` | The close step: the change is closed without merging, with your answer written on it. The item ends. |
+| `reshape` | The close step: the change stays open as a draft, with your answer written on it. Nothing more is built until the item is shaped again. |
+
+Every option leads somewhere. To keep an item waiting, leave its ask open and answer when you know. A stage that has no basis to choose leaves its ask without a recommendation; it does not guess one.
 
 **5. Read the report.** Delivery keeps one report on the pull request and replaces it after every round: the rounds, what is still to change, what the item asks for and how each was checked, and how the run ended.
 
@@ -113,7 +116,7 @@ archon workflow run split --item <key> --input-file item=<the item's text>
 
 ## Delivery as three stages (trial)
 
-`deliver` is one run, so an answer on its ask can only start the whole delivery again. On trial beside it: `stage-build`, `stage-check` and `stage-host`, each a run of its own on the item, started by the pack's bindings. A check that returns the change starts the builder in the session it last had on the item; an approval starts the host round; and an answer starts only the stage its option names (`send-back`, `one-more-round`, `replan`, `take-as-is`, `hold`).
+`deliver` is one run, so an answer on its ask can only start the whole delivery again. On trial beside it: `stage-build`, `stage-check` and `stage-host`, each a run of its own on the item, started by the pack's bindings. A check that returns the change starts the builder in the session it last had on the item; an approval starts the host round; and an answer starts only the stage its option names (`send-back`, `one-more-round`, `replan`, `take-as-is`, `drop`, `reshape`).
 
 An item is allowed three check rounds. When a check would return the change with the rounds used up, it ends in an ask, and `one-more-round` allows the item one more. When the rounds are used up, the same judgment as in `deliver` recommends one of the options. Each check run leaves the report on the pull request, as `deliver` does after each round, and the host stage closes it. Each check run's result says which round it was and how many the item is allowed (`archon workflow get <run-id> --json`, under `terminal_record.returns.value`).
 

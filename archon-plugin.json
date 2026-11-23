@@ -16,6 +16,7 @@
     "validate": "validate/validate.yaml",
     "land": "land/land.yaml", "landed": "landed/landed.yaml",
     "landgate": "landgate/landgate.yaml",
+    "close": "close/close.yaml",
     "verdict": "verdict/verdict.yaml",
     "product": "product/product.yaml",
     "investigate": "investigate/investigate.yaml",

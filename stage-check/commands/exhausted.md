@@ -18,6 +18,7 @@ Leave one ask. Its question is what should happen to this change now. Its contex
 - take it as it is: the change goes on to the host with what is left filed as follow-up work. Right when the checks agree the change does what the item asks and what is left is next to it. Also right when each round closed what it was given and the checks then found a new case of the same kind: more rounds will find more, so say in the context which kind is left open.
 - replan: the approach cannot meet the item, so more rounds will not help. Right when the same kind of finding keeps coming back.
 - split: the change is too wide to get right in one piece. Right when each round finds a new real defect somewhere else.
-- hold: none of these, until the operator says more.
+- drop: the change is closed without merging. Right when the item is no longer worth this change.
+- reshape: the change stays open as a draft and the item is shaped again with the operator. Right when what is open is what the item should be, not how it was built.
 
-Recommend one. A finding that comes back in the same kind twice is the strongest signal you have: say whether that is what you see, and how you know. You see only the last round's result here, so say plainly when you cannot tell.
+Recommend one. When you have no basis to choose, recommend none: the operator then sees that the ask has no recommendation, which is better than a guess. A finding that comes back in the same kind twice is the strongest signal you have: say whether that is what you see, and how you know. You see only the last round's result here, so say plainly when you cannot tell.

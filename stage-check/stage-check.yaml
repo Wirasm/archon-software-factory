@@ -201,8 +201,8 @@ nodes:
                 properties:
                   option:
                     type: string
-                    enum: [one-more-round, take-as-is, replan, hold]
-                    description: 'What you would do: one-more-round sends it back once more, take-as-is lets the change go on as it is, replan sends the item back to planning, hold waits for the operator. When you would split the change, recommend replan and say so.'
+                    enum: [one-more-round, take-as-is, replan, drop, reshape, none]
+                    description: 'What you would do: one-more-round sends it back once more, take-as-is lets the change go on as it is, replan sends the item back to planning, drop closes the change without merging, reshape leaves it open as a draft until the item is shaped again. none when you have no basis to choose: the ask then carries no recommendation. When you would split the change, recommend replan and say so.'
                   why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind.' }
                 required: [option, why]
             required: [question, context, recommendation]

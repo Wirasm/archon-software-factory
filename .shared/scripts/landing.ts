@@ -23,7 +23,8 @@ const summary = String(gate ? last.why ?? '' : last.summary || last.stop || '');
 const routes = [
   { id: 'land', does: 'The land stage merges the change into its landing branch, when it still merges and its checks are green.', cost: 'The change is on the branch everyone builds on.' },
   { id: 'send-back', does: 'The same builder continues on the change with what you say in your answer, and the checks look at it again.', cost: 'One build run and one check round before it can land.' },
-  { id: 'hold', does: 'Nothing starts, and this ask is closed: nothing can be started from it later. To keep the item waiting, leave the ask open and answer when you know.', cost: 'The item waits, and the change can stop merging while it does.' },
+  { id: 'drop', does: 'The change is closed without merging and the item ends here. Your answer is written on the change as the reason.', cost: 'The work on this change is given up; its branch stays.' },
+  { id: 'reshape', does: 'The change stays open as a draft and nothing more is built until the item is shaped again. Your answer is written on the change.', cost: 'The item waits for shaping, and the draft can stop merging while it does.' },
 ];
 const asks = handsOn ? [] : (last.asks ?? []).map((ask: any) => {
   const wanted = String(ask.recommendation?.option ?? '');
@@ -33,7 +34,9 @@ const asks = handsOn ? [] : (last.asks ?? []).map((ask: any) => {
     options: routes,
     recommendation: routes.some(r => r.id === wanted)
       ? { option: wanted, why: String(ask.recommendation?.why ?? '') }
-      : { option: 'hold', why: 'The stage recommended no option of this ask, so the run does not guess one.' },
+      // The stage named no option of this ask (`none` is how it says so): the ask carries no
+      // recommendation, and the operator sees that it has none.
+      : null,
     artifacts: [],
   };
 });
@@ -43,7 +46,7 @@ if (!handsOn && asks.length === 0) {
     question: gate ? 'This change is ready. May it land?' : 'Landing this change stopped. What should happen to it now?',
     context: [`${stage} ended as ${outcome} and attached no question.`, summary, String(last.for_next ?? '')].filter(Boolean).join(' '),
     options: routes,
-    recommendation: { option: 'hold', why: 'No stage recommended a way forward, so the run does not guess one.' },
+    recommendation: null,
     artifacts: [],
   });
 }
