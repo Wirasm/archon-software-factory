@@ -128,15 +128,11 @@ nodes:
         returned: { type: string, description: 'What goes back to the builder: what the host said.' }
       required: [outcome, change, summary, for_next, noticed, round, allowance, returned]
 
-  # The report on the change says how the host round ended, as deliver's does at its end.
-  # The script is deliver's `reported` body, unchanged; the report it closes is the one the
-  # last check run left.
-  - id: reported
+  # The report on the change says how the host round ended.
+  - id: report
+    include: report
     depends_on: [end]
-    runtime: bun
-    script: reported
     with:
-      result: $end.output
-      checks: $INPUTS.checked
-      host: $rounds.output
       change: $INPUTS.change
+      ending: $end.output
+      host: $rounds.output

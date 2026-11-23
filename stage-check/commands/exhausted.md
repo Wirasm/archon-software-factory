@@ -8,7 +8,7 @@ $INPUTS.item
 
 What the last round's checks returned, merged:
 
-$rounds.output
+$verdict.output
 
 Read `$PACK_DIR/.shared/ask.md` first: it says what we expect in an ask.
 

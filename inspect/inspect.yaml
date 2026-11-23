@@ -19,7 +19,7 @@ inputs:
     default: ""
     description: The pack setting of the same name.
 
-returns: { node: report, outcome: outcome }
+returns: { node: verdict, outcome: outcome }
 
 nodes:
   # What is proposed, read through the forge: the description is the item, and the forge
@@ -111,119 +111,13 @@ nodes:
         ## From the test check (do the tests the change adds or edits earn their place)
         $tests.output
 
-  # One formatted report where the change is proposed: the result, a table of what the
-  # change says it does and how each was checked, what must change and the notes on their
-  # lines, and what was not checked. Presentation only: nothing reads the posted report.
+  # The report where the change is proposed, written by the pack's report stage: one
+  # comment, and what must change and the notes on their lines. Nothing reads the posted
+  # report. A change that could not be read ends the run with no verdict and no report.
   - id: report
+    include: report
     depends_on: [verdict]
-    trigger_rule: all_done
-    runtime: bun
     with:
-      read: $read.output
-      verdict: { from: $verdict.output, if_skipped: "" }
-      review: { from: $review.output, if_skipped: "" }
-      tests: { from: $tests.output, if_skipped: "" }
       change: $INPUTS.change
-    script: |
-      import { execFileSync } from 'node:child_process';
-      import { emit, forge, input, runId } from 'archon:script';
-      const parse = (name: string) => { try { return JSON.parse(input(name) || 'null'); } catch { return null; } };
-      const read = parse('read');
-      const verdict = parse('verdict');
-      const review = parse('review');
-      const tests = parse('tests');
-      if (!read || read.outcome !== 'ready' || !verdict) {
-        emit({ outcome: 'refused', posted: '', why: read?.why || 'The checks did not finish, so there is nothing to report.' });
-      } else {
-        const cell = (text: unknown) => String(text ?? '').replace(/\r?\n+/g, ' ').replace(/\|/g, '\\|').trim();
-        const short = (text: unknown, max = 140) => { const t = cell(text); return t.length > max ? `${t.slice(0, max - 1)}…` : t; };
-        const claim = (text: unknown) => short(text, 90).replace(/[.:]$/, '');
-        const table = (head: string[], rows: string[][]) =>
-          [`| ${head.join(' | ')} |`, `| ${head.map(() => '---').join(' | ')} |`, ...rows.map(r => `| ${r.join(' | ')} |`)].join('\n');
-        const fold = (title: string, body: string) => `<details>\n<summary>${title}</summary>\n\n${body}\n\n</details>`;
-        const findings = verdict.findings ?? [];
-        const notes = verdict.notes ?? [];
-        const lines = review?.item_lines ?? [];
-        const said: Record<string, string> = { met: 'met', not_met: 'not met', not_checked: 'not checked' };
-        const how: Record<string, string> = { ran: 'ran it', read: 'read the code', none: 'not checked' };
-        const results: Record<string, string> = {
-          approve: 'approve',
-          return: `changes needed (${findings.length})`,
-          replan: 'needs a different approach',
-          ask: 'a decision is needed first',
-        };
-        const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-        const parts: string[] = [];
-        parts.push(`## Factory review: ${results[verdict.outcome] ?? verdict.outcome}`);
-        parts.push(String(verdict.summary ?? '').trim());
-        parts.push(table(['Result', 'To change', 'Notes', 'Claims met', 'Reviewed at'], [[
-          results[verdict.outcome] ?? verdict.outcome,
-          String(findings.length),
-          String(notes.length),
-          lines.length ? `${lines.filter((l: any) => l.verdict === 'met').length} of ${lines.length}` : 'n/a',
-          `\`${commit.slice(0, 9)}\``,
-        ]]));
-        if (findings.length) {
-          parts.push('### To change');
-          parts.push(table(['#', 'Where', 'What', 'Cost to leave'], findings.map((f: any, i: number) => [
-            String(i + 1), `\`${cell(f.where)}\``, short(f.what, 220), short(f.cost_to_leave, 160),
-          ])));
-          parts.push(fold('Evidence for each', findings.map((f: any, i: number) => `**${i + 1}.** ${String(f.evidence ?? '').trim()}`).join('\n\n')));
-        }
-        if (lines.length) {
-          parts.push('### What the change says it does');
-          parts.push(table(['Claim', 'Result', 'Checked by'], lines.map((l: any) => [
-            claim(l.line), said[l.verdict] ?? cell(l.verdict), how[l.evidence] ?? cell(l.evidence),
-          ])));
-          parts.push(fold('How each claim was checked', lines.map((l: any) => `- **${claim(l.line)}**: ${String(l.how ?? '').trim()}`).join('\n')));
-        }
-        if (notes.length) {
-          parts.push('### Notes (these do not hold the change)');
-          parts.push(table(['Where', 'Note'], notes.map((n: any) => [`\`${cell(n.where)}\``, short(n.what, 240)])));
-        }
-        const unchecked = [...(review?.not_checked ?? []), ...(tests?.not_checked ?? [])];
-        if (unchecked.length) {
-          parts.push('### Not checked');
-          parts.push(unchecked.map((u: string) => `- ${String(u).trim()}`).join('\n'));
-        }
-        if (review?.least_sure) parts.push(`### Least sure about\n\n${String(review.least_sure).trim()}`);
-        const noticed = verdict.noticed ?? review?.noticed ?? [];
-        if (noticed.length) {
-          parts.push('### Noticed, not caused by this change');
-          parts.push(table(['Where', 'What'], noticed.map((n: any) => [`\`${cell(n.where)}\``, short(n.what, 240)])));
-        }
-        parts.push('<sub>Reviewed by the software factory: a code review and a test check on the proposed commit, then one sorting of what they found. A maintainer decides what lands.</sub>');
-        const body = (title: string, f: any, extra: string) =>
-          `**${title}** ${String(f.what ?? '').trim()}\n\n${String(f.evidence ?? '').trim()}${extra}`;
-        const all = [
-          ...findings.map((f: any) => ({ f, text: body('Must change.', f, f.cost_to_leave ? `\n\nCost to leave: ${f.cost_to_leave}` : '') })),
-          ...notes.map((f: any) => ({ f, text: body('Note, does not hold the change.', f, f.why_a_note ? `\n\n${f.why_a_note}` : '') })),
-        ];
-        const comments = all
-          .filter(({ f }) => f.path && Number.isInteger(f.line) && f.line > 0)
-          .map(({ f, text }) => ({ path: f.path, line: f.line, body: text }));
-        let posted = '';
-        let why = '';
-        try {
-          const where = forge('resolve', { remote: input('change').trim(), web: true });
-          const done = forge('pr.review.submit', {
-            ref: { repo: where.repo, number: where.subject.number },
-            commit,
-            key: `${runId()}:${commit}`,
-            summary: parts.join('\n\n'),
-            comments,
-          });
-          posted = done?.review?.url ?? '';
-        } catch (error) {
-          why = `The report was not posted: ${error instanceof Error ? error.message : String(error)}`;
-          console.error(why);
-        }
-        emit({ outcome: verdict.outcome, posted, why });
-      }
-    output_format:
-      type: object
-      properties:
-        outcome: { type: string, enum: [approve, return, replan, ask, refused] }
-        posted: { type: string, description: 'Where the report was posted. Empty when it was not.' }
-        why: { type: string, description: 'Why nothing was posted, when nothing was.' }
-      required: [outcome, posted, why]
+      verdict: $verdict.output
+      item_lines: $review.output.item_lines

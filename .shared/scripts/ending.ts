@@ -112,9 +112,6 @@ emit({
         noticed: last.noticed ?? parse('checked')?.noticed ?? [],
         round,
         allowance,
-        // The report on the proposed change and its running totals, for the next check
-        // round and for the host stage's closing of the report.
-        found: last.found, noted: last.noted, history: last.history, report: last.report,
       }),
   asks,
   metrics: outcome === 'ready' ? [count('sf.ended_ready', 'runs', 1)] : [],

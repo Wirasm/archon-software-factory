@@ -14,7 +14,8 @@
     "tests": "tests/tests.yaml",
     "discoveries": "discoveries/discoveries.yaml",
     "validate": "validate/validate.yaml",
-    "land": "land/land.yaml", "landed": "landed/landed.yaml",
+    "land": "land/land.yaml",
+    "landed": "landed/landed.yaml",
     "landgate": "landgate/landgate.yaml",
     "close": "close/close.yaml",
     "verdict": "verdict/verdict.yaml",
@@ -26,6 +27,7 @@
     "split": "split/split.yaml",
     "stage-build": "stage-build/stage-build.yaml",
     "stage-check": "stage-check/stage-check.yaml",
-    "stage-host": "stage-host/stage-host.yaml"
+    "stage-host": "stage-host/stage-host.yaml",
+    "report": "report/report.yaml"
   }
 }

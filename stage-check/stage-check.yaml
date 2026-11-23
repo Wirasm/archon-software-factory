@@ -23,9 +23,6 @@ inputs:
   builder_reply:
     default: ""
     description: What the builder says it did about what was returned. Empty in the first round.
-  earlier:
-    result_of: stage-check
-    description: What the last check run on this item ended with. Read from the item, for the report's earlier rounds.
 
 returns: { node: end, outcome: outcome, asks: asks }
 
@@ -92,30 +89,14 @@ nodes:
         ## From the builder (what it did about what was returned last round; empty in the first round)
         $INPUTS.builder_reply
 
-  # Shows this round's verdict where the change is proposed: one report comment, replaced
-  # after every round, and findings and notes on their lines. The script is deliver's
-  # `shown` body, unchanged; it hands the verdict on with the report and the running
-  # totals.
-  - id: rounds
-    depends_on: [verdict]
-    runtime: bun
-    script: shown
-    with:
-      verdict: $verdict.output
-      review: $review.output
-      fix: $INPUTS.builder_reply
-      change: $INPUTS.change
-      earlier: $INPUTS.earlier
-    output_format: { type: object }
-
   # Which round of this stage on the item this is, and how many the item is allowed.
   - id: allowance
-    depends_on: [rounds]
+    depends_on: [verdict]
     runtime: bun
     script: allowance
     with:
       stage: stage-check
-      last: $rounds.output
+      last: $verdict.output
     output_format:
       type: object
       properties:
@@ -127,8 +108,7 @@ nodes:
   # The rounds this item is allowed are used up and the change is still returned. One more
   # round is not automatic: an agent reads what is left and recommends what to do, with
   # deliver's own prompt (commands/exhausted.md is deliver's file, copied unchanged because
-  # a command resolves only from its own workflow; it reads `$rounds.output`, which is why
-  # the node above has that id). The options are the script's: the recommendation names one.
+  # a command resolves only from its own workflow). The options are the script's: the recommendation names one.
   - id: exhausted
     depends_on: [allowance]
     when: "$allowance.output.state == 'used_up'"
@@ -169,7 +149,7 @@ nodes:
     script: ending
     with:
       stage: stage-check
-      last: $rounds.output
+      last: $verdict.output
       change: $INPUTS.change
       allowed: $allowance.output
       exhausted: { from: $exhausted.output, if_skipped: "" }
@@ -207,18 +187,16 @@ nodes:
         round: { type: integer, description: 'Which run of this stage on the item this is, counted since the item was last planned.' }
         allowance: { type: integer, description: 'How many rounds of this stage the item is allowed: three, plus one for each one-more-round answer.' }
         returned: { type: string, description: 'What goes back to the builder: the verdict and the three reports.' }
-        report: { type: string, description: 'The report this round left on the proposed change.' }
       required: [outcome, change, summary, for_next, noticed, round, allowance, returned]
 
-  # An ending that waits for an operator is written into the report, as deliver does at
-  # its end. The script is deliver's `reported` body, unchanged.
-  - id: reported
+  # The report on the proposed change, written after the stage has ended so it can say how:
+  # one comment replaced each round, and this round's findings on their lines.
+  - id: report
+    include: report
     depends_on: [end]
-    when: "$end.output.outcome == 'ask' || $end.output.outcome == 'replan'"
-    runtime: bun
-    script: reported
     with:
-      result: $end.output
-      checks: $rounds.output
-      host: ""
       change: $INPUTS.change
+      verdict: $verdict.output
+      item_lines: $review.output.item_lines
+      builder_reply: $INPUTS.builder_reply
+      ending: $end.output
