@@ -29,6 +29,7 @@ returns:
   node: end
   outcome: outcome
   asks: asks
+  summary: summary
   options:
     - id: land
       does: The land stage merges the change into its landing branch, when it still merges and its checks are green.

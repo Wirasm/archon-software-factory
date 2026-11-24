@@ -12,7 +12,12 @@ inputs:
   answers:
     description: The settled asks the operator answered, as the binding passes them.
 
-returns: { node: close, outcome: outcome }
+# `final`: the outcomes after which the item needs nothing more. A run that ends in any
+# other outcome, starts nothing and leaves no ask shows the item as stopped in attention,
+# with `summary` as the reason.
+# After `drop` the item has ended. After `reshape`, and when the change could not be
+# closed, it needs an operator.
+returns: { node: close, outcome: outcome, final: [dropped], summary: why }
 
 nodes:
   - id: close

@@ -25,7 +25,8 @@ inputs:
 
 # The engine defines the `asks` property, adds it to the plan node's output and opens what a
 # completed run leaves there on the item. So the node below does not declare it.
-returns: { node: plan, outcome: outcome, asks: asks }
+# A plan that ends `stop` shows the item as stopped in attention, with `stop` as the reason.
+returns: { node: plan, outcome: outcome, asks: asks, summary: stop }
 
 nodes:
   - id: plan

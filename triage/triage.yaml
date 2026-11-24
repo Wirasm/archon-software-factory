@@ -18,7 +18,11 @@ inputs:
     default: "[]"
     description: Keys of the items the order says must land before this one, as JSON. The order stage's result carries them.
 
-returns: { node: judge, outcome: recommend }
+# `final`: the outcomes after which the item needs nothing more. A run that ends in any
+# other outcome, starts nothing and leaves no ask shows the item as stopped in attention,
+# with `summary` as the reason.
+# A judgment that the item is not to be built ends it; `shape` needs a maintainer.
+returns: { node: judge, outcome: recommend, final: [recipe, native, fold, park, deprecate, decline, close], summary: why }
 
 nodes:
   - id: judge

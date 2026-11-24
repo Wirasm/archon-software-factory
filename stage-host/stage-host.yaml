@@ -31,6 +31,7 @@ returns:
   node: end
   outcome: outcome
   asks: asks
+  summary: summary
   options:
     - id: send-back
       does: The same builder continues on the change with what you say in your answer, and the checks look at it again.

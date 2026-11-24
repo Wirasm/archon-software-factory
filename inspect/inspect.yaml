@@ -19,7 +19,8 @@ inputs:
     default: ""
     description: The pack setting of the same name.
 
-returns: { node: verdict, outcome: outcome }
+# A review of someone else's change ends with its verdict, whatever it is.
+returns: { node: verdict, outcome: outcome, final: [approve, return, replan, ask] }
 
 nodes:
   # What is proposed, read through the forge: the description is the item, and the forge

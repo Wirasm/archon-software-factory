@@ -16,13 +16,13 @@ Read both with `archon workflow runs --item <key>`.
 | link `waiting` | Nothing until what it waits on ends; then the link stage runs again by itself. See below. An open ask means what it waits on will not land. |
 | link `fold` | An ask is open: it overlaps another item. `dropped`: the item ended. `none`: nothing changed. |
 | triage `split` | The split starts. |
-| triage, any other judgment | Nothing, and no ask. `shape` lists open questions for a maintainer. Report it. |
+| triage, any other judgment | Nothing, and no ask. `shape` lists open questions for a maintainer and shows the item as stopped in `archon workflow attention`. The others end the item and are not listed. Report it. |
 | split `whole` / `split` / `waiting` | Plan / each member that starts now is ordered as its own item / nothing. |
 | plan `planned` | Build starts. `ask`: an ask is open. `stop`: nothing; the result says why. |
 | stage-build `built` / `built_for_host` | The checks / the host round. `replan`: plan starts with what the builder said (once on an item; after that it asks). `ask`: an ask is open. |
 | stage-check `approve` / `return` | The host round / the builder. `replan`: plan starts with what the checks said (once on an item; after that it asks). `ask`: an ask is open. |
 | stage-host `ready` / `return` | The land gate / the builder, then the host again. `ask`: an ask is open. |
-| stage-host `waiting` | Nothing, and no ask. It gave up waiting for the project's checks. Report it. |
+| stage-host `waiting` | Nothing, and no ask. It gave up waiting for the project's checks. The item shows as stopped in `archon workflow attention`. Report it. |
 | landgate `ask` | An ask is open; its context says what the land policy would have done. With the setting `land_gate: policy`, a change the policy lets land ends `land` and the land stage starts. |
 | land `landed` | The landed check and the discoveries drain. `returned`: the builder. `stop`, `ask`: an ask is open. |
 | landed `broken_here` | A fix is ordered on the same item. Every other outcome is only recorded. |

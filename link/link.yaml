@@ -36,6 +36,12 @@ returns:
   node: end
   outcome: outcome
   asks: asks
+  # The outcomes after which the item needs nothing from an operator. `waiting` is one of
+  # them: the item holds a recorded `depends_on` to what it waits on, and the pack's
+  # bindings start this stage on it again when that item ends. An item it waits on that
+  # will not land leaves an ask here, and one that needs someone shows as stopped itself.
+  final: [waiting, dropped, none]
+  summary: summary
   options:
     - id: wait
       does: The item keeps waiting, and goes on when what it waits on is ordered and lands.
@@ -141,6 +147,7 @@ nodes:
       type: object
       properties:
         outcome: { type: string, enum: [place, waiting, fold, dropped, none] }
+        summary: { type: string, description: 'For whoever plans or orders the work next.' }
         item: { type: string, description: 'The work item as text.' }
         land_on: { type: string, description: 'The branch the change lands on. Empty means the base branch.' }
         links: { type: array, description: 'Every relation the stage found, and whether it is recorded.' }

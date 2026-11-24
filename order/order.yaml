@@ -51,7 +51,8 @@ inputs:
     result_of: order
     description: What the last order on this item returned. An order that names no work is the item's last order again.
 
-returns: { node: order, outcome: outcome }
+# A refused order starts nothing and shows the item as stopped in attention, with `why`.
+returns: { node: order, outcome: outcome, summary: why }
 
 nodes:
   - id: order

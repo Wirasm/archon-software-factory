@@ -28,7 +28,8 @@ inputs:
     description: What the last split of this item returned, so members already started are not started again.
 
 # The engine defines the `asks` property of the result, so the `members` node's output format leaves it out.
-returns: { node: members, outcome: outcome, asks: asks }
+# A split that ends `waiting` with no ask shows the item as stopped in attention, with `why`.
+returns: { node: members, outcome: outcome, asks: asks, summary: why }
 
 nodes:
   - id: cut
@@ -155,6 +156,7 @@ nodes:
       properties:
         outcome: { type: string, enum: [whole, split, waiting] }
         kind: { type: string, enum: [prd, epic, bundle, parts, whole] }
+        why: { type: string, description: 'Why this kind, and why it splits this way or stays whole.' }
         parent: { type: string, description: 'The key of the item that was split.' }
         land_on: { type: string, description: 'The branch the members land on. Empty means the base branch.' }
         members: { type: array, description: 'Every member with its key: those that start now with their brief, and what each waits on.' }

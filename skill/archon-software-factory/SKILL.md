@@ -45,7 +45,9 @@ Do these before anything else, and tell the person what you found in a few lines
 
 1. `archon workflow status --json`: is the install hold set (`hold`), which runs are active,
    and which have a stalled tool call (`attention`).
-2. `archon workflow attention --json`: every open ask. These wait on an operator.
+2. `archon workflow attention --json`: every open ask, and every item that stopped (`kind: stopped`,
+   with the stage, the outcome and why). Both wait on an operator. A stopped item takes no
+   answer: start the stage it needs, or order it again.
 3. `archon trigger check`: exits nonzero and names the file when a binding is broken.
    A broken binding refuses item runs on the whole install, so fix it first.
 4. `archon workflow items --since 7d --json`: every item with a run in the window, each
