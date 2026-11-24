@@ -183,3 +183,7 @@
 - I said: take-as-is, no follow-up.
 - Why: the finding names no one who meets it in ordinary use. It needs a remove and re-add inside the second of a change already read. The review reproduced it only with a simulated forge. The stage weighed "the item states the invariant outright" above who is harmed.
 - Run: 3b7536d9 (stage-check), ask 2f5ddae6.
+
+- 2026-11-24, issue-6197 (PR 6209), stage-check ask after round 3 (run a70cf696). Stage recommended one-more-round on three findings. Answered send-back, narrowed to two: the unguarded acceptance case (the item's own line) and the POSIX-only test. Declined finding 1 (Windows trailing-separator acceptance in the file validator).
+  - Why: finding 1 was traced from source and simulated on macOS, never run on Windows, and names nobody who meets it in ordinary use; the Windows runner at the host round is the evidence. Round 2 on this item was returned by the test check alone while review and product approved (see the 11-24 findings read: 44 of 78 findings were test asks).
+  - Run metadata: reviewer and test-checker gpt-6.2-sol; project test policy tightened the same day, after this item's first two rounds.
