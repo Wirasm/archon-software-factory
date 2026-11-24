@@ -8,6 +8,12 @@ $INPUTS.item
 
 The triage policy is what this project's maintainers judge items against. Read the pack's default at `$PACK_DIR/policy/triage.md`. Then read the project's own at `$INPUTS.triage_policy`, when one is named there. Where they differ, the project's wins.
 
+The other members of the work order this item is part of (`[]` when it is part of none):
+
+$INPUTS.members
+
+They were ordered together with this item and are not in the code yet. Judge the item as if they have landed: an item that needs what another member adds is not parked or shaped for that reason. Whether it has to wait for that member is decided after you.
+
 You are in a checkout of the project. Change nothing.
 
 What can happen to an item:

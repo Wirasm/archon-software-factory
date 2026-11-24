@@ -1,8 +1,10 @@
 name: link
 description: |
   Place one work item among the project's other open work: what has to land
-  before it, or which item it overlaps or is a part of. Every link is a
-  proposal; none is acted on until accepted. Reads the project,
+  before it, or which item it overlaps or is a part of. For each item it would
+  follow, it says whether this one cannot be built before that one lands, or is
+  only better after it. Every link is a proposal: triage acts on a blocking one
+  between members of one work order, and on nothing else. Reads the project,
   changes nothing.
 
 model: ['@link', medium]
@@ -17,6 +19,9 @@ inputs:
   relations:
     default: "None recorded."
     description: Relations the tracker already holds for this item.
+  members:
+    default: "[]"
+    description: The other members of the work order or split this item is part of, as JSON, each with its `key` and `title`. Empty when it is part of none.
 
 returns: { node: link, outcome: outcome }
 
@@ -37,10 +42,11 @@ nodes:
             type: object
             additionalProperties: false
             properties:
-              to: { type: string, description: 'The id of the other item, as the index gives it.' }
+              to: { type: string, description: 'The id of the other item, as the index gives it. For a member of the same work order: its key.' }
               kind: { type: string, enum: [depends_on, overlaps, part_of] }
+              blocking: { type: boolean, description: 'For depends_on: true when this item cannot be built or judged before the other has landed; false when it would only be better, tidier or easier after it. False for the other kinds.' }
               why: { type: string }
-            required: [to, kind, why]
+            required: [to, kind, blocking, why]
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
         for_next: { type: string, description: 'Anything whoever orders this work next needs from you that has no field here. Write it to them.' }
       required: [outcome, summary, links, notes, for_next]

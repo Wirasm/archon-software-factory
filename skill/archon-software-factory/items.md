@@ -10,6 +10,9 @@ Read both with `archon workflow runs --item <key>`.
 | Last run ended | What happens next |
 |---|---|
 | order `ready` | Triage starts. `refused`: nothing; the result's `why` says what the order lacked. |
+| order `work_order` | Each member listed in the order is ordered as its own item, part of this one. |
+| order `waiting`, triage `waiting` | Nothing until what it waits on lands; then it is ordered again by itself. See below. |
+| order `ask` | An ask is open: what it waits on ended without landing. `dropped`: the item ended. |
 | triage `build`, `narrow` | Plan starts. |
 | triage `split` | The split starts. |
 | triage, any other judgment | Nothing, and no ask. `shape` lists open questions for a maintainer. Report it. |
@@ -27,6 +30,27 @@ Read both with `archon workflow runs --item <key>`.
 A run's full result: `archon workflow get <run-id> --json`, under `terminal_record.returns.value`.
 For a few seconds after a stage ends, the next one reads as admitted and not started.
 
+## An item that waits
+
+An item waits on the items it holds a `depends_on` link to that have not landed: those its
+order declared, and, inside a work order or a split, those the link stage called blocking.
+`archon workflow runs --item <key>` shows the links; the last order or triage run's result
+has the keys in `waits_on`. When one of them lands the item is ordered again and goes on
+when none is left.
+
+When what it waits on is dropped, judged as not to be built, split, or stopped in planning,
+the item gets an ask with no recommendation: `wait`, `start-anyway` or `drop`. That is the
+person's call unless they told you how to rule on it.
+
+Nothing tells a waiting item that what it waits on only sits: an unanswered ask, a key
+that was never ordered, an issue closed by hand. Report an item that has waited long. To
+release it, end the link and order the item by its key alone:
+
+```bash
+archon workflow link --end <link id>
+archon trigger fire --config <bindings-dir>/<the order file> --inputs order.json   # { "key": "<key>" }
+```
+
 ## Splitting a large item
 
 Triage starts the split by itself when it judges `split`. To split an epic or a PRD
@@ -37,6 +61,6 @@ archon workflow run Wirasm/archon-software-factory:split --item <key> --input-fi
 ```
 
 `whole` starts plan on the item. `split` orders each member that starts now as
-`<item key>-<member id>`. Members that start later stay in the run's result with what they
-wait on. Nothing watches that: when it has happened, run the split again, or answer the
-ask if it left one.
+`<item key>-<member id>`; one that depends on another member waits as above. Members that
+start later stay in the run's result with what they wait on. Nothing watches that: when it
+has happened, run the split again, or answer the ask if it left one.

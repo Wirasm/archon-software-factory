@@ -97,8 +97,8 @@ nodes:
   # pack's bindings route on, and it records each member that starts now as part of this
   # item. Recording the link writes the member's item when nothing has named it yet, and
   # recording it again leaves the one link. It starts nothing: the `order-after-split`
-  # binding starts the order stage on every item that is part of this one, and the order
-  # stage takes only a member listed in `start`, once.
+  # binding starts the order stage on each member listed in `start`, and the order stage
+  # takes a member once.
   - id: members
     depends_on: [cut]
     runtime: bun
@@ -114,11 +114,11 @@ nodes:
       const keyOf = (id: unknown) => `${parent}-${String(id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}`;
       const landOn = cut.landing?.together && cut.landing?.branch ? String(cut.landing.branch) : input('land_on').trim();
       const whole = cut.kind === 'whole';
-      // Nothing holds a member until what it depends on has landed, so a member that
-      // depends on another does not start now, whatever the cut said.
+      // A member that starts now and depends on another is ordered with what it depends
+      // on: the order stage holds it until that has landed, and orders it again then.
       const members = (cut.members ?? []).map((m: any) => {
         const dependsOn = (m.depends_on ?? []).map(keyOf);
-        const now = !whole && m.start === 'now' && dependsOn.length === 0 && String(m.brief ?? '').trim() !== '';
+        const now = !whole && m.start === 'now' && String(m.brief ?? '').trim() !== '';
         return {
           key: keyOf(m.id), title: m.title, proves: m.proves, apart: m.apart,
           start: now ? 'now' : 'later',
@@ -138,7 +138,11 @@ nodes:
         land_on: landOn,
         landing: cut.landing,
         members,
-        start: start.map((m: any) => ({ key: m.key, title: m.title, brief: m.brief })),
+        // What the order stage is given for each member: its text is the whole work item.
+        start: start.map((m: any) => ({
+          key: m.key, title: m.title, depends_on: m.depends_on,
+          text: `# ${m.title}\n\n${m.brief}\n\nThis is one piece of the larger item \`${parent}\`, which was split into members that are each built on their own.`,
+        })),
         sure: cut.sure,
         for_next: cut.for_next,
         asks: (cut.asks ?? []).map((ask: any) => ({ ...ask, artifacts: [] })),
@@ -151,5 +155,5 @@ nodes:
         parent: { type: string, description: 'The key of the item that was split.' }
         land_on: { type: string, description: 'The branch the members land on. Empty means the base branch.' }
         members: { type: array, description: 'Every member with its key: those that start now with their brief, those that wait with what they wait on.' }
-        start: { type: array, description: 'The members this run started: key, title and brief.' }
+        start: { type: array, description: 'The members this run started: key, title and the member as a work item in `text`.' }
       required: [outcome, kind, parent, land_on, members, start]
