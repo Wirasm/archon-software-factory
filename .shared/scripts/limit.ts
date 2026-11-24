@@ -7,14 +7,14 @@
 // refuses such a start and tells nobody, so the stage ends in an ask instead.
 // Inputs: `stage`, the workflow's name; `last`, what the stage's agent ended with;
 // `limits`, JSON from an outcome of that agent to the id of the limited binding it starts.
-import { emit, input, item } from 'archon:script';
-// On a pack installed with `archon plugin add`, a run's workflow is the namespaced name
-// (`<owner>/<pack>:stage-check`); in a project's own copy it is bare. Compare the last part.
-const bare = (name: string) => name.slice(name.lastIndexOf(':') + 1);
+import { emit, input, item, runId } from 'archon:script';
 const read = item();
-const done = (read?.runs ?? []).filter(run => run.status === 'completed');
-const planned = done.filter(run => bare(run.workflow) === 'plan').map(run => run.completedAt ?? '').sort().at(-1) ?? '';
-const round = done.filter(run => bare(run.workflow) === bare(input('stage').trim()) && run.startedAt > planned).length + 1;
+// A run's `pack.workflow` is the stage's own name whether the pack is in the project or
+// installed. Another pack's runs on the item can share a name, so the pack must match too.
+const own = (read?.runs ?? []).find(run => run.id === runId())?.pack;
+const done = (read?.runs ?? []).filter(run => run.status === 'completed' && run.pack?.key === own?.key);
+const planned = done.filter(run => run.pack?.workflow === 'plan').map(run => run.completedAt ?? '').sort().at(-1) ?? '';
+const round = done.filter(run => run.pack?.workflow === input('stage').trim() && run.startedAt > planned).length + 1;
 const said = String(JSON.parse(input('last') || '{}')?.outcome ?? '');
 const binding: string | undefined = JSON.parse(input('limits'))[said];
 // The engine names a limit after its binding, `<pack>-<repository>-<binding id>-<digest>`,
