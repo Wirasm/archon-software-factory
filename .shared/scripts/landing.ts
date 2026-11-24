@@ -1,14 +1,14 @@
 // What one run of a landing stage (landgate, land) ended with, as the result the pack's
-// bindings read. It maps the agent's ending to the outcome the bindings route on, passes
-// the asks along and, after a merge, records on the item what the host says landed. It
-// judges nothing. The options of an ask are the stage's `returns.options`.
+// bindings read. It maps the agent's ending to the outcome the bindings route on and
+// passes the asks along. It judges nothing. The options of an ask are the stage's
+// `returns.options`. The merge and the landing branch are recorded on the item by the
+// engine, when the land stage's `archon forge pr.merge` is applied.
 //
 // Inputs: `stage`, the workflow's name; `last`, what the stage's agent ended with; `change`,
-// where the change is proposed; `land_on`, the item's landing branch (land stage only);
-// `delivered`, gate only, what the host round ended with; `land_gate`, gate only, the pack
+// where the change is proposed; `delivered`, gate only, what the host round ended with; `land_gate`, gate only, the pack
 // setting of that name; `noticed`, land only, what the checks noticed, carried to the
 // discoveries drain that starts when the change has landed.
-import { emit, forge, input, item, recordLanding, recordMerge } from 'archon:script';
+import { emit, input } from 'archon:script';
 const parse = (name: string) => { try { return JSON.parse(input(name) || 'null'); } catch { return null; } };
 const stage = input('stage').trim();
 const last = parse('last') ?? {};
@@ -52,38 +52,6 @@ if (!handsOn && asks.length === 0) {
   ));
 }
 
-// After a merge: the item's merge and its landing branch are facts the engine keeps
-// (`archon workflow merged`, `archon workflow landing`). Both are read from the host
-// here, not taken from what the agent said. A record that could not be written is said
-// in the result and does not undo a landing that happened.
-let recorded = '';
-if (stage === 'land' && outcome === 'landed') {
-  try {
-    const key = item()?.item.key;
-    const where = change ? forge('resolve', { remote: change, web: true }) : null;
-    if (!key) recorded = 'not recorded: the run is on no item';
-    else if (!where || where.kind !== 'resolved' || where.subject?.kind !== 'pr') recorded = 'not recorded: the change is on no host, so no host reported a merge';
-    else {
-      const ref = { repo: where.repo, number: where.subject.number };
-      const seen = forge('pr.view', { selector: { kind: 'number', ref } });
-      const at = seen?.timestamps?.merged_at;
-      if (seen?.pr.state !== 'merged' || !at) recorded = `not recorded: the host says the change is ${seen?.pr.state ?? 'unknown'}`;
-      else {
-        const commit = forge('pr.merge-state', { ref }).merge_commit;
-        recordMerge({ change: seen.pr.url, at, commit: commit ?? null });
-        // Later work on the item, such as a fix after the landed check, is cut from the
-        // branch the change landed on. With no landing branch set that is the base branch
-        // already, and nothing is recorded.
-        if (input('land_on').trim()) recordLanding(seen.pr.base);
-        recorded = `merged into ${seen.pr.base}${commit ? ` as ${commit}` : ''}`;
-      }
-    }
-  } catch (error) {
-    recorded = `not recorded: ${error instanceof Error ? error.message : String(error)}`;
-  }
-  console.error(`landing: ${recorded}`);
-}
-
 const said = [last.returned, last.stop, gate ? last.why : ''].map(text => String(text ?? '').trim()).filter(Boolean).join('\n\n');
 emit({
   ...last,
@@ -98,7 +66,6 @@ emit({
     'Commit on the same branch and push it to where the change is proposed, so the host looks again.',
   ].join('\n\n'),
   noticed: (gate ? parse('delivered')?.noticed : parse('noticed')) ?? [],
-  recorded,
   // Gate only. `would` is what the land policy decided; `shadow` says nothing acted on it.
   ...(gate ? { would, shadow, metrics: [{ name: 'sf.landgate_would_land', unit: 'changes', subject: change || null, kind: 'count', value: would === 'land' ? 1 : 0 }] } : {}),
   asks,

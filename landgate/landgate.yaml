@@ -101,7 +101,6 @@ nodes:
       change: $INPUTS.change
       delivered: $INPUTS.delivered
       land_gate: $INPUTS.land_gate
-      land_on: ""   # land stage only
       noticed: ""   # land stage only
     output_format:
       type: object

@@ -89,8 +89,8 @@ nodes:
         for_next: { type: string, description: 'Anything whoever works on this project next needs from you that has no field here. Write it to them.' }
       required: [outcome, summary, landing_branch, from, to, checked, returned, stop, asks, notes, for_next]
 
-  # The outcome the bindings route on and, after a merge, the record on the item of what
-  # the host says landed.
+  # The outcome the bindings route on. The engine records the merge and the landing branch
+  # on the item when the node above merges through `archon forge pr.merge`.
   # The engine defines the `asks` property of the result, so the output format leaves it out.
   - id: end
     depends_on: [land]
@@ -100,7 +100,6 @@ nodes:
       stage: land
       last: $land.output
       change: $INPUTS.change
-      land_on: $INPUTS.land_on
       noticed: $INPUTS.noticed
       delivered: ""   # gate only
       land_gate: ""   # gate only
@@ -112,5 +111,4 @@ nodes:
         summary: { type: string }
         returned: { type: string, description: 'What goes back to the builder: why the change did not land.' }
         noticed: { type: array, description: 'What the checks noticed that this change did not cause. The discoveries stage starts from it when the change has landed.' }
-        recorded: { type: string, description: 'After a landing: what was recorded on the item from what the host reported, or why nothing was.' }
-      required: [outcome, change, summary, returned, noticed, recorded]
+      required: [outcome, change, summary, returned, noticed]
