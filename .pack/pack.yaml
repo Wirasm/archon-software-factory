@@ -123,7 +123,7 @@ bindings:
     event:
       kind: label.changed
       actions: [added]
-      predicates: [{ field: label.name, equals: factory }]
+      predicates: [{ field: label.name, equals: factory }, { field: subject.kind, equals: issue }]
     item: { field: subject.number, prefix: issue- }
     inputs:
       issue: { event: subject.number }
