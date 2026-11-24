@@ -22,7 +22,10 @@ inputs:
 # other outcome, starts nothing and leaves no ask shows the item as stopped in attention,
 # with `summary` as the reason.
 # A judgment that the item is not to be built ends it; `shape` needs a maintainer.
-returns: { node: judge, outcome: recommend, final: [recipe, native, fold, park, deprecate, decline, close], summary: why }
+# No judgment is final: `build`, `narrow` and `split` start the next stage, and every other
+# one is a call a maintainer has to see and act on (shape it, close it, fold it, park it),
+# so the item shows as stopped with the reason until someone does.
+returns: { node: judge, outcome: recommend, summary: why }
 
 nodes:
   - id: judge
