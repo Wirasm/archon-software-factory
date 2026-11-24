@@ -16,7 +16,7 @@ Read both with `archon workflow runs --item <key>`.
 | link `waiting` | Nothing until what it waits on ends; then the link stage runs again by itself. See below. An open ask means what it waits on will not land. |
 | link `fold` | An ask is open: it overlaps another item. `dropped`: the item ended. `none`: nothing changed. |
 | triage `split` | The split starts. |
-| triage, any other judgment | Nothing, and no ask. `shape` lists open questions for a maintainer and shows the item as stopped in `archon workflow attention`. The others end the item and are not listed. Report it. |
+| triage, any other judgment | Nothing, and no ask. The item shows as stopped in `archon workflow attention` with the reason; `shape` also lists open questions for a maintainer. Report it. |
 | split `whole` / `split` / `waiting` | Plan / each member that starts now is ordered as its own item / nothing. |
 | plan `planned` | Build starts. `ask`: an ask is open. `stop`: nothing; the result says why. |
 | stage-build `built` / `built_for_host` | The checks / the host round. `replan`: plan starts with what the builder said (once on an item; after that it asks). `ask`: an ask is open. |

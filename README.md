@@ -500,8 +500,16 @@ While the hold is set, no new run starts from any source on the install, not onl
 
 ## Update the pack
 
+Update when no start of the pack is queued. A start that is already queued (waiting for capacity, for its item or for its checkout) keeps the inputs it was prepared with, and the hold does not move it: it stays queued until the hold lifts. When the update removed a setting or an input its stage declared, that start is then refused, the stage never runs, and its item looks finished when it is not.
+
 ```bash
+archon workflow status    # lists running runs and queued starts; wait until none is of this pack
 archon hold set
+```
+
+Wait for running runs too: the start a run owes when it ends is matched against the binding files as they are at that moment. If you must update with runs running or starts queued, note their items first, and after step 5 look in `archon trigger list` for a refused start and start that stage on its item again by hand.
+
+```bash
 archon plugin update Wirasm/archon-software-factory
 archon pack bindings Wirasm.archon-software-factory --repo github.com/<owner>/<name> --host <host-id> --run-as <user-id> --cwd <path to the checkout> --out <bindings-dir> --force
 ```
@@ -622,7 +630,7 @@ archon workflow run Wirasm/archon-software-factory:stage-build --item <key> --in
 - **Nothing lands without an operator, unless you switch it on.** After a ready change the land gate asks, every time, and says what the project's land policy would have done. `land_gate: policy` makes the gate act on the policy ([settings](#policy-files-and-project-settings)). The land stage then merges the change into its landing branch through the forge, when it still merges and the host's checks at its head are green; a change that does not goes back to its builder.
 - **The round limit asks; it does not stop.** The pack's stages ask before a start would be refused, so the engine's refusal is never reached. A start refused all the same (a binding file changed by hand, a stage that failed before its ask) is on its receipt (`archon trigger list`) and nowhere on the item's asks.
 - **A host round that ends `waiting` starts nothing and leaves no ask.** The host stage gave up waiting for the project's checks or reviews. Nothing reads the host again by itself. The item shows as stopped in `archon workflow attention`; an operator starts the host round again.
-- **Triage and plan can stop an item without an ask.** Triage ends `shape` for an item that is worth doing and cannot be planned until a maintainer has settled its open questions, and lists them. Nothing runs the shaping: an operator does it and orders the item again. A plan that ends `stop` is the same: the item shows as stopped with the reason, and nothing starts. Triage's other judgments that are not `build`, `narrow` or `split` end the item: the result says why, nothing starts, and attention does not list it.
+- **Triage and plan can stop an item without an ask.** Triage ends `shape` for an item that is worth doing and cannot be planned until a maintainer has settled its open questions, and lists them. Nothing runs the shaping: an operator does it and orders the item again. A plan that ends `stop` is the same: the item shows as stopped with the reason, and nothing starts. Triage's other judgments that are not `build`, `narrow` or `split` are the same: nothing starts, and the item shows as stopped with the reason until a maintainer acts on it.
 - **The link stage holds an item only inside a work order.** On an item outside the item's work order it does not wait and names what it would have waited on ([items that wait](#items-that-wait)). What an order states with `depends_on` holds everywhere. Before that shadow goes, an outside blocker that nobody has ordered needs its rule: the link stage is told to ask about it and never to wait on it silently, and that is not measured.
 - **A waiting item is told only of an ending.** The link stage starts on it again when the item it waits on lands or ends in one of the ways listed under [items that wait](#items-that-wait). Nothing tells it when that item only sits: an ask nobody answers, a host round that ended `waiting`, an issue closed on the forge by hand. It stays `waiting` and visible until an operator moves the blocker.
 - **A link run that ends `fold` or `dropped` starts nothing.** `fold` leaves an ask; `dropped` ends the item.
