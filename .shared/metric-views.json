@@ -1,0 +1,36 @@
+{
+  "names": {
+    "sf.ended_ready": "Changes that reached the land gate",
+    "sf.round_findings": "Findings the checks sent back",
+    "sf.round_notes": "Notes the checks left",
+    "sf.review_rounds": "Check round number at each ending",
+    "sf.landgate_would_land": "Changes the land policy would have landed without asking",
+    "sf.link_would_wait": "Items that would have waited on work outside their order",
+    "sf.admit_would_start": "Items that could have started without an operator",
+    "sf.admit_would_ask": "Items an operator would have been asked about"
+  },
+  "cards": [
+    {
+      "shape": "count",
+      "title": "Changes ready to land",
+      "metric": "sf.ended_ready"
+    },
+    {
+      "shape": "count",
+      "title": "Found by the checks",
+      "metric": "sf.round_findings",
+      "breakdown": [{ "metric": "sf.round_notes", "label": "notes" }]
+    },
+    {
+      "shape": "count",
+      "title": "Would have landed by policy",
+      "metric": "sf.landgate_would_land"
+    },
+    {
+      "shape": "ratio",
+      "title": "Could have started without asking",
+      "numerator": "sf.admit_would_start",
+      "denominator": "sf.admit_would_ask"
+    }
+  ]
+}
