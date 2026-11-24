@@ -1,46 +1,144 @@
 name: link
 description: |
-  Place one work item among the project's other open work: what has to land
-  before it, or which item it overlaps or is a part of. Every link is a
-  proposal; none is acted on until accepted. Reads the project,
-  changes nothing.
+  Decide whether one item that should be built can be built now, and how it relates to
+  the project's other work. It runs after triage, and again on a waiting item when
+  something it depends on ends, and when an ask it left is answered. The agent checks
+  the state of what the item would wait on, records the links itself, and ends `place`
+  (plan starts), `waiting` (it names what the item waits on), `fold` or `dropped`.
+  Reads the project, changes nothing in it.
 
 model: ['@link', medium]
 
 inputs:
-  item:
-    description: The work item as text.
+  order:
+    result_of: order
+    description: What the item's last order returned. It holds the item as text, the other members of its work order, what the order says it depends on, and its landing branch.
   judgment:
+    result_of: triage
     description: What triage concluded about the item.
+  earlier:
+    result_of: link
+    description: What the last link run on this item returned. Null on the first.
+  ended:
+    default: ""
+    description: The key of an item this one depends on that just ended, landed or not. Set by the bindings that start this stage on a waiting item.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item.
   open_items:
+    default: "None listed."
     description: The project's other open items, as a short index that says where each can be read in full.
-  relations:
-    default: "None recorded."
-    description: Relations the tracker already holds for this item.
 
-returns: { node: link, outcome: outcome }
+# The engine defines the `asks` property of the result, so the `end` node's output format leaves it out.
+returns: { node: end, outcome: outcome, asks: asks }
 
 nodes:
+  # The order's result as fields a prompt can name, and the item's key.
+  - id: given
+    runtime: bun
+    mutates_checkout: false
+    with:
+      order: $INPUTS.order
+    script: |
+      import { emit, input, item } from 'archon:script';
+      const order = JSON.parse(input('order') || 'null');
+      if (!order?.item) throw new Error('link: this item has no order that named its work, so there is nothing to place');
+      emit({ key: item()?.item.key ?? '', item: order.item, land_on: order.land_on ?? '', members: order.members ?? [], depends_on: order.depends_on ?? [] });
+    output_format: { type: object }
+
   - id: link
+    depends_on: [given]
     command: link
     mutates_checkout: false
     output_format:
       type: object
       additionalProperties: false
       properties:
-        outcome: { type: string, enum: [place, fold] }
-        summary: { type: string, description: 'For whoever orders the work next.' }
+        outcome: { type: string, enum: [place, waiting, fold, dropped, none] }
+        summary: { type: string, description: 'For whoever plans or orders the work next.' }
         links:
           type: array
-          description: 'With place: every item that has to land before this one. With fold: the item this one overlaps, or is a part of.'
+          description: 'Every relation you found, recorded or not.'
           items:
             type: object
             additionalProperties: false
             properties:
-              to: { type: string, description: 'The id of the other item, as the index gives it.' }
-              kind: { type: string, enum: [depends_on, overlaps, part_of] }
+              to: { type: string, description: 'The key of the other item, or its id in the tracker when it is not an item of the factory.' }
+              kind: { type: string, enum: [depends_on, overlaps, part_of, duplicate_of] }
+              blocking: { type: boolean, description: 'For depends_on: true when this item cannot be built or judged before the other has landed; false when it would only be better, tidier or easier after it. False for the other kinds.' }
+              recorded: { type: boolean, description: 'True when the link is recorded on the item now: you recorded it, or it was there and you left it.' }
               why: { type: string }
-            required: [to, kind, why]
-        notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
-        for_next: { type: string, description: 'Anything whoever orders this work next needs from you that has no field here. Write it to them.' }
-      required: [outcome, summary, links, notes, for_next]
+            required: [to, kind, blocking, recorded, why]
+        waits_on: { type: array, items: { type: string }, description: 'With waiting: the keys of the items this one waits on. You hold a recorded depends_on link to each. Empty otherwise.' }
+        would_wait: { type: array, items: { type: string }, description: 'The items outside the work order this item cannot be built before, which you did not wait on. Empty when none.' }
+        asks:
+          type: array
+          description: 'Decisions an operator owes before this item can go on. Empty when there are none.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              question: { type: string }
+              context: { type: string }
+              options:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    id: { type: string, description: 'kebab-case, one token. The answer names it.' }
+                    does: { type: string }
+                    cost: { type: string }
+                  required: [id, does, cost]
+              recommendation:
+                type: object
+                additionalProperties: false
+                description: 'The option you would take. When you have no basis to choose, set `option` to an empty string and say why you cannot choose in `why`.'
+                properties:
+                  option: { type: string }
+                  why: { type: string }
+                required: [option, why]
+            required: [question, context, options, recommendation]
+        notes: { type: string, description: 'Anything worth saying that has no field here: how you searched, caveats, doubts.' }
+        for_next: { type: string, description: 'Anything whoever plans this work needs from you that has no field here. Write it to them.' }
+      required: [outcome, summary, links, waits_on, would_wait, asks, notes, for_next]
+
+  # The stage's result: what the agent ended with, and the item and its landing branch for
+  # the plan stage that `place` starts. It decides nothing. An ask with no recommendation
+  # says why in its context, because the engine keeps a reason only beside a recommended option.
+  - id: end
+    depends_on: [link]
+    runtime: bun
+    mutates_checkout: false
+    with:
+      given: $given.output
+      last: $link.output
+    script: |
+      import { emit, input } from 'archon:script';
+      const given = JSON.parse(input('given'));
+      const last = JSON.parse(input('last'));
+      emit({
+        ...last,
+        item: given.item,
+        land_on: given.land_on,
+        asks: (last.asks ?? []).map((ask: any) => {
+          const recommends = (ask.options ?? []).some((o: any) => o.id === ask.recommendation?.option);
+          return {
+            ...ask,
+            context: recommends ? ask.context : `${ask.context}\n\nNo recommendation: ${ask.recommendation?.why || 'the stage gave no reason.'}`,
+            recommendation: recommends ? ask.recommendation : null,
+            artifacts: [],
+          };
+        }),
+        metrics: [{ name: 'sf.link_would_wait', unit: 'items', subject: given.key || null, kind: 'count', value: (last.would_wait ?? []).length }],
+      });
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [place, waiting, fold, dropped, none] }
+        item: { type: string, description: 'The work item as text.' }
+        land_on: { type: string, description: 'The branch the change lands on. Empty means the base branch.' }
+        links: { type: array, description: 'Every relation the stage found, and whether it is recorded.' }
+        waits_on: { type: array, description: 'The keys of the items this one waits on.' }
+        would_wait: { type: array, description: 'Shadow: the items outside the work order this item cannot be built before. Nothing waits on them.' }
+      required: [outcome, item, land_on, links, waits_on, would_wait]

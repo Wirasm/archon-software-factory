@@ -1,10 +1,8 @@
 name: triage
 description: |
-  Take one work item through triage: judge what should happen to it, and when
-  it should be built, place it among the project's other open work. Two stages
-  in one run: they belong to the same moment for the same item. The run ends
-  with the judgment's recommendation as its outcome, which a binding can start
-  the next stage on.
+  Take one work item through triage: judge what should happen to it. The run
+  ends with the judgment's recommendation as its outcome, which a binding can
+  start the next stage on: the link stage for an item that should be built.
 
 inputs:
   item:
@@ -13,10 +11,12 @@ inputs:
   land_on:
     default: ""
     description: The branch this item's change lands on. Empty means the project's base branch. This stage passes it on.
-  open_items:
-    default: "None listed."
-    description: >-
-      The project's other open items, as a short index that says where each can be read in full.
+  members:
+    default: "[]"
+    description: The other members of the work order or split this item is part of, as JSON, each with its `key` and `title`. The order stage's result carries them.
+  depends_on:
+    default: "[]"
+    description: Keys of the items the order says must land before this one, as JSON. The order stage's result carries them.
 
 returns: { node: judge, outcome: recommend }
 
@@ -26,15 +26,8 @@ nodes:
     with:
       item: $INPUTS.item
       triage_policy: $INPUTS.triage_policy
-
-  - id: link
-    include: link
-    depends_on: [judge]
-    when: "$judge.output.recommend == 'build' || $judge.output.recommend == 'narrow'"
-    with:
-      item: $INPUTS.item
-      judgment: $judge.output
-      open_items: $INPUTS.open_items
+      members: $INPUTS.members
+      depends_on: $INPUTS.depends_on
 
   # Shadow measurement, 2026-11-16: may this item start without an operator? Recorded in the
   # run and read by nothing. It is not part of what triage returns and starts no stage.

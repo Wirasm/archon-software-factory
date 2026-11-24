@@ -17,7 +17,7 @@ argument-hint: "[item key | ask ref | intent]"
 # Operating the software factory
 
 The pack `Wirasm/archon-software-factory` turns a **work order** into an **item** and moves
-it through **stages**: order, triage, split (when needed), plan, build, check, host round,
+it through **stages**: order, triage, split (when needed), link, plan, build, check, host round,
 land gate, land, landed check, discoveries drain. Each stage is one Archon run on the item.
 **Bindings** start the next stage when one ends. A stage that needs a decision ends and
 leaves an **ask**; the answer starts what follows. To **land** is to merge the change into
@@ -81,22 +81,27 @@ an edit or a comment on the issue after the order reaches no later stage. Before
 check that the issue states the problem, the desired outcome and what acceptance looks like.
 A thin item produces a confident answer to the wrong question; fix the issue first.
 
-- **Several items.** One order file and one fire per item. Stages queue past their capacity
+- **Several items.** One order file and one fire per item, or one work order that lists
+  them: `{ "key": "wo-12", "land_on": "", "items": [{ "key": "issue-41", "source": "..." },
+  { "key": "issue-42", "source": "...", "depends_on": "issue-41" }] }`. Each member is
+  recorded as part of `wo-12` and ordered by itself. `depends_on` is optional: the
+  factory's link stage finds and records which member waits for which. Never run
+  `archon workflow link` yourself. Stages queue past their capacity
   (three orders, five builds and one landing at once by default), so fire them all.
 - **An item on its own branch.** Create and record the branch first, then order with
   `"land_on": "<branch>"`:
   `archon workflow landing --item <key> --branch <branch> --from origin/<base branch>`
-- **Items that are part of a larger item.** Record the branch on the larger item's key as
-  above, link each member with
-  `archon workflow link --item <member key> --kind part_of --to <larger key>`, and order
-  each member with `"land_on": "<branch>"` and `"part_of": "<larger key>"`. The members
-  land on that branch. Landing the branch on the base is not a stage: the operator does it.
+- **Items that land together.** Create the branch on the work order's key as above, then
+  fire the work order with `"land_on": "<branch>"`. The order records the branch and the
+  members take it. Landing the branch on the base is not a stage: the operator does it.
 - **The label as an order.** With label intake set up, adding the label `factory` to an
   issue orders it as `issue-<number>`. A label that was already there when intake was first
   seen starts nothing; remove it and add it again. Put it on issues only: a labelled pull
   request is ordered too.
-- **`depends_on`** in an order is recorded and nothing waits on it. Order dependent items
-  one after the other yourself.
+- **`depends_on`** in an order, or on a member, states what the person already knows must
+  land first. The link stage takes it as given: the item waits and goes on by itself when
+  it has landed.
+  `items.md` says how to read a waiting item.
 
 ## Pause and resume
 
@@ -115,11 +120,15 @@ the update finish on the pack revision they started with.
 ## What the pack does not do yet
 
 - Nothing enters on its own: every item is ordered by an operator, by hand or by label.
-- `depends_on` holds nothing back, and nothing waits for an item to land.
+- The link stage waits only on a member of the item's work order or on what its order
+  states; an outside item it names as `would_wait` and does not wait on.
+- A waiting item is told when what it waits on ends, not when it only sits.
+- A work order has no stage after the order: nothing starts when its last member lands.
 - A host round that ends `waiting`, a triage judgment that is not `build`, `narrow` or
   `split`, and a plan that ends `stop` start nothing and leave no ask.
 - `take-as-is` on a host ask starts nothing.
-- A split starts its first members only, and does not create the landing branch.
+- A split member that waits on a ruling or a signal starts only when the split runs
+  again, and a split does not create the landing branch.
 - Changes built side by side can conflict; the later one goes back to its builder.
 - The discoveries drain files at most three items a run, and none without a tracker.
 - No stage lands a shared branch on the base, and the report carries no screenshots.

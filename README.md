@@ -148,14 +148,15 @@ A work order is a small JSON file. `key` and one of `source` or `text` are requi
 | `source` | A link to the item on the forge. Its title, body and comments become the item. | Empty: the work lives in no tracker. |
 | `text` | The work as text. With a source, it is added below what the source says, as the operator's own words. | Empty. |
 | `land_on` | The branch the change lands on. See [landing branch](#landing-branch-and-work-that-is-part-of-a-larger-item). | Empty: the project's base branch. |
-| `part_of` | The key of the larger item this one is a piece of. | Empty: it stands alone. |
-| `depends_on` | Keys of items that must land first, separated by commas. It is accepted and kept with the order. Nothing reads it or waits on it yet. | Empty. |
+| `part_of` | The key of the larger item this one is a piece of, when you already know it. The order records the link. | Empty: it stands alone. |
+| `depends_on` | Keys of items that must land first, separated by commas, when you already know them. The link stage takes it as a fact, and the item [waits](#items-that-wait) until each has landed. You are never required to say it: the factory finds what an item depends on. | Empty. |
+| `items` | For [an order of several items](#order-several-items-at-once): the members, each with its own `key`, a `source` or `text`, and optionally `depends_on`. | Empty: an order of one item. |
 
 ```bash
 archon trigger fire --config <bindings-dir>/<the order file> --inputs order.json
 ```
 
-The command returns as soon as the order is taken; the stages that follow run in the background. The first order registers the project with Archon; there is no separate step. The order becomes a work item, and the engine starts each next stage when the one before ends: triage, the split when triage calls for one, plan, build, check and host rounds, the land gate, the land stage, the landed check and the discoveries drain.
+The command returns as soon as the order is taken; the stages that follow run in the background. The first order registers the project with Archon; there is no separate step. The order becomes a work item, and the engine starts each next stage when the one before ends: triage, the split when triage calls for one, the link stage, plan, build, check and host rounds, the land gate, the land stage, the landed check and the discoveries drain. An order that names only a `key` orders that item again from its own last order.
 
 ```bash
 archon workflow runs --item issue-123
@@ -181,6 +182,7 @@ Which options an ask offers depends on the stage that left it:
 | Ask left by | Options |
 |---|---|
 | Plan, split | The stage's own options, written for that question. An answer starts the same stage again with the answer. |
+| Link | The stage's own options. When an item this one [waits on](#items-that-wait) will not land: `wait`, `start-anyway`, `drop`. An answer starts the link stage again, which carries it out. |
 | Build, check, host | `send-back`, `replan`, `take-as-is`, `drop`, `reshape`. When the item's check or host rounds are used up, `one-more-round` takes the place of `send-back`. |
 | Land gate, land | `land`, `send-back`, `drop`, `reshape`. |
 
@@ -191,7 +193,9 @@ Which options an ask offers depends on the stage that left it:
 | `replan` | Plan, then delivery. |
 | `take-as-is` | After a build or check ask: the host round, on the change as it is. After a host ask: nothing. The change stands; you land it or close it. |
 | `land` | The land stage, which merges the change when it still merges and its checks are green. |
-| `drop` | The close step: the change is closed without merging, with your answer written on it. The item ends. |
+| `drop` | The close step: the change is closed without merging, with your answer written on it. The item ends. On a link ask there is no change yet: the link stage ends `dropped`. |
+| `wait` | The link stage, which ends `waiting` again. The item goes on when what it waits on lands. |
+| `start-anyway` | The link stage, which ends the item's links to what it waited on and ends `place`, so plan starts. |
 | `reshape` | The close step: the change stays open as a draft, with your answer written on it. Nothing more is built until the item is shaped again. |
 
 When a run left several asks, answer all of them: the next stage starts when the last one is answered. For build, check, host and landing asks it starts only when every answer chose the same option. `archon workflow answer` says so when a settlement starts nothing.
@@ -234,7 +238,7 @@ Everything in this section has a working default. Change a setting when its "cha
 | Alias | Role | Falls back to |
 |---|---|---|
 | `@judge` | Triage's judgment, the admit shadow, the land gate, the landed check, and the recommendation when an item's rounds are used up | `medium` |
-| `@link` | Placing an item among the project's open work, in triage | `medium` |
+| `@link` | The link stage: whether an item can be built now, and how it relates to other work | `medium` |
 | `@planner` | Plan, and the split | `large` |
 | `@builder` | Build, and every fix round | `large` |
 | `@reviewer` | The review: is the change right against the item | `large` |
@@ -430,7 +434,7 @@ Remove and install the job again after you change its `PATH`, after `brew upgrad
 
 | Stage | Runs at once |
 |---|---|
-| Order, triage, plan, split, land gate, landed check | 3 each |
+| Order, triage, link, plan, split, land gate, landed check | 3 each |
 | Build, check, host round | 5 each |
 | Discoveries drain, close | 2 each |
 | Land | 1 |
@@ -464,18 +468,15 @@ archon workflow landing --item <key> --branch <branch> --from origin/<base branc
 
 `--from` creates the branch on the project's remote from that start point; leave it out for a branch that exists. With the branch recorded, the engine cuts every stage's worktree on the item from it. Without the record, the first worktree is cut from the base branch and the builder moves onto `land_on` itself. Then put `"land_on": "<branch>"` in the order.
 
-**How, for items that are part of a larger item.** Record the branch on the larger item's key, link each member to it, and order each member with the branch and the larger item's key:
+**How, for several items that land together.** Create the branch, then [order the items as one work order](#order-several-items-at-once) with `"land_on": "<branch>"`:
 
 ```bash
-archon workflow landing --item <larger key> --branch <branch> --from origin/<base branch>
-archon workflow link --item <member key> --kind part_of --to <larger key>
+archon workflow landing --item <work order key> --branch <branch> --from origin/<base branch>
 ```
 
-```json
-{ "key": "<member key>", "text": "<the member's work>", "land_on": "<branch>", "part_of": "<larger key>" }
-```
+The order records the branch on the work order's item, and a member that records no branch of its own takes the branch of the item it is part of. A branch the remote does not have refuses each member's first run and names the command above. The members land on the shared branch one at a time. Landing that branch on the base is not a stage of the pack: an operator proposes and lands it. A [split](#items-that-are-not-one-change) orders its members with `land_on` and `part_of` by itself and records the links; it does not create the branch.
 
-A member that records no branch of its own takes the branch of the item it is part of. The members land on the shared branch one at a time. Landing that branch on the base is not a stage of the pack: an operator proposes and lands it. A [split](#items-that-are-not-one-change) orders its members with `land_on` and `part_of` by itself and records the links; it does not create the branch.
+One item ordered by hand with `"part_of": "<larger key>"` is recorded as part of that item, and takes its branch the same way.
 
 ### Review someone else's pull request
 
@@ -523,12 +524,13 @@ Work through these in order, from the project's checkout.
 2. **An ask is open.** Nothing that follows a stage starts while its asks are open. `archon workflow attention` lists them.
 3. **The hold is set.** `archon workflow status` says so. Lift it with `archon hold lift`.
 4. **A binding is broken or missing.** `archon trigger check` exits nonzero and names the file. `archon pack graph Wirasm.archon-software-factory` shows every arrow between stages, whether it is active on this install, and which outcomes start nothing.
-5. **The item ended on an outcome nothing starts on.** These end the item's movement by design or for now: an order that was `refused`; a triage judgment other than `build`, `narrow` or `split`; a plan that ended `stop`; a split that ended `waiting`; a host round that ended `waiting`; the close step. Read why with `archon workflow get <run-id> --json`.
-6. **Its stage is full.** The item read says what the start waits behind. See [how many items run at once](#how-many-items-run-at-once).
-7. **A start was admitted and nothing runs it.** The item read shows its state as `unowned`. Run it once with `archon trigger execute <request-id> --host <host-id>`.
-8. **A run on the item lost its process.** One run of a stage works an item at a time, so a dead run holds the item. The item read says when a run's owner is gone and prints `archon workflow resume <run-id>` and `archon workflow abandon <run-id>`.
-9. **You answered through the Web UI or the API.** The server prepares starts only for the host its `ARCHON_TRIGGER_HOST` names. Run `archon trigger drain --host <host-id>`, or install the wake timer.
-10. **A label started nothing.** Check `archon workflow wake schedule status --json` and the `observing` part of `archon trigger check`. The label may have been on the issue before the first pass, which starts nothing.
+5. **The item waits on another item.** Its last link run ended `waiting`. The item read lists what it depends on under `Links`, and the run's result names it in `waits_on`. See [items that wait](#items-that-wait).
+6. **The item ended on an outcome nothing starts on.** These end the item's movement by design or for now: an order that was `refused`; a triage judgment other than `build`, `narrow` or `split`; a link run that ended `dropped`; a plan that ended `stop`; a split that ended `waiting`; a host round that ended `waiting`; the close step. Read why with `archon workflow get <run-id> --json`.
+7. **Its stage is full.** The item read says what the start waits behind. See [how many items run at once](#how-many-items-run-at-once).
+8. **A start was admitted and nothing runs it.** The item read shows its state as `unowned`. Run it once with `archon trigger execute <request-id> --host <host-id>`.
+9. **A run on the item lost its process.** One run of a stage works an item at a time, so a dead run holds the item. The item read says when a run's owner is gone and prints `archon workflow resume <run-id>` and `archon workflow abandon <run-id>`.
+10. **You answered through the Web UI or the API.** The server prepares starts only for the host its `ARCHON_TRIGGER_HOST` names. Run `archon trigger drain --host <host-id>`, or install the wake timer.
+11. **A label started nothing.** Check `archon workflow wake schedule status --json` and the `observing` part of `archon trigger check`. The label may have been on the issue before the first pass, which starts nothing.
 
 ## Items that are not one change
 
@@ -537,16 +539,66 @@ Triage ends `narrow` when part of an item should not be built: the smaller part 
 | Outcome | What starts |
 |---|---|
 | `whole` | Plan, on the item as it is. |
-| `split` | Each member that starts now becomes a work item of its own, with the key `<item key>-<member id>`, recorded as part of the item. It goes through order and triage like any other item. |
+| `split` | Each member that starts now becomes a work item of its own, with the key `<item key>-<member id>`, recorded as part of the item. It goes through order and triage like any other item, or waits for the member it depends on. |
 | `waiting` | Nothing. Every member waits on a ruling or a signal. |
 
-A member that starts later has no brief yet. It stays in the run's result with what it waits on (`archon workflow get <run-id> --json`). A member that depends on another member never starts now, whatever the cut said. A ruling a member waits on is an ask on the item, and answering it starts the split again, which starts the member. Nothing watches a signal or a member landing: start the split again when it has happened.
+A split's members are the members of a work order: each is recorded as part of the item and ordered like any other item. A member whose only reason to wait is another member is a work item from the start, with its brief: it is ordered with that dependency, the link stage holds it ([items that wait](#items-that-wait)), and it goes on by itself when the other lands. A member that waits on a ruling or a signal starts later and has no brief yet. It stays in the run's result with what it waits on (`archon workflow get <run-id> --json`). A ruling is an ask on the item, and answering it starts the split again, which starts the member. Nothing watches a signal: start the split again when it has happened.
 
 To split an epic or a PRD without triage, start the stage on its item. With the bindings registered, its outcome starts what the table says.
 
 ```bash
 archon workflow run Wirasm/archon-software-factory:split --item <key> --input-file item=<a file with the item's text>
 ```
+
+## Order several items at once
+
+A work order of several items is an item whose members are part of it. Give the order a key of its own and list the members:
+
+```json
+{
+  "key": "wo-12",
+  "land_on": "",
+  "items": [
+    { "key": "issue-41", "source": "https://github.com/<owner>/<name>/issues/41" },
+    { "key": "issue-42", "source": "https://github.com/<owner>/<name>/issues/42", "depends_on": "issue-41" },
+    { "key": "wo-12-docs", "text": "The work as text, for a member that lives in no tracker." }
+  ]
+}
+```
+
+Fire it like any order. The order stage ends `work_order`: it records each member as `part_of` the work order (`archon workflow runs --item wo-12` lists them under `Links`), and each member is then ordered by itself and goes through triage and the link stage like any other item. With `land_on`, the branch is recorded as the work order's [landing branch](#landing-branch-and-work-that-is-part-of-a-larger-item) and every member lands on it; create the branch first. Without it, each member lands on the base branch.
+
+You do not link anything by hand, and `depends_on` on a member is optional: the order stage records that each member is part of the order, and the link stage finds and records which member has to wait for which.
+
+A member's key is its item's key from then on. Firing the same order again orders only the members that were not ordered before. The work order's own item has no stage after the order: nothing starts when its last member lands.
+
+## Items that wait
+
+After triage judges that an item should be built, the link stage decides whether it can be built now. It is an agent, and the whole question is its own: it reads the item, the other members of its work order, what the order says it depends on and the state of those items, and it records the links itself. An operator never records a link by hand. A link run ends one of these ways:
+
+| Outcome | What starts |
+|---|---|
+| `place` | Plan. |
+| `waiting` | Nothing now. The item holds a `depends_on` link to each item in the result's `waits_on`, and the link stage starts again when one of them ends. |
+| `fold` | Nothing. The item overlaps another or is a part of one; the ask says which, and the answer starts the link stage again. |
+| `dropped` | Nothing. An operator dropped the item on a link ask. |
+| `none` | Nothing. It was started for an item that ended, and this item was not waiting on it. |
+
+An item waits when it cannot be built before another item has landed: it uses what the other adds, or changes what the other replaces. An item that would only be better after another does not wait. The link stage waits on:
+
+- **another member of the same work order or the same split**, when it judges the dependency blocking;
+- **what the order states** in `depends_on`, which it takes as given. A split states it for a member that depends on another member.
+
+```bash
+archon workflow runs --item <key>
+archon workflow get <run-id> --json
+```
+
+The first shows the item's last link run as `waiting` and its `depends_on` links; the second has the keys in `waits_on`, under `terminal_record.returns.value`.
+
+**What starts it.** When an item that another depends on ends, the link stage starts again on the waiting item, with its text and judgment read from its own earlier runs. The blocker landed: the link stage ends the link and ends `place`, and plan starts. The blocker ended without landing (dropped or sent back to shaping, judged by triage as not to be built as it is, split, a plan that stopped, or dropped while it waited itself): nothing will land it, so the link stage leaves an ask: `wait`, `start-anyway` or `drop`. It recommends one only when the code tells it whether the item can be built without the other. The same ask is left for an item the order says to wait on that nobody has ordered.
+
+**Shadow, for now.** On an item outside its work order that no order names, the link stage does not wait and records nothing. It names it in its result as `would_wait`, counted as the metric `sf.link_would_wait`, so it can be compared with what then happened to the item.
 
 ## Delivery as three stages
 
@@ -562,15 +614,19 @@ archon workflow run Wirasm/archon-software-factory:stage-build --item <key> --in
 
 ## What is not there yet
 
-- **It merges only what was allowed.** After a ready change the land gate decides: it ends `land` when the project's land policy lets the change land by itself, and asks otherwise, always when the project names no land policy. The land stage then merges the change into its landing branch through the forge, when it still merges and the host's checks at its head are green; a change that does not goes back to its builder. Landing is not waited for by anything that depends on the item.
+- **It merges only what was allowed.** After a ready change the land gate decides: it ends `land` when the project's land policy lets the change land by itself, and asks otherwise, always when the project names no land policy. The land stage then merges the change into its landing branch through the forge, when it still merges and the host's checks at its head are green; a change that does not goes back to its builder.
 - **`take-as-is` on a host ask starts nothing.** The change stands, and an operator lands it or closes it by hand.
 - **A host round that ends `waiting` starts nothing and leaves no ask.** The host stage gave up waiting for the project's checks or reviews. Nothing reads the host again by itself. The item read shows the outcome; an operator starts the host round again.
 - **Triage and plan can stop an item without an ask.** Triage ends `shape` for an item that is worth doing and cannot be planned until a maintainer has settled its open questions, and lists them. Nothing runs the shaping: an operator does it and orders the item again. The same holds for its other judgments that are not `build`, `narrow` or `split`, and for a plan that ends `stop`: the result says why, and nothing starts.
-- **`depends_on` is recorded and nothing waits on it.** An order accepts it. No stage reads it, and an item is not held until what it depends on has landed. Order dependent items in sequence yourself.
+- **The link stage holds an item only inside a work order.** On an item outside the item's work order it does not wait and names what it would have waited on ([items that wait](#items-that-wait)). What an order states with `depends_on` holds everywhere. Before that shadow goes, an outside blocker that nobody has ordered needs its rule: the link stage is told to ask about it and never to wait on it silently, and that is not measured.
+- **A waiting item is told only of an ending.** The link stage starts on it again when the item it waits on lands or ends in one of the ways listed under [items that wait](#items-that-wait). Nothing tells it when that item only sits: an ask nobody answers, a host round that ended `waiting`, an issue closed on the forge by hand. It stays `waiting` and visible until an operator moves the blocker.
+- **A link run that ends `fold` or `dropped` starts nothing.** `fold` leaves an ask; `dropped` ends the item.
+- **A work order has no stage of its own after the order.** Nothing starts when its last member lands, and nothing lands its shared branch on the base.
+- **The label orders one item.** `depends_on` and `items` reach the order stage only through an order file.
 - **A label orders pull requests too.** The `order-on-label` binding does not tell an issue from a pull request. See [label intake](#label-intake-a-label-is-a-work-order).
 - **Nothing enters on its own.** Every item starts because an operator ordered it, by hand or with the label. Triage records whether an item could have started without asking, as a shadow; nothing uses it yet.
 - **The drain files at most three items a run.** The discoveries drain starts when a change has landed and decides what should become a work item. When the project has a tracker it creates the three most valuable there, and holds the rest; its result says where each was filed. With no tracker it writes nothing and an operator files them.
-- **A split starts its first members and nothing after them.** A member that waits on a signal, or on another member landing, starts only when the split runs again, by an answer or by hand. The members' landing branch reaches them as `land_on`; the split does not create the branch or record it on the item.
+- **A split member that waits on a ruling or a signal starts only when the split runs again,** by an answer or by hand. A member that waits on another member starts by itself. The members' landing branch reaches them as `land_on`; the split does not create the branch or record it on the item.
 - **Changes built side by side can conflict.** A change that was ready stops merging when a sibling lands first. The land gate names the other open changes that touch the same files and the order it would land them in; nothing brings the later one up to date before its land is refused and it goes back to its builder.
 - **The landing branch is enforced at the merge, not before it.** `land_on` reaches every stage, and the land stage merges only a change proposed against it: one proposed against another branch stops with an ask. Unless an operator records the branch on the item first ([landing branch](#landing-branch-and-work-that-is-part-of-a-larger-item)), the engine cuts the first worktree from the base branch, and only the build prompt moves the builder onto `land_on`. The land stage records the branch on the item after the merge, so later work on the item is cut from it.
 - **After a landing, one result is acted on.** When the landed check finds the change broke its branch and writes a work order, that order starts as new work on the same item. Every other result of the landed check is only recorded.

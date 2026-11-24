@@ -74,6 +74,8 @@ Not in this: one session shared by differently named nodes or by two workflows, 
 
 A work order is a planned group of items: a release, a batch, a backlog switched on. It is an item, not a new primitive.
 
+**Ruled 2026-11-24 and built:** a work order of several items is an item whose members are `part_of` it. One order names the members, the order stage records the links, and each member is ordered like any other item. A member that records no landing branch takes the work order's. The README says how to fire one. The rest of this section is still hypothesis.
+
 - The order depends on its members (`depends_on` from the order to each). When every member has landed the order is ready, and its own stage starts, for example cutting the release.
 - Intake starts only members of an active order, top-ranked first, up to what capacity takes. The backlog waits as items, not as queued starts, so the start queue stays short and an answered item waits behind a few runs, not behind the backlog.
 - The order has its own asks and its own outcome, like any item.
@@ -123,6 +125,8 @@ Three kinds, each stored with a direction. Only accepted links are stored.
 - The link stage proposes, and a proposal is an ask. The answer writes the link. For two items that overlap, the stage says so and asks which one stays; it does not pick.
 - Measured on nine items and six models: five found the real duplicate pair and all five read its direction the other way from the maintainer; two models added dependencies that were not real. A wrong `depends_on` stops an item from starting, so the engine never waits on a guess.
 - A link that stops being true is ended by a second fact, not deleted.
+
+**Ruled 2026-11-24 and built:** linking is the link agent's job. The link stage runs after triage as a stage of its own, decides whether the item can be built now, and records the links itself with `archon workflow link`; no operator links by hand and no script turns a proposal into a link. An item waits only on a blocking dependency: on another member of its work order, or on what its order states, which is taken as given. On an item outside its work order it does not wait and says what it would have waited on (a shadow, until that has been compared with what happened). When what an item waits on ends, the link stage runs again on it: landed, it goes on; ended without landing, it gets an ask.
 - Cost: more asks, about one for every three items at first. To be measured, together with how many repeat an answer already given.
 
 ## Discoveries

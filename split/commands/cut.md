@@ -32,15 +32,15 @@ You are in a checkout of the project. Change nothing. Read it before you cut: wh
 
 1. **The kind.** `prd`, `epic`, `bundle`, `parts` or `whole`, as the policy defines them.
 2. **The members.** For every piece, say why it cannot be part of the same change as the rest. When no piece has such a reason, the answer is `whole`.
-3. **What starts now.** The fewest members that each prove the next thing, often one. A member starts now when nothing it needs is undecided, unbuilt or unproven. Every other member waits, and says on what.
+3. **What starts now.** A member starts now when nothing it needs is undecided or unproven. That includes a member whose only reason to wait is that another member has to land first: name that member in `depends_on`, and the factory holds it until the other has landed and starts it by itself then. A member starts later only when it waits on a ruling an operator must make or on a signal the earlier work must show.
 
 ## The members
 
-- **A member that starts now** carries a brief that stands alone, because whoever plans and builds it does not read the parent, and it goes through triage like any other item: the problem, why it is worth solving, why now, the desired outcome, the invariants that must hold, and what acceptance looks like, in that member's own terms. State behaviour, not tests or file names.
-- **A member that starts later** carries its title, what it proves, the members it depends on, and what it waits on: the ruling an operator must make, the signal the earlier work must show, or the member that must land. Say it so someone can tell when it has happened. It gets no brief yet: the brief is written when it starts, from what the earlier work showed.
+- **A member that starts now**, held behind another member or not, carries a brief that stands alone, because whoever plans and builds it does not read the parent, and it goes through triage like any other item: the problem, why it is worth solving, why now, the desired outcome, the invariants that must hold, and what acceptance looks like, in that member's own terms. State behaviour, not tests or file names.
+- **A member that starts later** carries its title, what it proves, the members it depends on, and what it waits on: the ruling an operator must make, or the signal the earlier work must show. Say it so someone can tell when it has happened. It gets no brief yet: the brief is written when it starts, from what the earlier work showed.
 - **A remainder that waits on a ruling** is a member that starts later, even when everything else is built whole.
 
-A dependency is real when the later member cannot be built or judged without the earlier one being used, not when it would merely be tidier. Together the members deliver all of the item.
+A dependency is real when the later member cannot be built or judged without the earlier one being used, not when it would merely be tidier. A member waits on every member it depends on, so name only real ones. Together the members deliver all of the item.
 
 When an earlier split already started members, keep their ids, do not start them again, and add what comes next.
 
