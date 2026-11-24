@@ -53,10 +53,10 @@ A recorded `depends_on` is what starts this stage on this item again when the ot
 
 A dependency is blocking when this item cannot be built or judged before the other has landed: it uses what the other adds, or changes what the other replaces. It is not blocking when this item would only be better, tidier or easier after it. Waiting costs days, so when the item can be built today on the code as it is, it does not wait.
 
-- **A blocking dependency on another member of its work order, or one its order states**: check the other item. Landed: it does not wait. Still on its way: record `depends_on` and wait. Ended without landing (dropped, sent back to shaping, judged as not to be built, split, a plan that stopped), or never ordered at all: nothing will land it, so never wait on it silently. Leave an ask with the options `wait` (keep waiting; it goes on if that item is ordered and lands), `start-anyway` (stop waiting and plan it now) and `drop` (the item ends). Say in the context how the other item ended. Recommend one only when the code tells you whether this item can be built without it.
+- **A blocking dependency on another member of its work order, or one its order states**: check the other item. Landed: it does not wait. Still on its way: record `depends_on` and wait. Ended without landing (dropped, sent back to shaping, judged as not to be built, split, a plan that stopped), or never ordered at all: nothing will land it, so never wait on it silently. Leave an ask. Say in the context how the other item ended. Recommend an option only when the code tells you whether this item can be built without it.
 - **A blocking dependency on an item outside its work order that no order states**: do not record it and do not wait on it. Name it in `would_wait`.
 - **A dependency that is not blocking**: name it in `links` and record nothing.
-- **The same work as another item, or a part of one**: say what each covers. Inside the work order, record `duplicate_of` or `part_of`. Which of two overlapping items stays is the maintainers' call: leave an ask.
+- **The same work as another item, or a part of one**: say what each covers. Inside the work order, record `duplicate_of` or `part_of`. Which of two overlapping items stays is the maintainers' call: leave an ask, and say in its context what each option means for the two items.
 
 When an operator's decision is among those above, carry it out: after `start-anyway`, end the `depends_on` links to what it waited on and place it; after `wait`, keep waiting; after `drop`, end `dropped`.
 
@@ -68,4 +68,4 @@ When an operator's decision is among those above, carry it out: after `start-any
 - **dropped**: an operator dropped it.
 - **none**: you were started because `$INPUTS.ended` ended, and this item was not waiting: its last run of this stage did not end `waiting`. Change nothing.
 
-Asks are written the way `$PACK_DIR/.shared/ask.md` says. Give each link the reason a maintainer would need to agree with it.
+Asks are written the way `$PACK_DIR/.shared/ask.md` says, except that the options of an ask here are fixed, so you write none: `wait` (the item keeps waiting; it goes on if what it waits on is ordered and lands), `start-anyway` (it stops waiting and is planned now) and `drop` (the item ends). An operator can also answer in their own words. Give each link the reason a maintainer would need to agree with it.

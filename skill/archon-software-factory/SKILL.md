@@ -126,7 +126,7 @@ the update finish on the pack revision they started with.
 - A work order has no stage after the order: nothing starts when its last member lands.
 - A host round that ends `waiting`, a triage judgment that is not `build`, `narrow` or
   `split`, and a plan that ends `stop` start nothing and leave no ask.
-- `take-as-is` on a host ask starts nothing.
+- Nothing lands without an answer unless the project set `land_gate: policy`.
 - A split member that waits on a ruling or a signal starts only when the split runs
   again, and a split does not create the landing branch.
 - Changes built side by side can conflict; the later one goes back to its builder.

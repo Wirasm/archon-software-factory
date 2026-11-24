@@ -1,11 +1,13 @@
 // What one run of a landing stage (landgate, land) ended with, as the result the pack's
-// bindings read. It computes the outcome, gives every ask the options the bindings name,
-// and, after a merge, records on the item what the host says landed. It judges nothing.
+// bindings read. It maps the agent's ending to the outcome the bindings route on, passes
+// the asks along and, after a merge, records on the item what the host says landed. It
+// judges nothing. The options of an ask are the stage's `returns.options`.
 //
 // Inputs: `stage`, the workflow's name; `last`, what the stage's agent ended with; `change`,
 // where the change is proposed; `land_on`, the item's landing branch (land stage only);
-// `delivered`, gate only, what the host round ended with; `noticed`, land only, what the
-// checks noticed, carried to the discoveries drain that starts when the change has landed.
+// `delivered`, gate only, what the host round ended with; `land_gate`, gate only, the pack
+// setting of that name; `noticed`, land only, what the checks noticed, carried to the
+// discoveries drain that starts when the change has landed.
 import { emit, forge, input, item, recordLanding, recordMerge } from 'archon:script';
 const parse = (name: string) => { try { return JSON.parse(input(name) || 'null'); } catch { return null; } };
 const stage = input('stage').trim();
@@ -13,46 +15,41 @@ const last = parse('last') ?? {};
 const change = input('change').trim();
 const gate = stage === 'landgate';
 
-const outcome = gate ? (last.land === 'auto' ? 'land' : 'ask') : String(last.outcome ?? '');
+// The gate's judgment under the land policy, and the one switch that decides whether it is
+// acted on: with `land_gate: policy` a change the policy lets land starts the land stage.
+// With anything else the gate is a shadow: it asks every time and records the judgment.
+const would = gate ? (last.land === 'auto' ? 'land' : 'ask') : '';
+const shadow = gate && input('land_gate').trim() !== 'policy';
+const outcome = gate ? (shadow ? 'ask' : would) : String(last.outcome ?? '');
 // An outcome that a binding hands on to the next stage leaves no ask.
 const handsOn = ['land', 'landed', 'returned'].includes(outcome);
 const summary = String(gate ? last.why ?? '' : last.summary || last.stop || '');
+const shadowed = !shadow ? ''
+  : would === 'land' ? `Shadow: the land policy would have landed this without asking (${String(last.criterion ?? '')}). ${summary}`
+  : `Shadow: the land policy would have asked, because: ${summary || String(last.criterion ?? '')}`;
 
-// An answer's option id decides what starts next (the pack's asks-settled bindings name
-// them), so every ask offers one fixed set, written here and never by an agent.
-const routes = [
-  { id: 'land', does: 'The land stage merges the change into its landing branch, when it still merges and its checks are green.', cost: 'The change is on the branch everyone builds on.' },
-  { id: 'send-back', does: 'The same builder continues on the change with what you say in your answer, and the checks look at it again.', cost: 'One build run and one check round before it can land.' },
-  { id: 'drop', does: 'The change is closed without merging and the item ends here. Your answer is written on the change as the reason.', cost: 'The work on this change is given up; its branch stays.' },
-  { id: 'reshape', does: 'The change stays open as a draft and nothing more is built until the item is shaped again. Your answer is written on the change.', cost: 'The item waits for shaping, and the draft can stop merging while it does.' },
-];
-// An ask with no recommendation says why in its context: the engine keeps a reason only
-// beside a recommended option.
-const unrecommended = (why: unknown) => `No recommendation: ${String(why ?? '').trim() || 'the stage gave no reason.'}`;
-const asks = handsOn ? [] : (last.asks ?? []).map((ask: any) => {
-  const wanted = String(ask.recommendation?.option ?? '');
-  // The stage names no option of this ask with `none`, and says why it cannot choose.
-  const recommends = routes.some(r => r.id === wanted);
-  return {
-    question: String(ask.question ?? ''),
-    context: [String(ask.context ?? ''), recommends ? '' : unrecommended(ask.recommendation?.why)].filter(Boolean).join('\n\n'),
-    options: routes,
-    recommendation: recommends ? { option: wanted, why: String(ask.recommendation?.why ?? '') } : null,
-    artifacts: [],
-  };
+// An ask as the engine stores it. The stage names no option with `none` and says why it
+// cannot choose; that goes in the context, because the engine keeps a reason only beside
+// a recommended option.
+const ask = (question: unknown, context: unknown, option: string, why: unknown) => ({
+  question: String(question ?? ''),
+  context: [context, shadowed, option ? '' : `No recommendation: ${String(why ?? '').trim() || 'the stage gave no reason.'}`]
+    .map(part => String(part ?? '').trim()).filter(Boolean).join('\n\n'),
+  recommendation: option ? { option, why: String(why ?? '') } : null,
+  artifacts: [],
+});
+const asks = handsOn ? [] : (last.asks ?? []).map((written: any) => {
+  const wanted = String(written.recommendation?.option ?? '');
+  return ask(written.question, written.context, wanted === 'none' ? '' : wanted, written.recommendation?.why);
 });
 // An ending that hands nothing on stops the item, so it always tells an operator.
 if (!handsOn && asks.length === 0) {
-  asks.push({
-    question: gate ? 'This change is ready. May it land?' : 'Landing this change stopped. What should happen to it now?',
-    context: [
-      [`${stage} ended as ${outcome} and attached no question.`, summary, String(last.for_next ?? '')].filter(Boolean).join(' '),
-      unrecommended('the stage left no question, so no judgment of the options exists.'),
-    ].join('\n\n'),
-    options: routes,
-    recommendation: null,
-    artifacts: [],
-  });
+  asks.push(ask(
+    gate ? 'This change is ready. May it land?' : 'Landing this change stopped. What should happen to it now?',
+    [`${stage} ended as ${outcome} and attached no question.`, shadow ? '' : summary, String(last.for_next ?? '')].filter(Boolean).join(' '),
+    '',
+    'the stage left no question, so no judgment of the options exists.',
+  ));
 }
 
 // After a merge: the item's merge and its landing branch are facts the engine keeps
@@ -97,10 +94,12 @@ emit({
   // operator who answered `send-back`, whose answer the builder is given beside it.
   returned: outcome === 'land' || outcome === 'landed' ? '' : [
     `The change is proposed at ${change}`,
-    gate ? `The land gate did not let it land by itself:\n\n${said}` : `It did not land:\n\n${said}`,
+    gate ? `The land gate asked an operator, who sent it back. What the gate said:\n\n${said}` : `It did not land:\n\n${said}`,
     'Commit on the same branch and push it to where the change is proposed, so the host looks again.',
   ].join('\n\n'),
   noticed: (gate ? parse('delivered')?.noticed : parse('noticed')) ?? [],
   recorded,
+  // Gate only. `would` is what the land policy decided; `shadow` says nothing acted on it.
+  ...(gate ? { would, shadow, metrics: [{ name: 'sf.landgate_would_land', unit: 'changes', subject: change || null, kind: 'count', value: would === 'land' ? 1 : 0 }] } : {}),
   asks,
 });

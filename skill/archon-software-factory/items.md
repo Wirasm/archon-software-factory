@@ -19,11 +19,11 @@ Read both with `archon workflow runs --item <key>`.
 | triage, any other judgment | Nothing, and no ask. `shape` lists open questions for a maintainer. Report it. |
 | split `whole` / `split` / `waiting` | Plan / each member that starts now is ordered as its own item / nothing. |
 | plan `planned` | Build starts. `ask`: an ask is open. `stop`: nothing; the result says why. |
-| stage-build `built` / `built_for_host` | The checks / the host round. `replan`, `ask`: an ask is open. |
-| stage-check `approve` / `return` | The host round / the builder. `replan`, `ask`: an ask is open. |
+| stage-build `built` / `built_for_host` | The checks / the host round. `replan`: plan starts with what the builder said (once on an item; after that it asks). `ask`: an ask is open. |
+| stage-check `approve` / `return` | The host round / the builder. `replan`: plan starts with what the checks said (once on an item; after that it asks). `ask`: an ask is open. |
 | stage-host `ready` / `return` | The land gate / the builder, then the host again. `ask`: an ask is open. |
 | stage-host `waiting` | Nothing, and no ask. It gave up waiting for the project's checks. Report it. |
-| landgate `land` / `ask` | The land stage / an ask is open. |
+| landgate `ask` | An ask is open; its context says what the land policy would have done. With the setting `land_gate: policy`, a change the policy lets land ends `land` and the land stage starts. |
 | land `landed` | The landed check and the discoveries drain. `returned`: the builder. `stop`, `ask`: an ask is open. |
 | landed `broken_here` | A fix is ordered on the same item. Every other outcome is only recorded. |
 | close `dropped` / `reshape` | The item ended / it waits to be shaped. `not_closed`: close the pull request by hand. |

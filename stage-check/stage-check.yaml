@@ -2,8 +2,8 @@ name: stage-check
 description: |
   Delivery as three stages, stage two: one round of our own checks on the proposed change,
   ending in one verdict. Approve goes on to the host round, return goes back to the
-  builder, both through the pack's bindings. When the item's rounds are used up, a return
-  ends in an ask instead.
+  builder, both through the pack's bindings. A return goes to the builder twice on an item
+  without an operator; the third ends in an ask instead.
 
 inputs:
   item:
@@ -24,7 +24,31 @@ inputs:
     default: ""
     description: What the builder says it did about what was returned. Empty in the first round.
 
-returns: { node: end, outcome: outcome, asks: asks }
+# The options every ask of this stage offers. The id an operator chooses decides what starts
+# next: the pack's asks-settled bindings name them.
+returns:
+  node: end
+  outcome: outcome
+  asks: asks
+  options:
+    - id: send-back
+      does: The same builder continues on the change with what you say in your answer, and the checks look at it again.
+      cost: One build run and one check round.
+    - id: one-more-round
+      does: The same builder fixes what the checks returned, and the checks look at it once more. If they return it again, you are asked again.
+      cost: One build run and one check round.
+    - id: replan
+      does: The item goes back to planning with what you say in your answer.
+      cost: The work so far may be discarded.
+    - id: take-as-is
+      does: The change goes on to the host round as it is.
+      cost: What the checks returned stays unfixed.
+    - id: drop
+      does: The change is closed without merging and the item ends here. Your answer is written on the change as the reason.
+      cost: The work on this change is given up; its branch stays.
+    - id: reshape
+      does: The change stays open as a draft and nothing more is built until the item is shaped again. Your answer is written on the change.
+      cost: The item waits for shaping, and the draft can stop merging while it does.
 
 nodes:
   # The commit this change sits on, read after the builder's last commit: a builder
@@ -89,28 +113,29 @@ nodes:
         ## From the builder (what it did about what was returned last round; empty in the first round)
         $INPUTS.builder_reply
 
-  # Which round of this stage on the item this is, and how many the item is allowed.
-  - id: allowance
+  # Which round this is, and whether the start this round's outcome needs is used up: a
+  # return goes to the builder twice on an item by itself, a replan to planning once.
+  - id: limit
     depends_on: [verdict]
     runtime: bun
-    script: allowance
+    script: limit
     with:
       stage: stage-check
       last: $verdict.output
+      limits: '{"return":"stage-build-after-check","replan":"replan-after-check"}'
     output_format:
       type: object
       properties:
         round: { type: integer }
-        allowance: { type: integer }
         state: { type: string, enum: [open, used_up] }
-      required: [round, allowance, state]
+      required: [round, state]
 
   # The rounds this item is allowed are used up and the change is still returned. One more
   # round is not automatic: an agent reads what is left and recommends what to do, with
-  # the prompt in commands/exhausted.md. The options are the script's: the recommendation names one.
+  # the prompt in commands/exhausted.md. The options are the stage's: the recommendation names one.
   - id: exhausted
-    depends_on: [allowance]
-    when: "$allowance.output.state == 'used_up'"
+    depends_on: [limit]
+    when: "$limit.output.state == 'used_up' && $verdict.output.outcome == 'return'"
     command: exhausted
     model: ['@judge', medium]
     mutates_checkout: false
@@ -134,7 +159,7 @@ nodes:
                   option:
                     type: string
                     enum: [one-more-round, take-as-is, replan, drop, reshape, none]
-                    description: 'What you would do: one-more-round sends it back once more, take-as-is lets the change go on as it is, replan sends the item back to planning, drop closes the change without merging, reshape leaves it open as a draft until the item is shaped again. none when you have no basis to choose: the ask then carries no recommendation, and your why says what stops you. When you would split the change, recommend replan and say so.'
+                    description: 'What you would do, by the id of one of the options this stage declares, which the ask offers. none when you have no basis to choose: the ask then carries no recommendation, and your why says what stops you. When you would split the change, recommend replan and say so.'
                   why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind. With none: why you cannot choose, and what you would need to know to choose. The operator reads it in place of a recommendation.' }
                 required: [option, why]
             required: [question, context, recommendation]
@@ -142,7 +167,7 @@ nodes:
       required: [asks, same_kind]
 
   - id: end
-    depends_on: [allowance, exhausted]
+    depends_on: [limit, exhausted]
     trigger_rule: all_done
     runtime: bun
     script: ending
@@ -150,7 +175,7 @@ nodes:
       stage: stage-check
       last: $verdict.output
       change: $INPUTS.change
-      allowed: $allowance.output
+      limit: $limit.output
       exhausted: { from: $exhausted.output, if_skipped: "" }
       next: ""      # build stage only
       checked: ""   # host stage only
@@ -184,9 +209,8 @@ nodes:
         for_next: { type: string }
         noticed: { type: array, description: 'What the checks noticed that this change did not cause.' }
         round: { type: integer, description: 'Which run of this stage on the item this is, counted since the item was last planned.' }
-        allowance: { type: integer, description: 'How many rounds of this stage the item is allowed: three, plus one for each one-more-round answer.' }
         returned: { type: string, description: 'What goes back to the builder: the verdict and the three reports.' }
-      required: [outcome, change, summary, for_next, noticed, round, allowance, returned]
+      required: [outcome, change, summary, for_next, noticed, round, returned]
 
   # The report on the proposed change, written after the stage has ended so it can say how:
   # one comment replaced each round, and this round's findings on their lines.

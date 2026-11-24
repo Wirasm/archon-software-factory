@@ -2,8 +2,10 @@ name: landgate
 description: |
   May this ready change land without an operator being asked? It reads the change's
   state on the host and the project's land policy, and decides: land now, or ask. It
-  lands nothing and writes nothing itself. The pack's bindings start the land stage
-  when it says land, or when an operator's answer chose it.
+  lands nothing and writes nothing itself. The pack setting `land_gate` says whether the
+  decision is acted on. `shadow`, the default: the gate asks an operator every time, and
+  the ask and the result say what the policy would have done. `policy`: a change the
+  policy lets land starts the land stage with no ask.
 
 model: ['@judge', medium]
 
@@ -21,7 +23,25 @@ inputs:
     default: "None."
     description: Decisions an operator already made on this item.
 
-returns: { node: end, outcome: outcome, asks: asks }
+# The options every ask of this stage offers. The id an operator chooses decides what starts
+# next: the pack's asks-settled bindings name them.
+returns:
+  node: end
+  outcome: outcome
+  asks: asks
+  options:
+    - id: land
+      does: The land stage merges the change into its landing branch, when it still merges and its checks are green.
+      cost: The change is on the branch everyone builds on.
+    - id: send-back
+      does: The same builder continues on the change with what you say in your answer, and the checks look at it again.
+      cost: One build run and one check round before it can land.
+    - id: drop
+      does: The change is closed without merging and the item ends here. Your answer is written on the change as the reason.
+      cost: The work on this change is given up; its branch stays.
+    - id: reshape
+      does: The change stays open as a draft and nothing more is built until the item is shaped again. Your answer is written on the change.
+      cost: The item waits for shaping, and the draft can stop merging while it does.
 
 nodes:
   - id: gate
@@ -47,7 +67,7 @@ nodes:
           required: [checks, head, merges, size, protected]
         asks:
           type: array
-          description: 'When it is an ask: the one question you put to the operator. Empty when auto.'
+          description: 'The one question you put to the operator. Always one, also when the policy lets the change land.'
           items:
             type: object
             additionalProperties: false
@@ -61,14 +81,14 @@ nodes:
                   option:
                     type: string
                     enum: [land, send-back, drop, reshape, none]
-                    description: 'What you would do: land merges it now, send-back gives it to its builder with what the operator says, drop closes the change without merging, reshape leaves it open as a draft until the item is shaped again. none when you have no basis to choose: the ask then carries no recommendation, and your why says what stops you.'
+                    description: 'What you would do, by the id of one of the options this stage declares, which the ask offers. none when you have no basis to choose: the ask then carries no recommendation, and your why says what stops you.'
                   why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind. With none: why you cannot choose, and what you would need to know to choose. The operator reads it in place of a recommendation.' }
                 required: [option, why]
             required: [question, context, recommendation]
         sure: { type: string, enum: [high, medium, low] }
       required: [land, criterion, why, facts, asks, sure]
 
-  # The outcome the bindings route on, and the asks with the options the bindings name.
+  # The outcome the bindings route on, and what the land policy would have done.
   # The engine defines the `asks` property of the result, so the output format leaves it out.
   - id: end
     depends_on: [gate]
@@ -79,6 +99,7 @@ nodes:
       last: $gate.output
       change: $INPUTS.change
       delivered: $INPUTS.delivered
+      land_gate: $INPUTS.land_gate
       land_on: ""   # land stage only
       noticed: ""   # land stage only
     output_format:
@@ -89,4 +110,6 @@ nodes:
         summary: { type: string }
         returned: { type: string, description: 'What the builder gets when an operator sends the change back.' }
         noticed: { type: array, description: 'What the checks noticed that this change did not cause, carried on to the land stage.' }
-      required: [outcome, change, summary, returned, noticed]
+        would: { type: string, enum: [land, ask], description: 'What the land policy decided: land the change without asking, or ask.' }
+        shadow: { type: boolean, description: 'True when nothing acted on `would`: the gate asked whatever the policy decided.' }
+      required: [outcome, change, summary, returned, noticed, would, shadow]

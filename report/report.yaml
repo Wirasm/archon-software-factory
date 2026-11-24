@@ -21,7 +21,7 @@ inputs:
     description: What the builder says it did about what was returned before this round. Empty in the first round.
   ending:
     default: ""
-    description: What the stage that calls this ended with, its round and allowance, and the asks it left.
+    description: What the stage that calls this ended with, its round, and the asks it left.
   host:
     default: ""
     description: What the project's own checks and reviews said, when the host round has run.

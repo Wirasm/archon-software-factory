@@ -23,7 +23,28 @@ inputs:
     default: check
     description: The stage that looks at the change after this build. `host` when the host returned it, so our own checks do not run again.
 
-returns: { node: end, outcome: outcome, asks: asks }
+# The options every ask of this stage offers. The id an operator chooses decides what starts
+# next: the pack's asks-settled bindings name them.
+returns:
+  node: end
+  outcome: outcome
+  asks: asks
+  options:
+    - id: send-back
+      does: The same builder continues on the change with what you say in your answer, and the checks look at it again.
+      cost: One build run and one check round.
+    - id: replan
+      does: The item goes back to planning with what you say in your answer.
+      cost: The work so far may be discarded.
+    - id: take-as-is
+      does: The change goes on to the host round as it is.
+      cost: What the builder left open stays open.
+    - id: drop
+      does: The change is closed without merging and the item ends here. Your answer is written on the change as the reason.
+      cost: The work on this change is given up; its branch stays.
+    - id: reshape
+      does: The change stays open as a draft and nothing more is built until the item is shaped again. Your answer is written on the change.
+      cost: The item waits for shaping, and the draft can stop merging while it does.
 
 nodes:
   # The first build and every later fix are this one node on purpose: `context: same` in
@@ -39,9 +60,26 @@ nodes:
       land_on: $INPUTS.land_on
       build_policy: $INPUTS.build_policy
 
+  # A builder that ends `stop` sends the item back to planning by itself, once on an item
+  # (the limit of the `replan-after-build` binding). After that it ends in an ask.
+  - id: limit
+    depends_on: [build]
+    runtime: bun
+    script: limit
+    with:
+      stage: stage-build
+      last: $build.output
+      limits: '{"stop":"replan-after-build"}'
+    output_format:
+      type: object
+      properties:
+        round: { type: integer }
+        state: { type: string, enum: [open, used_up] }
+      required: [round, state]
+
   # The engine defines the `asks` property of the result, so the output format leaves it out.
   - id: end
-    depends_on: [build]
+    depends_on: [limit]
     runtime: bun
     script: ending
     with:
@@ -50,8 +88,8 @@ nodes:
       change: $build.output.proposed
       returned: $INPUTS.returned
       next: $INPUTS.next
+      limit: $limit.output
       checked: ""     # host stage only
-      allowed: ""     # check and host stages only
       exhausted: ""   # check and host stages only
     output_format:
       type: object

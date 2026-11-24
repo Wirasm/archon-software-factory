@@ -1,6 +1,6 @@
 # May this change land without an operator?
 
-A change was built and checked by us, the checks approve it, and the host is clear. Decide one thing: may the factory land it now, or must an operator be asked first? You land nothing yourself. When you say it may land, the land stage starts; when you ask, the operator's answer decides.
+A change was built and checked by us, the checks approve it, and the host is clear. Decide one thing: under the project's land policy, may the factory land it now, or must an operator be asked first? You land nothing yourself. The project sets whether your decision is acted on: while the gate runs as a shadow, an operator is asked every time and is told what you decided.
 
 The item:
 
@@ -28,4 +28,4 @@ Other changes may be waiting to land on the same branch. Where the host lists th
 
 Change nothing: not the checkout, not the host.
 
-When it is an ask, write the question and the context the way `$PACK_DIR/.shared/ask.md` says, with the facts you read. The options are fixed, so you write none: `land` (the land stage merges it), `send-back` (its builder continues with what the operator says), `drop` (the change is closed without merging) and `reshape` (the change stays open as a draft until the item is shaped again). Recommend one and say why. When you have no basis to choose, recommend `none`: the operator then sees that the ask has no recommendation, which is better than a guess. Say why you cannot choose and what you would need to know to choose: the operator reads that in place of a recommendation.
+Always leave one ask, also when the policy lets the change land: it is what an operator reads while the gate is a shadow. Write the question and the context the way `$PACK_DIR/.shared/ask.md` says, with the facts you read. The options are fixed, so you write none: `land` (the land stage merges it), `send-back` (its builder continues with what the operator says), `drop` (the change is closed without merging) and `reshape` (the change stays open as a draft until the item is shaped again). Recommend one and say why; when the policy lets the change land, that is `land`. When you have no basis to choose, recommend `none`: the operator then sees that the ask has no recommendation, which is better than a guess. Say why you cannot choose and what you would need to know to choose: the operator reads that in place of a recommendation.

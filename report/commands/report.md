@@ -18,7 +18,7 @@ What the builder says it did about what was returned before this round (empty in
 
 $INPUTS.builder_reply
 
-How the stage ended, its round and how many are allowed, and the questions it left for an operator:
+How the stage ended, its round, and the questions it left for an operator:
 
 $INPUTS.ending
 

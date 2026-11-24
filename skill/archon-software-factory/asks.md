@@ -19,16 +19,20 @@ to the person, do not pick at random. To keep an item waiting, leave its ask ope
 | Ask left by | Options |
 |---|---|
 | plan, split | The stage's own options for that question. Any answer starts the same stage again with it. |
-| stage-build, stage-check, stage-host | `send-back`, `replan`, `take-as-is`, `drop`, `reshape`. With the rounds used up, `one-more-round` replaces `send-back`. |
+| stage-build | `send-back`, `replan`, `take-as-is`, `drop`, `reshape`. |
+| stage-check, stage-host | `send-back`, `one-more-round`, `replan`, `take-as-is`, `drop`, `reshape`. |
 | landgate, land | `land`, `send-back`, `drop`, `reshape`. |
-| link | The stage's own options. When an item this one waits on will not land: `wait`, `start-anyway`, `drop`. Any answer starts the link stage again, which carries it out. |
+| link | `wait`, `start-anyway`, `drop`. Any answer starts the link stage again, which carries it out. |
+
+Except for plan and split, each stage declares its options, so `archon workflow attention
+--json` shows the same set on every ask of a stage, each with what it does and costs.
 
 | Option | What it starts |
 |---|---|
 | `send-back` | The same builder, in its checkout, with your text. Then the checks again. |
-| `one-more-round` | The builder with what was returned, and one more round for the item. |
+| `one-more-round` | The builder with what was returned, then one more check round (check ask) or host read (host ask). If it is returned again, you are asked again. |
 | `replan` | Plan, with your text, then delivery again. Use it when the approach is wrong, or the change should be cut differently. |
-| `take-as-is` | After a build or check ask: the host round on the change as it is. After a host ask: nothing; land or close the pull request by hand. |
+| `take-as-is` | After a build or check ask: the host round on the change as it is. After a host ask: the land gate. |
 | `land` | The land stage. It merges only when the change still merges and its checks are green. |
 | `wait` | On a link ask: the item keeps waiting, and goes on when what it waits on lands. |
 | `start-anyway` | On a link ask: the link stage stops waiting and plan starts. |
@@ -38,8 +42,15 @@ to the person, do not pick at random. To keep an item waiting, leave its ask ope
 When a run left several asks, answer all of them: the start happens when the last one is
 answered. For delivery and landing asks, every answer must choose the same option, or
 nothing starts. `archon workflow answer` prints what it started, or that nothing started.
-An item gets three check rounds and three host rounds. After one `send-back` by hand on
-top of those, prefer `replan`, a split, or the person's ruling over another round.
+Without an answer an item gets three check rounds and three host reads since it was last
+planned; the third that would return the change asks instead (`archon workflow runs --item
+<key>` shows the limits). After one `send-back` or `one-more-round` on top of those, prefer
+`replan`, a split, or the person's ruling over another round.
+
+The land gate asks before every merge unless the project set `land_gate: policy`. Its
+ask's context says what the project's land policy would have done: "would have landed
+this without asking" or "would have asked, because ...". That line is information for
+your answer, not a decision: nothing lands until an answer chooses `land`.
 
 ## Reading the report
 

@@ -106,15 +106,15 @@ archon pack bindings Wirasm.archon-software-factory --repo github.com/<owner>/<n
 
 The command prints what it wrote in four groups. Act on each:
 
-- **Run-ended bindings** and **asks-settled bindings**: register every one. The command prints an `archon trigger add '<file>'` line for each, about forty of them. Run those lines, or register them in one go: every generated file except the order file and the label file.
+- **Run-ended bindings** and **asks-settled bindings**: register every one. The command prints an `archon trigger add '<file>'` line for each, about sixty-five of them. Run those lines, or register them in one go: every generated file except the order file and the label file.
 
   ```bash
-  for f in <bindings-dir>/*.json; do echo "$f" | grep -Eq -- '-order-(on-label-)?[0-9a-f]+\.json$' || archon trigger add "$f"; done
+  for f in <bindings-dir>/*.json; do echo "$f" | grep -Eq -- '[^k]-order-(on-label-)?[0-9a-f]+\.json$' || archon trigger add "$f"; done
   ```
 
-  PowerShell: `Get-ChildItem <bindings-dir>\*.json | Where-Object { $_.Name -notmatch '-order-(on-label-)?[0-9a-f]+\.json$' } | ForEach-Object { archon trigger add $_.FullName }`
+  PowerShell: `Get-ChildItem <bindings-dir>\*.json | Where-Object { $_.Name -notmatch '[^k]-order-(on-label-)?[0-9a-f]+\.json$' } | ForEach-Object { archon trigger add $_.FullName }`
 
-  A file is active as soon as it is added.
+  The pattern leaves out the order file and the label file, and keeps `...-order-after-work-order-work-order-<digest>.json`, which starts the members of an order of several items. A file is active as soon as it is added.
 - **Fire-only bindings**: one file, the order file (`...-order-<digest>.json`). Do not add it. You fire it by hand in step 5.
 - **Event bindings**: one file, `...-order-on-label-<digest>.json`. Leave it unless you set up [label intake](#label-intake-a-label-is-a-work-order). The command's own output tells you to add it to a sources file and start a server; that is the label intake setup, and nothing else needs it.
 
@@ -182,20 +182,23 @@ Which options an ask offers depends on the stage that left it:
 | Ask left by | Options |
 |---|---|
 | Plan, split | The stage's own options, written for that question. An answer starts the same stage again with the answer. |
-| Link | The stage's own options. When an item this one [waits on](#items-that-wait) will not land: `wait`, `start-anyway`, `drop`. An answer starts the link stage again, which carries it out. |
-| Build, check, host | `send-back`, `replan`, `take-as-is`, `drop`, `reshape`. When the item's check or host rounds are used up, `one-more-round` takes the place of `send-back`. |
+| Link | `wait`, `start-anyway`, `drop`. An answer starts the link stage again, which carries it out. |
+| Build | `send-back`, `replan`, `take-as-is`, `drop`, `reshape`. |
+| Check, host | `send-back`, `one-more-round`, `replan`, `take-as-is`, `drop`, `reshape`. |
 | Land gate, land | `land`, `send-back`, `drop`, `reshape`. |
+
+Except for plan and split, a stage's options are declared in its workflow (`returns.options`), with what each does and costs, so every ask of the stage offers the same set and `archon workflow attention --json` shows it. Every ask can also be answered in your own words (`--choose other --text "..."`); on a delivery or landing ask that starts nothing, so prefer an option.
 
 | Option | What starts |
 |---|---|
 | `send-back` | The builder, in the checkout it left, with your answer. Then the checks look at the change again. (After a build that was itself a host fix, the host round looks at it.) |
-| `one-more-round` | The builder, with what was returned. The item is allowed one more round. After a check ask the checks run again; after a host ask the change goes straight back to the host round. |
+| `one-more-round` | The builder, with what was returned, and then one more round: after a check ask the checks run again; after a host ask the change goes straight back to the host round. If that round returns the change again, you are asked again. |
 | `replan` | Plan, then delivery. |
-| `take-as-is` | After a build or check ask: the host round, on the change as it is. After a host ask: nothing. The change stands; you land it or close it. |
+| `take-as-is` | After a build or check ask: the host round, on the change as it is. After a host ask: the land gate. |
 | `land` | The land stage, which merges the change when it still merges and its checks are green. |
 | `drop` | The close step: the change is closed without merging, with your answer written on it. The item ends. On a link ask there is no change yet: the link stage ends `dropped`. |
 | `wait` | The link stage, which ends `waiting` again. The item goes on when what it waits on lands. |
-| `start-anyway` | The link stage, which ends the item's links to what it waited on and ends `place`, so plan starts. |
+| `start-anyway` | The link stage, which ends the item's links to what it waited on and ends `place`, so plan starts. On an ask about two items that overlap, the item is planned as it is. |
 | `reshape` | The close step: the change stays open as a draft, with your answer written on it. Nothing more is built until the item is shaped again. |
 
 When a run left several asks, answer all of them: the next stage starts when the last one is answered. For build, check, host and landing asks it starts only when every answer chose the same option. `archon workflow answer` says so when a settlement starts nothing.
@@ -249,8 +252,6 @@ Everything in this section has a working default. Change a setting when its "cha
 | `@lander` | The land stage | `medium` |
 | `@reporter` | Writing the report on the pull request | `medium` |
 | `@manager` | The discoveries drain | `large` |
-| `@investigator` | The `investigate` workflow, which no binding starts | `large` |
-| `@validator` | The `validate` workflow, which no binding starts | `medium` |
 
 **How.** Define aliases for the whole install:
 
@@ -337,12 +338,12 @@ Paths are relative to the project, or absolute. An unknown key refuses the run b
 | `land_policy` | Which ready changes may land without an ask, how a change is merged, what must hold after | Land gate, land, landed check |
 | `discoveries_policy` | What maintainers want filed from what agents notice | Discoveries drain |
 | `admit_policy` | Which items may start without an operator being asked | Triage's admit shadow. Recorded; nothing acts on it. |
-| `validate_command` | The command that proves a change works, run from the project's root | The land stage when the project has no host, and the `validate` workflow, which no binding starts |
-| `checks_file`, `propose_policy` | Declared in [`.pack/pack.yaml`](.pack/pack.yaml) | No stage reads them today |
+| `validate_command` | Not a document: the command that proves a change works, run from the project's root | The land stage when the project has no host |
+| `land_gate` | Not a document: `shadow` (the default) or `policy`. Whether the land gate acts on the land policy | Land gate |
 
 Two settings matter most:
 
-- **`land_policy`.** Without one, the land gate asks an operator before every merge. A land policy names which ready changes may land by themselves, for example by size, by green checks and by paths the change must not touch.
+- **`land_policy` and `land_gate`.** A land policy names which ready changes may land by themselves, for example by size, by green checks and by paths the change must not touch, and what must hold on the branch after a landing. The land gate judges every ready change against it. With `land_gate: shadow`, the default, nothing acts on that judgment: the gate asks an operator before every merge, and the ask's context says what the policy would have done ("the land policy would have landed this without asking", or "would have asked, because ..."). The gate's result carries the same as `would` (`land` or `ask`), and the metric `sf.landgate_would_land` counts it, so you can compare the policy with your own answers before you trust it. Set `land_gate: policy` to let it act: a change the policy lets land then starts the land stage with no ask. The landed check reads the policy's after-landing part either way.
 - **Rulings.** Keep a file named `rulings.md` beside your policy files: one entry per question your maintainers have already answered, with the answer. Every stage reads it before it leaves an ask, and a question a ruling answers is not asked again. [`policy/rulings.md`](policy/rulings.md) says how it is kept.
 
 Archon's own policy files are in its repository under `.archon/factory/policy/`.
@@ -604,7 +605,11 @@ The first shows the item's last link run as `waiting` and its `depends_on` links
 
 Delivery is three stages, `stage-build`, `stage-check` and `stage-host`, each a run of its own on the item, started by the pack's bindings. A check that returns the change starts the builder in the session it last had on the item; an approval starts the host round; and an answer starts only the stage its option names.
 
-An item is allowed three check rounds and three host rounds, counted since it was last planned. When a round would return the change with the rounds used up, it ends in an ask, and `one-more-round` allows the item one more. An agent then recommends one of the options. Each check run leaves the report on the pull request, and the host stage closes it. Each check or host run's result says which round it was and how many the item is allowed (`archon workflow get <run-id> --json`, under `terminal_record.returns.value`).
+**The round limit.** A check that returns the change starts the builder by itself twice on an item, and so does a host read, counted since the item was last planned. So without an operator an item gets three check rounds and three host reads. The engine keeps the count: the two bindings that carry a return to the builder declare `limit: { starts: 2, reset_on: plan }` in [`.pack/pack.yaml`](.pack/pack.yaml), and `archon workflow runs --item <key>` shows where each limit stands. The engine refuses a start past its limit and tells nobody, so a stage never hands on to one: it reads the count, and a round that would return the change with no starts left ends in an ask instead, with an agent's recommendation of what to do. `one-more-round` and `send-back` on that ask start the builder through bindings that have no limit, so an answer is never refused; the round after it asks again if it still returns the change. To change the limit, change `starts` and write the bindings again.
+
+A builder that cannot build the plan, and a check round whose reports say the approach is wrong, send the item back to planning with what they found, once each on an item. After that they end in an ask, and `replan` is one of its options.
+
+Each check run leaves the report on the pull request, and the host stage closes it. Each check or host run's result says which round it was (`archon workflow get <run-id> --json`, under `terminal_record.returns.value`).
 
 To start a build by hand on an item:
 
@@ -614,8 +619,8 @@ archon workflow run Wirasm/archon-software-factory:stage-build --item <key> --in
 
 ## What is not there yet
 
-- **It merges only what was allowed.** After a ready change the land gate decides: it ends `land` when the project's land policy lets the change land by itself, and asks otherwise, always when the project names no land policy. The land stage then merges the change into its landing branch through the forge, when it still merges and the host's checks at its head are green; a change that does not goes back to its builder.
-- **`take-as-is` on a host ask starts nothing.** The change stands, and an operator lands it or closes it by hand.
+- **Nothing lands without an operator, unless you switch it on.** After a ready change the land gate asks, every time, and says what the project's land policy would have done. `land_gate: policy` makes the gate act on the policy ([settings](#policy-files-and-project-settings)). The land stage then merges the change into its landing branch through the forge, when it still merges and the host's checks at its head are green; a change that does not goes back to its builder.
+- **The round limit asks; it does not stop.** The pack's stages ask before a start would be refused, so the engine's refusal is never reached. A start refused all the same (a binding file changed by hand, a stage that failed before its ask) is on its receipt (`archon trigger list`) and nowhere on the item's asks.
 - **A host round that ends `waiting` starts nothing and leaves no ask.** The host stage gave up waiting for the project's checks or reviews. Nothing reads the host again by itself. The item read shows the outcome; an operator starts the host round again.
 - **Triage and plan can stop an item without an ask.** Triage ends `shape` for an item that is worth doing and cannot be planned until a maintainer has settled its open questions, and lists them. Nothing runs the shaping: an operator does it and orders the item again. The same holds for its other judgments that are not `build`, `narrow` or `split`, and for a plan that ends `stop`: the result says why, and nothing starts.
 - **The link stage holds an item only inside a work order.** On an item outside the item's work order it does not wait and names what it would have waited on ([items that wait](#items-that-wait)). What an order states with `depends_on` holds everywhere. Before that shadow goes, an outside blocker that nobody has ordered needs its rule: the link stage is told to ask about it and never to wait on it silently, and that is not measured.
@@ -627,10 +632,9 @@ archon workflow run Wirasm/archon-software-factory:stage-build --item <key> --in
 - **Nothing enters on its own.** Every item starts because an operator ordered it, by hand or with the label. Triage records whether an item could have started without asking, as a shadow; nothing uses it yet.
 - **The drain files at most three items a run.** The discoveries drain starts when a change has landed and decides what should become a work item. When the project has a tracker it creates the three most valuable there, and holds the rest; its result says where each was filed. With no tracker it writes nothing and an operator files them.
 - **A split member that waits on a ruling or a signal starts only when the split runs again,** by an answer or by hand. A member that waits on another member starts by itself. The members' landing branch reaches them as `land_on`; the split does not create the branch or record it on the item.
-- **Changes built side by side can conflict.** A change that was ready stops merging when a sibling lands first. The land gate names the other open changes that touch the same files and the order it would land them in; nothing brings the later one up to date before its land is refused and it goes back to its builder.
+- **Changes built side by side can conflict.** A change that was ready stops merging when a sibling lands first. The land gate names the other open changes that touch the same files and the order it would land them in; nothing brings the later one up to date before its land is refused and it goes back to its builder. (The landed check used to name such siblings as a shadow. It named one in 41 runs and missed six of seven real conflicts, so it was removed.)
 - **The landing branch is enforced at the merge, not before it.** `land_on` reaches every stage, and the land stage merges only a change proposed against it: one proposed against another branch stops with an ask. Unless an operator records the branch on the item first ([landing branch](#landing-branch-and-work-that-is-part-of-a-larger-item)), the engine cuts the first worktree from the base branch, and only the build prompt moves the builder onto `land_on`. The land stage records the branch on the item after the merge, so later work on the item is cut from it.
 - **After a landing, one result is acted on.** When the landed check finds the change broke its branch and writes a work order, that order starts as new work on the same item. Every other result of the landed check is only recorded.
-- **Some settings and workflows are not wired.** `checks_file` and `propose_policy` are declared and read by no stage. The `validate` and `investigate` workflows exist and no binding starts them.
 - **No skill installer.** The skill is copied by hand.
 - **No screenshots in the report.** The forge has no way to attach a file.
 

@@ -30,7 +30,22 @@ inputs:
     description: The project's other open items, as a short index that says where each can be read in full.
 
 # The engine defines the `asks` property of the result, so the `end` node's output format leaves it out.
-returns: { node: end, outcome: outcome, asks: asks }
+# The options every ask of this stage offers. Whatever is chosen, the stage starts again
+# with the answer and its agent carries it out.
+returns:
+  node: end
+  outcome: outcome
+  asks: asks
+  options:
+    - id: wait
+      does: The item keeps waiting, and goes on when what it waits on is ordered and lands.
+      cost: Nothing is built for it until then, and nothing lands what it waits on by itself.
+    - id: start-anyway
+      does: The item stops waiting and is planned now, on the code as it is.
+      cost: It is built without what it was said to depend on, or beside the item it overlaps.
+    - id: drop
+      does: The item ends here and nothing is built for it.
+      cost: The work it asked for is not done under this item.
 
 nodes:
   # The order's result as fields a prompt can name, and the item's key.
@@ -80,25 +95,15 @@ nodes:
             properties:
               question: { type: string }
               context: { type: string }
-              options:
-                type: array
-                items:
-                  type: object
-                  additionalProperties: false
-                  properties:
-                    id: { type: string, description: 'kebab-case, one token. The answer names it.' }
-                    does: { type: string }
-                    cost: { type: string }
-                  required: [id, does, cost]
               recommendation:
                 type: object
                 additionalProperties: false
-                description: 'The option you would take. When you have no basis to choose, set `option` to an empty string and say why you cannot choose in `why`.'
+                description: 'The option you would take. When you have no basis to choose, name `none` and say why you cannot choose in `why`.'
                 properties:
-                  option: { type: string }
+                  option: { type: string, enum: [wait, start-anyway, drop, none] }
                   why: { type: string }
                 required: [option, why]
-            required: [question, context, options, recommendation]
+            required: [question, context, recommendation]
         notes: { type: string, description: 'Anything worth saying that has no field here: how you searched, caveats, doubts.' }
         for_next: { type: string, description: 'Anything whoever plans this work needs from you that has no field here. Write it to them.' }
       required: [outcome, summary, links, waits_on, would_wait, asks, notes, for_next]
@@ -122,7 +127,7 @@ nodes:
         item: given.item,
         land_on: given.land_on,
         asks: (last.asks ?? []).map((ask: any) => {
-          const recommends = (ask.options ?? []).some((o: any) => o.id === ask.recommendation?.option);
+          const recommends = Boolean(ask.recommendation?.option) && ask.recommendation.option !== 'none';
           return {
             ...ask,
             context: recommends ? ask.context : `${ask.context}\n\nNo recommendation: ${ask.recommendation?.why || 'the stage gave no reason.'}`,

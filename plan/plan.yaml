@@ -19,6 +19,9 @@ inputs:
   links:
     default: "Nothing."
     description: The items that had to land before this one.
+  sent_back:
+    default: "Nothing."
+    description: What the build or check run that sent this item back to planning ended with, as its result.
 
 # The engine defines the `asks` property, adds it to the plan node's output and opens what a
 # completed run leaves there on the item. So the node below does not declare it.

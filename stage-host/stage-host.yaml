@@ -25,7 +25,31 @@ inputs:
     result_of: stage-check
     description: What the last check run on this item ended with. Read from the item, for what it noticed.
 
-returns: { node: end, outcome: outcome, asks: asks }
+# The options every ask of this stage offers. The id an operator chooses decides what starts
+# next: the pack's asks-settled bindings name them.
+returns:
+  node: end
+  outcome: outcome
+  asks: asks
+  options:
+    - id: send-back
+      does: The same builder continues on the change with what you say in your answer, and the checks look at it again.
+      cost: One build run and one check round.
+    - id: one-more-round
+      does: The same builder fixes what the host returned, and the host is read once more. If it returns the change again, you are asked again.
+      cost: One build run and one host read.
+    - id: replan
+      does: The item goes back to planning with what you say in your answer.
+      cost: The work so far may be discarded.
+    - id: take-as-is
+      does: The change goes on to the land gate as it is.
+      cost: What the host returned stays unfixed.
+    - id: drop
+      does: The change is closed without merging and the item ends here. Your answer is written on the change as the reason.
+      cost: The work on this change is given up; its branch stays.
+    - id: reshape
+      does: The change stays open as a draft and nothing more is built until the item is shaped again. Your answer is written on the change.
+      cost: The item waits for shaping, and the draft can stop merging while it does.
 
 nodes:
   # The host read. Its id is `rounds` because the exhausted prompt, used below
@@ -40,30 +64,31 @@ nodes:
       returned_before: $INPUTS.returned_before
       builder_reply: $INPUTS.builder_reply
 
-  # Which round of this stage on the item this is, and how many the item is allowed.
-  - id: allowance
+  # Which read this is, and whether the start a return needs is used up: a return goes to
+  # the builder twice on an item by itself.
+  - id: limit
     depends_on: [rounds]
     runtime: bun
-    script: allowance
+    script: limit
     with:
       stage: stage-host
       last: $rounds.output
+      limits: '{"return":"stage-build-after-host"}'
     output_format:
       type: object
       properties:
         round: { type: integer }
-        allowance: { type: integer }
         state: { type: string, enum: [open, used_up] }
-      required: [round, allowance, state]
+      required: [round, state]
 
   # The rounds this item is allowed are used up and the change is still returned. One more
   # round is not automatic: an agent reads what is left and recommends what to do, with
   # the prompt in commands/exhausted.md (a copy of the check stage's, because
   # a command resolves only from its own workflow; it reads `$rounds.output`, which is why
-  # the node above has that id). The options are the script's: the recommendation names one.
+  # the node above has that id). The options are the stage's: the recommendation names one.
   - id: exhausted
-    depends_on: [allowance]
-    when: "$allowance.output.state == 'used_up'"
+    depends_on: [limit]
+    when: "$limit.output.state == 'used_up'"
     command: exhausted
     model: ['@judge', medium]
     mutates_checkout: false
@@ -87,7 +112,7 @@ nodes:
                   option:
                     type: string
                     enum: [one-more-round, take-as-is, replan, drop, reshape, none]
-                    description: 'What you would do: one-more-round sends it back once more, take-as-is lets the change go on as it is, replan sends the item back to planning, drop closes the change without merging, reshape leaves it open as a draft until the item is shaped again. none when you have no basis to choose: the ask then carries no recommendation, and your why says what stops you. When you would split the change, recommend replan and say so.'
+                    description: 'What you would do, by the id of one of the options this stage declares, which the ask offers. none when you have no basis to choose: the ask then carries no recommendation, and your why says what stops you. When you would split the change, recommend replan and say so.'
                   why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind. With none: why you cannot choose, and what you would need to know to choose. The operator reads it in place of a recommendation.' }
                 required: [option, why]
             required: [question, context, recommendation]
@@ -95,7 +120,7 @@ nodes:
       required: [asks, same_kind]
 
   - id: end
-    depends_on: [allowance, exhausted]
+    depends_on: [limit, exhausted]
     trigger_rule: all_done
     runtime: bun
     script: ending
@@ -103,7 +128,7 @@ nodes:
       stage: stage-host
       last: $rounds.output
       change: $INPUTS.change
-      allowed: $allowance.output
+      limit: $limit.output
       exhausted: { from: $exhausted.output, if_skipped: "" }
       checked: $INPUTS.checked
       next: ""   # build stage only
@@ -124,9 +149,8 @@ nodes:
         for_next: { type: string }
         noticed: { type: array, description: 'What the last check noticed that this change did not cause. The discoveries stage starts from it.' }
         round: { type: integer, description: 'Which run of this stage on the item this is, counted since the item was last planned.' }
-        allowance: { type: integer, description: 'How many rounds of this stage the item is allowed: three, plus one for each one-more-round answer.' }
         returned: { type: string, description: 'What goes back to the builder: what the host said.' }
-      required: [outcome, change, summary, for_next, noticed, round, allowance, returned]
+      required: [outcome, change, summary, for_next, noticed, round, returned]
 
   # The report on the change says how the host round ended.
   - id: report

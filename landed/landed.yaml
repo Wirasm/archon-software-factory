@@ -57,18 +57,5 @@ nodes:
           items: { type: string }
           description: 'When several changes landed between two check runs: each change the failure may belong to. Empty otherwise.'
         work_order: { type: string, description: 'When you would start a fix: the work order as text that stands alone. Empty otherwise.' }
-        # Shadow, since 2026-11-21: recorded, and nothing acts on it. It is compared with what an
-        # operator then did before any start is built on it (Archon issue 6014).
-        stale:
-          type: array
-          description: 'Each other proposed change on this repository that was mergeable and green before this landing and no longer merges after it. Empty when there is none or you could not tell.'
-          items:
-            type: object
-            additionalProperties: false
-            properties:
-              change: { type: string, description: 'Where it is proposed.' }
-              was: { type: string, description: 'What you read that says it was ready: its checks, a ready report, not a draft.' }
-              conflicts_in: { type: string, description: 'The files that conflict, when the host or a trial merge says.' }
-            required: [change, was, conflicts_in]
         for_next: { type: string, description: 'Anything the operator who reads this needs from you that has no field here.' }
-      required: [outcome, would, why, facts, failures, candidates, work_order, stale, for_next]
+      required: [outcome, would, why, facts, failures, candidates, work_order, for_next]

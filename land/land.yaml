@@ -29,7 +29,25 @@ inputs:
     default: ""
     description: The older name of `land_on`, for a start by hand.
 
-returns: { node: end, outcome: outcome, asks: asks }
+# The options every ask of this stage offers. The id an operator chooses decides what starts
+# next: the pack's asks-settled bindings name them.
+returns:
+  node: end
+  outcome: outcome
+  asks: asks
+  options:
+    - id: land
+      does: The land stage tries the landing again and merges the change into its landing branch, when it still merges and its checks are green.
+      cost: The change is on the branch everyone builds on.
+    - id: send-back
+      does: The same builder continues on the change with what you say in your answer, and the checks look at it again.
+      cost: One build run and one check round before it can land.
+    - id: drop
+      does: The change is closed without merging and the item ends here. Your answer is written on the change as the reason.
+      cost: The work on this change is given up; its branch stays.
+    - id: reshape
+      does: The change stays open as a draft and nothing more is built until the item is shaped again. Your answer is written on the change.
+      cost: The item waits for shaping, and the draft can stop merging while it does.
 
 nodes:
   - id: land
@@ -62,7 +80,7 @@ nodes:
                   option:
                     type: string
                     enum: [land, send-back, drop, reshape, none]
-                    description: 'What you would do: land tries the landing again, send-back gives the change to its builder with what the operator says, drop closes the change without merging, reshape leaves it open as a draft until the item is shaped again. none when you have no basis to choose: the ask then carries no recommendation, and your why says what stops you.'
+                    description: 'What you would do, by the id of one of the options this stage declares, which the ask offers. none when you have no basis to choose: the ask then carries no recommendation, and your why says what stops you.'
                   why: { type: string, description: 'Why that one. If you are not sure, say what would change your mind. With none: why you cannot choose, and what you would need to know to choose. The operator reads it in place of a recommendation.' }
                 required: [option, why]
             required: [question, context, recommendation]
@@ -70,8 +88,8 @@ nodes:
         for_next: { type: string, description: 'Anything whoever works on this project next needs from you that has no field here. Write it to them.' }
       required: [outcome, summary, landing_branch, from, to, checked, returned, stop, asks, notes, for_next]
 
-  # The outcome the bindings route on, the asks with the options the bindings name, and,
-  # after a merge, the record on the item of what the host says landed.
+  # The outcome the bindings route on and, after a merge, the record on the item of what
+  # the host says landed.
   # The engine defines the `asks` property of the result, so the output format leaves it out.
   - id: end
     depends_on: [land]
@@ -84,6 +102,7 @@ nodes:
       land_on: $INPUTS.land_on
       noticed: $INPUTS.noticed
       delivered: ""   # gate only
+      land_gate: ""   # gate only
     output_format:
       type: object
       properties:

@@ -58,33 +58,28 @@ inputs:
       changes may land without an operator being asked. Relative to the
       project, or absolute. Empty means the project has none: the land gate
       then asks an operator every time.
+  land_gate:
+    type: enum
+    values: [shadow, policy]
+    default: shadow
+    description: >-
+      Whether the land gate acts on the land policy. `shadow`: the gate asks an
+      operator every time, and its ask, its result and the metric
+      `sf.landgate_would_land` say what the policy would have done. `policy`: a
+      change the policy lets land starts the land stage with no ask.
   discoveries_policy:
     default: ""
     description: >-
       Path to the project's own discoveries policy, a document that says what
       its maintainers want filed from what agents notice. Relative to the
       project, or absolute. Empty means the pack's default applies alone.
-  checks_file:
-    default: ""
-    description: >-
-      Path to a YAML file that lists the project's checks: under `checks:`, one entry
-      a check with a `name` and the command to `run` from the project's root. A script
-      runs each to its end on a change's commit. Relative to the project, or absolute.
-      Empty means none are declared. Shadow only for now: the results are recorded
-      and nothing acts on them.
   validate_command:
     default: ""
     description: >-
       The command that proves a change works in this project, run from the
       project's root, for example `cargo test && cargo clippy -- -D warnings`.
-      Empty means none is declared yet: the validate and land stages find the
-      check the maintainers use and propose it as an ask.
-  propose_policy:
-    default: ""
-    description: >-
-      Path to the project's own propose policy, a document that says how its
-      maintainers want a change presented. Relative to the project, or
-      absolute. Empty means the pack's default applies alone.
+      The land stage runs it when the project has no host. Empty means none is
+      declared: the land stage then uses the check the maintainers use and says which.
   product_policy:
     default: ""
     description: >-
@@ -378,13 +373,16 @@ bindings:
       change: { result: /change }
       returned_before: { result: /returned }
       builder_reply: { result: /reply }
-  # A check that returns the change starts the builder with what it returned. A check run
-  # that would return it with the item's rounds used up ends as `ask` and starts nothing.
+  # A check that returns the change starts the builder with what it returned, twice on an
+  # item since it was last planned: the engine counts the starts and refuses a third. The
+  # check stage reads that count, and a round that would return the change with none left
+  # ends as `ask` instead, so nothing is refused and an operator decides.
   stage-build-after-check:
     workflow: stage-build
     resource: stage-build
     capacity: 5
     overlap: queue
+    limit: { starts: 2, reset_on: plan }
     run_ended:
       workflow: stage-check
       outcome: return
@@ -409,12 +407,14 @@ bindings:
       answers: { item: answers }
       change: { result: /change }
   # What the host returns goes to the builder and then straight back to the host, because
-  # our own checks approved the change and do not run again for a host fix.
+  # our own checks approved the change and do not run again for a host fix. Twice on an
+  # item since it was last planned, as for a check return; the host stage asks after that.
   stage-build-after-host:
     workflow: stage-build
     resource: stage-build
     capacity: 5
     overlap: queue
+    limit: { starts: 2, reset_on: plan }
     run_ended:
       workflow: stage-host
       outcome: return
@@ -441,12 +441,44 @@ bindings:
       change: { result: /change }
       returned_before: { result: /returned }
       builder_reply: { result: /reply }
+  # A builder that cannot build the plan (`stop`) and a check round whose reports say
+  # replan send the item back to planning with what they ended with, once on an item each.
+  # After that the stage ends as `ask`, and `replan` is one of the options.
+  replan-after-build:
+    workflow: plan
+    resource: plan
+    capacity: 3
+    overlap: queue
+    limit: { starts: 1 }
+    run_ended:
+      workflow: stage-build
+      outcome: replan
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      sent_back: { result: "" }
+  replan-after-check:
+    workflow: plan
+    resource: plan
+    capacity: 3
+    overlap: queue
+    limit: { starts: 1 }
+    run_ended:
+      workflow: stage-check
+      outcome: replan
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      sent_back: { result: "" }
   # Landing. Host ready starts the land gate, in the checkout the host round left, so a
-  # change that goes back from landing reaches its builder on its own branch. The gate
-  # ends `land` when the project's land policy lets the change land by itself, and `ask`
-  # otherwise. Its ask and the land stage's offer one fixed set of options: `land` starts
-  # the land stage, `send-back` the builder with the answer, then the checks; `drop` and
-  # `reshape` the close step (see Asks below).
+  # change that goes back from landing reaches its builder on its own branch. With the
+  # setting `land_gate: shadow`, the default, the gate ends `ask` every time and says what
+  # the project's land policy would have done; with `land_gate: policy` it ends `land`
+  # when the policy lets the change land by itself. Its ask and the land stage's offer the
+  # options their workflows declare: `land` starts the land stage, `send-back` the builder
+  # with the answer, then the checks; `drop` and `reshape` the close step (see Asks below).
   landgate-after-stage-host:
     workflow: landgate
     resource: landgate
@@ -586,13 +618,15 @@ bindings:
       outcome: landed
     inputs:
       discoveries: { result: /noticed }
-  # Asks. Every ask a stage leaves offers the same options, and the one chosen decides what
-  # starts: `send-back` the builder with the answer, then the checks; `one-more-round`
-  # (offered when the item's rounds are used up) the builder with what was returned, which
-  # also raises the item's allowance by one; `replan` planning; `take-as-is` the host round;
-  # `drop` and `reshape` the close step, which closes the change without merging or leaves
-  # it open as a draft, with the operator's answer written on it. On a host ask
-  # `take-as-is` starts nothing: an operator lands it.
+  # Asks. Every ask a delivery stage leaves offers the options its workflow declares
+  # (`returns.options`), and the one chosen decides what starts: `send-back` the builder
+  # with the answer, then the checks; `one-more-round` (check and host asks) the builder
+  # with what was returned, then one more check round or host read; `replan` planning;
+  # `take-as-is` the next stage with the change as it is, which is the host round after a
+  # build or check ask and the land gate after a host ask; `drop` and `reshape` the close
+  # step, which closes the change without merging or leaves it open as a draft, with the
+  # operator's answer written on it. A start an operator's answer causes counts under no
+  # limit, so it is never refused.
   # (The land gate's and the land stage's asks have their own set; see Landing above.)
   stage-build-after-build-answers:
     workflow: stage-build
@@ -714,6 +748,22 @@ bindings:
       returned: { result: /returned }
       answers: { item: answers }
       next: host
+  landgate-after-host-as-is:
+    workflow: landgate
+    resource: landgate
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: stage-host
+      settled: answered
+      option: take-as-is
+      checkout: asking-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      change: { result: /change }
+      delivered: { result: "" }
   plan-after-stage-host-replan:
     workflow: plan
     resource: plan

@@ -21,8 +21,6 @@ When a check failed, find out whose failure it is before you say anything:
 - Look at what the change touched. A failure in something it did not touch, that comes and goes across recent commits of the branch, is a flake: say so, and name the commits you compared.
 - When several changes landed between two check runs, the failure may belong to any of them. Do not pick one: name the candidates.
 
-One more thing to read, whatever the outcome, when the change is merged: a landing can make other changes stale. List the other open proposed changes on this repository that are not drafts and whose checks were green, and say for each whether it still merges with the branch now. Report those that no longer merge under `stale`, with the files that conflict when you can tell. Do nothing about them: this is recorded so we learn how often it happens.
-
 End in one of these:
 
 - **clear**: the checks the policy names have finished at the landing commit, and they passed.

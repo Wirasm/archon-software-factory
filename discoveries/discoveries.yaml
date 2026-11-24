@@ -14,7 +14,8 @@ inputs:
     default: "None listed."
     description: The project's open items, as a short index.
 
-returns: result
+# When nothing was noticed the drain is skipped and the run completes with no result.
+returns: drain
 
 nodes:
   # An empty list is the common case: most deliveries notice nothing. Count the entries so
@@ -91,15 +92,3 @@ nodes:
         notes: { type: string, description: 'Anything worth saying that has no field here.' }
         for_next: { type: string, description: 'Anything the operator who owns the backlog needs from you that has no field here. Write it to them.' }
       required: [summary, filed, folded, held, dropped, left_out, notes, for_next]
-
-  # What the run returns: the manager's decisions, or an empty drain when nothing was noticed.
-  - id: result
-    depends_on: [drain]
-    trigger_rule: all_done
-    runtime: bun
-    with:
-      drain: { from: $drain.output, if_skipped: "" }
-    script: |
-      import { input } from 'archon:script';
-      const drained = input('drain').trim();
-      console.log(drained || JSON.stringify({ summary: 'Nothing was noticed, so there was nothing to decide.', filed: [], folded: [], held: [], dropped: [] }));
