@@ -38,6 +38,14 @@ archon --version
 
 The pack is developed against Archon's `dev` branch and uses engine commands that are recent: `archon pack bindings`, `archon trigger add`, `archon trigger check`, `archon hold` and `archon workflow wake schedule`. If Archon rejects one of them as unknown, the install is older than the pack needs. Update it ([updating Archon](https://archon.diy/getting-started/updating/)), or run Archon from a source checkout on `dev`.
 
+Then check that Archon can run an agent:
+
+```bash
+archon doctor
+```
+
+It must pass before you order anything. On a new install it fails until a default provider is set: `archon ai default <provider>` (for example `claude`), after which the `small`, `medium` and `large` tiers have models. Without a default provider the first order is taken and the next stage is refused without a word in the item's read; `archon trigger list` shows the refusal.
+
 You also need a git checkout of your project, and Archon's database store, which is the default.
 
 ### 2. Check forge access
@@ -72,7 +80,7 @@ It exits 0 and names the credential source it found, or exits 1 with the reason 
 archon plugin add Wirasm/archon-software-factory
 ```
 
-Installed, the pack is named `Wirasm.archon-software-factory`, and its workflows run as `Wirasm/archon-software-factory:<stage>`, for example `Wirasm/archon-software-factory:inspect`.
+`archon plugin list` shows it as `Wirasm/archon-software-factory`. In `archon pack bindings` and in the settings file name the pack is written with a dot, `Wirasm.archon-software-factory`, and its workflows run as `Wirasm/archon-software-factory:<stage>`, for example `Wirasm/archon-software-factory:inspect`.
 
 ### 4. Write the bindings for your repository and register them
 
@@ -90,7 +98,7 @@ archon pack bindings Wirasm.archon-software-factory --repo github.com/<owner>/<n
 
 | Flag | What to give |
 |---|---|
-| `--repo` | The repository the factory works on, as `<host>/<owner>/<name>`. |
+| `--repo` | The repository the factory works on, as `<host>/<owner>/<name>`. For a checkout with no remote, any name of that form works for text-only orders; stages that read or write the forge need the real one. |
 | `--host` | A name you choose for the machine that runs the work, such as `build-mac`. Use the same name every time. |
 | `--run-as` | The id `archon trigger whoami` printed. Runs act as this Archon user. |
 | `--cwd` | The checkout runs launch in. It is written as an absolute path. |
@@ -98,9 +106,17 @@ archon pack bindings Wirasm.archon-software-factory --repo github.com/<owner>/<n
 
 The command prints what it wrote in four groups. Act on each:
 
-- **Run-ended bindings** and **asks-settled bindings**: run every `archon trigger add '<file>'` line it printed. A file is active as soon as it is added.
+- **Run-ended bindings** and **asks-settled bindings**: register every one. The command prints an `archon trigger add '<file>'` line for each, about forty of them. Run those lines, or register them in one go: every generated file except the order file and the label file.
+
+  ```bash
+  for f in <bindings-dir>/*.json; do echo "$f" | grep -Eq -- '-order-(on-label-)?[0-9a-f]+\.json$' || archon trigger add "$f"; done
+  ```
+
+  PowerShell: `Get-ChildItem <bindings-dir>\*.json | Where-Object { $_.Name -notmatch '-order-(on-label-)?[0-9a-f]+\.json$' } | ForEach-Object { archon trigger add $_.FullName }`
+
+  A file is active as soon as it is added.
 - **Fire-only bindings**: one file, the order file (`...-order-<digest>.json`). Do not add it. You fire it by hand in step 5.
-- **Event bindings**: one file, `...-order-on-label-<digest>.json`. Leave it unless you set up [label intake](#label-intake-a-label-is-a-work-order).
+- **Event bindings**: one file, `...-order-on-label-<digest>.json`. Leave it unless you set up [label intake](#label-intake-a-label-is-a-work-order). The command's own output tells you to add it to a sources file and start a server; that is the label intake setup, and nothing else needs it.
 
 Then check everything that is registered:
 
@@ -108,7 +124,7 @@ Then check everything that is registered:
 archon trigger check
 ```
 
-It exits nonzero and names the file when a binding has a problem. Fix that before ordering anything: one invalid file in the triggers directory refuses item runs on the whole install.
+It prints every binding as JSON and exits nonzero when one has a problem; a binding with a problem has a non-empty `problems` list, and exit 0 means there are none. Fix that before ordering anything: one invalid file in the triggers directory refuses item runs on the whole install.
 
 To pass a [run config](#the-run-config-a-binding-launches-with) with your model aliases to every start, add `--config <file>` to the `pack bindings` command.
 
@@ -139,7 +155,7 @@ A work order is a small JSON file. `key` and one of `source` or `text` are requi
 archon trigger fire --config <bindings-dir>/<the order file> --inputs order.json
 ```
 
-The first order registers the project with Archon; there is no separate step. The order becomes a work item, and the engine starts each next stage when the one before ends: triage, the split when triage calls for one, plan, build, check and host rounds, the land gate, the land stage, the landed check and the discoveries drain.
+The command returns as soon as the order is taken; the stages that follow run in the background. The first order registers the project with Archon; there is no separate step. The order becomes a work item, and the engine starts each next stage when the one before ends: triage, the split when triage calls for one, plan, build, check and host rounds, the land gate, the land stage, the landed check and the discoveries drain.
 
 ```bash
 archon workflow runs --item issue-123
