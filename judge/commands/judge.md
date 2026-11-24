@@ -12,7 +12,11 @@ The other members of the work order this item is part of (`[]` when it is part o
 
 $INPUTS.members
 
-They were ordered together with this item and are not in the code yet. Judge the item as if they have landed: an item that needs what another member adds is not parked or shaped for that reason. Whether it has to wait for that member is decided after you.
+The items its order says must land before it (`[]` when none):
+
+$INPUTS.depends_on
+
+None of these may be in the code yet. Judge the item as if they have landed: an item that needs what one of them adds is not parked or shaped for that reason. Whether it has to wait is decided after you, by the link stage.
 
 You are in a checkout of the project. Change nothing.
 

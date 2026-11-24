@@ -16,6 +16,9 @@ inputs:
   members:
     default: "[]"
     description: The other members of the work order or split this item is part of, as JSON, each with its `key` and `title`. Empty when it is part of none.
+  depends_on:
+    default: "[]"
+    description: Keys of the items the order says must land before this one, as JSON. Empty when none.
 
 returns: judge
 

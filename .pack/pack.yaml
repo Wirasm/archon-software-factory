@@ -142,7 +142,7 @@ bindings:
       item: { result: /item }
       land_on: { result: /land_on }
       members: { result: /members }
-      released: { result: /released }
+      depends_on: { result: /depends_on }
   # An order of several items: the order's own item is the work order, each member is
   # recorded as part of it, and the order stage starts on each member with its own order.
   order-after-work-order:
@@ -158,13 +158,48 @@ bindings:
       members: { result: /start }
       land_on: { result: /land_on }
       part_of: { item: key }
-  # Waiting. An item that depends on another is held by the order stage, or by triage,
-  # and holds a `depends_on` link to it. When that item lands, the order stage starts on
-  # every item that depends on it: an item that still waits is ordered again from its own
-  # last order, and goes on when nothing else it waits on is left.
-  order-after-blocker-landed:
-    workflow: order
-    resource: order
+  # An item that should be built goes to the link stage, which decides whether it can be
+  # built now. It reads the item, the judgment and its own last result from the item's
+  # earlier runs, so every start of it is the same. `place` starts plan.
+  link-after-triage:
+    workflow: link
+    resource: link
+    capacity: 3
+    overlap: queue
+    run_ended:
+      workflow: triage
+      outcome: [build, narrow]
+  plan-after-link:
+    workflow: plan
+    resource: plan
+    capacity: 3
+    overlap: queue
+    run_ended:
+      workflow: link
+      outcome: place
+    inputs:
+      item: { result: /item }
+      land_on: { result: /land_on }
+      links: { result: /links }
+  # An ask the link stage left, answered or withdrawn, starts it again with every answer
+  # on the item.
+  link-after-answers:
+    workflow: link
+    resource: link
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: link
+      settled: any
+    inputs:
+      answers: { item: answers }
+  # Waiting. An item that waits holds a `depends_on` link to what it waits on, which the
+  # link stage recorded. When that item ends, the link stage starts again on every item
+  # that depends on it, and decides: it landed, so the item goes on; it ended without
+  # landing, so the item gets an ask. One binding for each stage an item can end in.
+  link-after-blocker-landed:
+    workflow: link
+    resource: link
     capacity: 3
     overlap: queue
     run_ended:
@@ -172,14 +207,10 @@ bindings:
       outcome: landed
       linked: { kind: depends_on, holder: from }
     inputs:
-      landed: { item: key }
-  # When that item ends without landing, the waiting item is told, and its order stage
-  # leaves an ask: wait, start anyway, or drop. One binding for each way an item ends
-  # without a change: closed or sent back to shaping, judged as not to be built as it is,
-  # split into members, a plan that stopped, and a waiting item that was itself dropped.
-  order-after-blocker-closed:
-    workflow: order
-    resource: order
+      ended: { item: key }
+  link-after-blocker-closed:
+    workflow: link
+    resource: link
     capacity: 3
     overlap: queue
     run_ended:
@@ -187,11 +218,10 @@ bindings:
       outcome: [dropped, reshape, not_closed]
       linked: { kind: depends_on, holder: from }
     inputs:
-      stopped: { item: key }
-      how: An operator dropped that item's change or sent it back to shaping.
-  order-after-blocker-judged:
-    workflow: order
-    resource: order
+      ended: { item: key }
+  link-after-blocker-judged:
+    workflow: link
+    resource: link
     capacity: 3
     overlap: queue
     run_ended:
@@ -199,11 +229,10 @@ bindings:
       outcome: [shape, recipe, native, fold, park, deprecate, decline, close]
       linked: { kind: depends_on, holder: from }
     inputs:
-      stopped: { item: key }
-      how: Triage judged that item as not to be built as it is. Its triage run says what it recommends.
-  order-after-blocker-split:
-    workflow: order
-    resource: order
+      ended: { item: key }
+  link-after-blocker-split:
+    workflow: link
+    resource: link
     capacity: 3
     overlap: queue
     run_ended:
@@ -211,11 +240,10 @@ bindings:
       outcome: [split, waiting]
       linked: { kind: depends_on, holder: from }
     inputs:
-      stopped: { item: key }
-      how: That item was split into members, so it never lands as one change. Its split run names the members.
-  order-after-blocker-plan-stopped:
-    workflow: order
-    resource: order
+      ended: { item: key }
+  link-after-blocker-plan-stopped:
+    workflow: link
+    resource: link
     capacity: 3
     overlap: queue
     run_ended:
@@ -223,44 +251,18 @@ bindings:
       outcome: stop
       linked: { kind: depends_on, holder: from }
     inputs:
-      stopped: { item: key }
-      how: That item's plan stopped. Its plan run says why it cannot be planned.
-  order-after-blocker-dropped:
-    workflow: order
-    resource: order
+      ended: { item: key }
+  link-after-blocker-dropped:
+    workflow: link
+    resource: link
     capacity: 3
     overlap: queue
     run_ended:
-      workflow: order
+      workflow: link
       outcome: dropped
       linked: { kind: depends_on, holder: from }
     inputs:
-      stopped: { item: key }
-      how: That item waited on another that ended without landing, and an operator dropped it.
-  # The answer to that ask starts the order stage again, which carries it out: `wait` ends
-  # `waiting`, `start-anyway` orders the item, `drop` ends it. A withdrawn ask keeps it waiting.
-  order-after-answers:
-    workflow: order
-    resource: order
-    capacity: 3
-    overlap: queue
-    asks_settled:
-      workflow: order
-      settled: any
-    inputs:
-      answers: { answers: true }
-  plan-after-triage:
-    workflow: plan
-    resource: plan
-    capacity: 3
-    overlap: queue
-    run_ended:
-      workflow: triage
-      outcome: [build, narrow]
-    inputs:
-      item: { input: item }
-      land_on: { input: land_on }
-      judgment: { result: "" }
+      ended: { item: key }
   # Triage judged `split`: all of the item is worth building, but not as one change. The
   # split stage decides how. Whole: plan starts on the item as it is. Split: each member
   # that starts now is recorded as part of the item, and the order stage starts on each

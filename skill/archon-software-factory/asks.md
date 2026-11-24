@@ -21,7 +21,7 @@ to the person, do not pick at random. To keep an item waiting, leave its ask ope
 | plan, split | The stage's own options for that question. Any answer starts the same stage again with it. |
 | stage-build, stage-check, stage-host | `send-back`, `replan`, `take-as-is`, `drop`, `reshape`. With the rounds used up, `one-more-round` replaces `send-back`. |
 | landgate, land | `land`, `send-back`, `drop`, `reshape`. |
-| order | `wait`, `start-anyway`, `drop`, when an item this one waits on ended without landing. No recommendation. |
+| link | The stage's own options. When an item this one waits on will not land: `wait`, `start-anyway`, `drop`. Any answer starts the link stage again, which carries it out. |
 
 | Option | What it starts |
 |---|---|
@@ -30,8 +30,8 @@ to the person, do not pick at random. To keep an item waiting, leave its ask ope
 | `replan` | Plan, with your text, then delivery again. Use it when the approach is wrong, or the change should be cut differently. |
 | `take-as-is` | After a build or check ask: the host round on the change as it is. After a host ask: nothing; land or close the pull request by hand. |
 | `land` | The land stage. It merges only when the change still merges and its checks are green. |
-| `wait` | On an order ask: the item keeps waiting, and is ordered again when what it waits on lands. |
-| `start-anyway` | On an order ask: the item is ordered now and no longer waits on those items. |
+| `wait` | On a link ask: the item keeps waiting, and goes on when what it waits on lands. |
+| `start-anyway` | On a link ask: the link stage stops waiting and plan starts. |
 | `drop` | The pull request is closed without merging. The item ends. |
 | `reshape` | The pull request becomes a draft. Nothing more is built until the item is shaped and ordered again. |
 

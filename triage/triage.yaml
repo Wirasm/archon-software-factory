@@ -1,11 +1,8 @@
 name: triage
 description: |
-  Take one work item through triage: judge what should happen to it, and when
-  it should be built, place it among the project's other open work. Two stages
-  in one run: they belong to the same moment for the same item. The run ends
-  with the judgment's recommendation as its outcome, which a binding can start
-  the next stage on, or `waiting` when the item cannot be built before another
-  member of its work order has landed.
+  Take one work item through triage: judge what should happen to it. The run
+  ends with the judgment's recommendation as its outcome, which a binding can
+  start the next stage on: the link stage for an item that should be built.
 
 inputs:
   item:
@@ -14,18 +11,14 @@ inputs:
   land_on:
     default: ""
     description: The branch this item's change lands on. Empty means the project's base branch. This stage passes it on.
-  open_items:
-    default: "None listed."
-    description: >-
-      The project's other open items, as a short index that says where each can be read in full.
   members:
     default: "[]"
     description: The other members of the work order or split this item is part of, as JSON, each with its `key` and `title`. The order stage's result carries them.
-  released:
+  depends_on:
     default: "[]"
-    description: Keys of items an operator ruled this one does not wait on, as JSON. The order stage's result carries them.
+    description: Keys of the items the order says must land before this one, as JSON. The order stage's result carries them.
 
-returns: { node: placed, outcome: recommend }
+returns: { node: judge, outcome: recommend }
 
 nodes:
   - id: judge
@@ -34,72 +27,7 @@ nodes:
       item: $INPUTS.item
       triage_policy: $INPUTS.triage_policy
       members: $INPUTS.members
-
-  - id: link
-    include: link
-    depends_on: [judge]
-    when: "$judge.output.recommend == 'build' || $judge.output.recommend == 'narrow'"
-    with:
-      item: $INPUTS.item
-      judgment: $judge.output
-      open_items: $INPUTS.open_items
-      members: $INPUTS.members
-      released: $INPUTS.released
-
-  # What triage returns: the judgment, and whether the item waits. The link stage decides
-  # that and records the links itself; this node joins the two results into one and
-  # judges nothing. It keeps an item from waiting where no landing could start it again:
-  # on an item it holds no link to, on one that has landed, and on one an operator ruled
-  # it does not wait on. When the item waits, the run ends `waiting`, and the
-  # `order-after-blocker-landed` binding orders it again when what it waits on lands.
-  #
-  # Shadow, 2026-11-24: the link stage records nothing to an item outside the work order
-  # and lists it with `recorded: false`. Those that block are named in `would_wait` and
-  # counted, to be compared with what then happened to the item. The switch is the
-  # "What you record" section of `link/commands/link.md`.
-  - id: placed
-    depends_on: [judge, link]
-    trigger_rule: none_failed_min_one_success
-    runtime: bun
-    mutates_checkout: false
-    with:
-      judgment: $judge.output
-      link: $link.output
-      released: $INPUTS.released
-    script: |
-      import { emit, input, item, packDir } from 'archon:script';
-      const { unlanded } = await import(`${packDir()}/.shared/waits.ts`);
-      const parse = (name: string) => { try { return JSON.parse(input(name) || 'null'); } catch { return null; } };
-      const judgment = JSON.parse(input('judgment'));
-      const placed = parse('link');
-      const released: string[] = parse('released') ?? [];
-      const read = item();
-      const linked = (read?.links ?? []).filter(l => l.kind === 'depends_on' && l.direction === 'outgoing' && !l.ended).map(l => l.other.key);
-      const said: string[] = (placed?.waits_on ?? []).map(String);
-      const unlinked = said.filter(key => !linked.includes(key));
-      if (unlinked.length) throw new Error(`triage: the link stage says the item waits on ${unlinked.join(', ')} and recorded no depends_on link to it, so nothing would start the item again`);
-      const waits_on = unlanded(said.filter(key => !released.includes(key)));
-      const would_wait: string[] = (placed?.links ?? []).filter((l: any) => l.kind === 'depends_on' && l.blocking && !l.recorded).map((l: any) => String(l.to));
-      emit({
-        ...judgment,
-        recommend: waits_on.length ? 'waiting' : judgment.recommend,
-        judged: judgment.recommend,
-        placed,
-        waits_on,
-        would_wait,
-        metrics: placed ? [{ name: 'sf.link_would_wait', unit: 'items', subject: read?.item.key ?? null, kind: 'count', value: would_wait.length ? 1 : 0 }] : [],
-      });
-    output_format:
-      type: object
-      properties:
-        # The judge stage's verbs, and `waiting`. A verb the judge returns that is not
-        # listed here fails the run at this node.
-        recommend: { type: string, enum: [build, narrow, split, shape, recipe, native, fold, park, deprecate, decline, close, waiting] }
-        judged: { type: string, description: 'What the judgment recommended. It differs from `recommend` only when the item waits.' }
-        placed: { description: 'What the link stage returned. Null when the item was not judged build or narrow.' }
-        waits_on: { type: array, items: { type: string }, description: 'Keys of the items the link stage recorded a blocking depends_on to and that have not landed. Empty unless it waits.' }
-        would_wait: { type: array, items: { type: string }, description: 'Shadow: the items the link stage called blocking and recorded no link to. Nothing waits on them.' }
-      required: [recommend, judged, waits_on, would_wait]
+      depends_on: $INPUTS.depends_on
 
   # Shadow measurement, 2026-11-16: may this item start without an operator? Recorded in the
   # run and read by nothing. It is not part of what triage returns and starts no stage.

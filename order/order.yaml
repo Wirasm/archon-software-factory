@@ -2,12 +2,11 @@ name: order
 description: |
   Take a work order from an operator and make it one work item the factory can read.
   A work order names its work by a link to an item on the project's forge, by text, or
-  both, and may say where the change lands, which larger item it is part of and which
-  items must land before it. An order of several items makes each a member, part of the
-  order's own item, and each member is then ordered like any other item. This stage reads
-  no code and judges nothing: it gathers the text and hands the order on, or holds the
-  item while something it depends on has not landed. An item that waits is ordered again
-  from its own last order when what it waits on lands.
+  both, and may say where the change lands, which larger item it is part of and what it
+  depends on. An order that lists several items makes each a member, part of the order's
+  own item, and each member is then ordered like any other item; a split orders its
+  members the same way. This stage reads and judges nothing: it gathers the text, records
+  what is part of what, and hands the order on. Whether an item waits is the link stage's.
 
 inputs:
   key:
@@ -30,13 +29,13 @@ inputs:
     description: The work as text. With a source, it is added below what the source says, as the operator's own words.
   land_on:
     default: ""
-    description: The branch this item's change lands on. Empty means the project's base branch. On an order of several items it is recorded as the order's landing branch, which its members take.
+    description: The branch this item's change lands on. Empty means the project's base branch.
   part_of:
     default: ""
     description: The key of the larger item this one is a member of, when it is one. Empty when it stands alone.
   depends_on:
     default: ""
-    description: Keys of the items that must land before this one, separated by commas. Empty when none. The item waits until each has landed.
+    description: Keys of the items the operator knows must land before this one, separated by commas. Empty when none. Handed to the link stage as a fact; this stage does not act on it.
   items:
     default: ""
     description: >-
@@ -45,27 +44,14 @@ inputs:
   members:
     default: ""
     description: >-
-      The members a work order or a split started, as JSON. Set by the binding that starts
-      this stage on each of them. The order is the member with this run's item key, and it
-      is taken once.
+      The members a work order or a split started, as JSON: each with its `key`, `title`,
+      `source` or `text`, and `depends_on`. Set by the binding that starts this stage on
+      each of them. The order is the member with this run's item key, and it is taken once.
   earlier:
     result_of: order
     description: What the last order on this item returned. An order that names no work is the item's last order again.
-  landed:
-    default: ""
-    description: The key of an item this one depends on that has landed. Set by the binding that orders a waiting item again.
-  stopped:
-    default: ""
-    description: The key of an item this one depends on that ended without landing. Set by the bindings that tell a waiting item so.
-  how:
-    default: ""
-    description: How the item `stopped` names ended, as a sentence for the operator.
-  answers:
-    default: ""
-    description: The answer to the ask this stage left when what the item waits on ended without landing, as the binding passes it.
 
-# The engine defines the `asks` property of the result, so the output format leaves it out.
-returns: { node: order, outcome: outcome, asks: asks }
+returns: { node: order, outcome: outcome }
 
 nodes:
   - id: order
@@ -83,162 +69,104 @@ nodes:
       items: $INPUTS.items
       members: $INPUTS.members
       earlier: $INPUTS.earlier
-      landed: $INPUTS.landed
-      stopped: $INPUTS.stopped
-      how: $INPUTS.how
-      answers: $INPUTS.answers
     script: |
-      import { emit, forge, input, item, linkItem, packDir, recordLanding } from 'archon:script';
-      const { unlanded } = await import(`${packDir()}/.shared/waits.ts`);
+      import { emit, forge, input, item, linkItem, recordLanding } from 'archon:script';
       const parse = (name: string) => { try { return JSON.parse(input(name) || 'null'); } catch { return null; } };
       const keys = (value: unknown) => (Array.isArray(value) ? value : String(value ?? '').split(',')).map(key => String(key).trim()).filter(Boolean);
-      const bare = (name: string) => name.slice(name.lastIndexOf(':') + 1);
       const read = item();
       const own = read?.item.key ?? '';
       const earlier = parse('earlier');
-
-      // The order: what this start names, or, when it names no work, the item's last order.
+      // Started by a work order or a split, on each member it names: the order is the
+      // member with this item's key.
       const started = parse('members');
       const mine = Array.isArray(started) ? started.find((m: any) => m.key === own) : null;
+      // A label binding names the issue by its number on the project's repository.
       const issue = Number(input('issue').trim());
       const given = {
         source: String(mine ? mine.source ?? '' : input('source')).trim(),
         text: String(mine ? mine.text ?? '' : input('text')).trim(),
-        // A label binding names the issue by its number on the project's repository.
         issue: Number.isInteger(issue) && issue > 0 ? { repo: { host: input('repo_host').trim(), path: input('repo_path').trim() }, number: issue } : null,
         land_on: input('land_on').trim(),
         part_of: input('part_of').trim(),
+        depends_on: keys(mine ? mine.depends_on : input('depends_on')),
       };
-      const fresh = Boolean(given.source || given.text || given.issue);
-      const order = fresh ? given : earlier?.order ?? null;
+      // An order that names no work is the item's last order again.
+      const order = given.source || given.text || given.issue ? given : earlier?.order ?? null;
       const title = (m: any) => String(m.title || String(m.text ?? '').split('\n')[0].replace(/^#+\s*/, '') || m.source || '');
-      // The other members of the work order or split this item is part of. Triage gives
-      // them to the link stage, and holds this item on a blocking link to one of them.
       const members = Array.isArray(started)
         ? started.filter((m: any) => m.key !== own).map((m: any) => ({ key: String(m.key), title: title(m) }))
         : earlier?.members ?? [];
-      // Items an operator ruled this one does not wait on. Kept from order to order.
-      let released: string[] = earlier?.released ?? [];
-      const end = (outcome: string, more: Record<string, unknown> = {}) => emit({
-        outcome, item: '', land_on: order?.land_on ?? given.land_on, part_of: order?.part_of ?? given.part_of, why: '',
-        order, waits_on: [], released, stopped: null, members, start: [], asks: [], ...more,
+      const end = (outcome: string, more: Record<string, unknown>) => emit({
+        outcome, item: '', land_on: order?.land_on ?? '', part_of: order?.part_of ?? '', depends_on: order?.depends_on ?? [],
+        why: '', order, members, start: [], ...more,
       });
-
-      const gather = () => {
-        if (!order.source && !order.issue) return { item: order.text, why: '' };
-        const said = order.text ? `\n\n## From the operator who ordered this\n\n${order.text}` : '';
-        try {
-          const where = order.issue
-            ? { kind: 'resolved', repo: order.issue.repo, subject: { kind: 'issue', number: order.issue.number } }
-            : forge('resolve', { remote: order.source, web: true });
-          if (where.kind !== 'resolved' || !where.subject) return { item: '', why: `The source is not an item on a forge this install can read: ${order.source}` };
-          const ref = { repo: where.repo, number: where.subject.number };
-          const work = forge('workitem.view', { ref });
-          const seen = forge('workitem.comments', { subject: { kind: where.subject.kind, ref } });
-          const talk = (seen.comments ?? [])
-            .map((c: any) => `**${c.author?.login ?? 'someone'}**:\n\n${String(c.body ?? '').trim()}`)
-            .join('\n\n');
-          return {
-            item: `---\nid: ${where.subject.number}\nsource: ${work.url ?? order.source}\n---\n\n` +
-              `# ${work.title}\n\n${String(work.body ?? '').trim()}\n\n## Discussion\n\n${talk || 'No comments.'}${said}`,
-            why: '',
-          };
-        } catch (error) {
-          return { item: '', why: `The source could not be read: ${error instanceof Error ? error.message : String(error)}` };
-        }
-      };
-
       const listed = parse('items');
       if (Array.isArray(listed)) {
         // An order of several items. This run's item is the work order, and each member is
-        // recorded as part of it; recording the link writes the member's item. The
-        // `order-after-work-order` binding then starts this stage on each member, and a
-        // member that records no landing branch takes the work order's.
+        // recorded as part of it: a fact the order states, which needs no judgment.
+        // Recording the link writes the member's item. The `order-after-work-order` binding
+        // starts this stage on each member, and a member that records no landing branch
+        // takes the work order's.
         const start = listed.map((m: any) => ({
           key: String(m?.key ?? '').trim(), title: title(m ?? {}),
           source: String(m?.source ?? '').trim(), text: String(m?.text ?? '').trim(), depends_on: keys(m?.depends_on),
         }));
-        const named = new Set(start.map(m => m.key));
-        if (!own) end('refused', { why: 'The order has no key, so its members cannot be part of it.' });
-        else if (start.length === 0 || start.some(m => !m.key || m.key === own || (!m.source && !m.text)) || named.size !== start.length) {
-          end('refused', { why: 'Every member of a work order needs a key of its own, different from the order\'s, and a source or text.' });
+        if (!own || start.length === 0 || start.some(m => !m.key || m.key === own || (!m.source && !m.text)) || new Set(start.map(m => m.key)).size !== start.length) {
+          end('refused', { why: 'A work order needs a key, and every member a key of its own, different from the order\'s, and a source or text.' });
         } else {
           if (given.land_on) recordLanding(given.land_on);
           if (given.part_of) linkItem({ kind: 'part_of', to: given.part_of });
           for (const m of start) linkItem({ kind: 'part_of', from: m.key });
-          end('work_order', { item: given.text, order: given, land_on: given.land_on, part_of: given.part_of, start });
+          end('work_order', { item: given.text, order: given, land_on: given.land_on, part_of: given.part_of, depends_on: [], start });
         }
       } else if (!order) {
         end('refused', { why: 'The order names no work: give a source, text, or both.' });
-      } else if (mine && (read?.runs ?? []).some(run => bare(run.workflow) === 'order' && ['ready', 'waiting', 'ask'].includes(run.outcome ?? ''))) {
-        end('refused', { why: 'This member was ordered before.' });
+      } else if (mine && (read?.runs ?? []).some(run => run.workflow.slice(run.workflow.lastIndexOf(':') + 1) === 'order' && run.outcome === 'ready')) {
+        // The item keeps the order it was given: the link stage reads the last order's result.
+        emit({ ...earlier, outcome: 'refused', why: 'This member was ordered before.' });
       } else {
-        // Whether the item is held: its last order or triage run ended `waiting`, or its
-        // last order asked what to do about an item it waits on that stopped.
-        const state = (read?.runs ?? []).filter(run => run.status === 'completed' && ['order', 'triage'].includes(bare(run.workflow))).at(-1)?.outcome ?? '';
-        const event = input('landed').trim() || input('stopped').trim();
-        const answered = parse('answers')?.[0];
-        const choice = String(answered?.option?.id ?? '');
-        if (event && state !== 'waiting' && state !== 'ask') {
-          end('refused', { why: `This item does not wait, so \`${event}\` ending changes nothing for it.` });
-        } else if (choice === 'drop') {
-          end('dropped', { why: 'An operator dropped this item when what it waited on ended without landing.' });
-        } else {
-          if (fresh && !mine && order.part_of) linkItem({ kind: 'part_of', to: order.part_of });
-          // What it depends on: what this order declares, and every `depends_on` link the
-          // item holds, which an earlier order or triage recorded.
-          const declared = keys(mine ? mine.depends_on : input('depends_on'));
-          const linked = (read?.links ?? []).filter(l => l.kind === 'depends_on' && l.direction === 'outgoing' && !l.ended).map(l => l.other.key);
-          const waits = unlanded([...declared, ...linked].filter(key => !released.includes(key)));
-          if (choice === 'start-anyway') released = [...released, ...waits];
-          else for (const key of waits) if (!linked.includes(key)) linkItem({ kind: 'depends_on', to: key });
-          // The item it waits on that stopped: named by this start, or by the ask still open.
-          const halted = input('stopped').trim()
-            ? { key: input('stopped').trim(), how: input('how').trim() }
-            : state === 'ask' && !answered ? earlier?.stopped ?? null : null;
-          const tick = (key: string) => `\`${key}\``;
-          if (choice === 'start-anyway' || waits.length === 0) {
-            const got = gather();
-            if (got.item) end('ready', { item: got.item });
-            else end('refused', { why: got.why });
-          } else if (halted && waits.includes(halted.key)) {
-            end('ask', {
-              waits_on: waits,
-              stopped: halted,
-              why: `${tick(halted.key)} ended without landing.`,
-              asks: [{
-                question: `${tick(own)} waits on ${tick(halted.key)}, which ended without landing. What should happen to ${tick(own)}?`,
-                context: [
-                  `${tick(own)} starts when ${waits.map(tick).join(', ')} ${waits.length > 1 ? 'have' : 'has'} landed, and ${tick(halted.key)} ended without landing. ${halted.how}`.trim(),
-                  // The engine keeps a reason only beside a recommended option.
-                  'No recommendation: this stage reads no code, so it cannot tell whether the item can be built without what it waits on.',
-                ].join('\n\n'),
-                options: [
-                  { id: 'wait', does: 'The item keeps waiting, and is ordered again when what it waits on lands.', cost: 'Nothing starts until then. If what it waits on is never ordered again, it waits until you order it yourself.' },
-                  { id: 'start-anyway', does: `The item is ordered now and no longer waits on ${waits.map(tick).join(', ')}.`, cost: 'It is built on the code as it is, without the change it was meant to follow.' },
-                  { id: 'drop', does: 'The item ends here and nothing is built.', cost: 'The work is given up until someone orders it again.' },
-                ],
-                recommendation: null,
-                artifacts: [],
-              }],
-            });
-          } else {
-            end('waiting', { waits_on: waits, why: `It starts when ${waits.map(tick).join(', ')} ${waits.length > 1 ? 'have' : 'has'} landed.` });
+        // What the order says the item is part of is a fact too. A work order or a split
+        // already recorded it for its members.
+        if (order === given && !mine && order.part_of) linkItem({ kind: 'part_of', to: order.part_of });
+        let text = order.text;
+        let why = '';
+        if (order.source || order.issue) {
+          text = '';
+          try {
+            const where = order.issue
+              ? { kind: 'resolved', repo: order.issue.repo, subject: { kind: 'issue', number: order.issue.number } }
+              : forge('resolve', { remote: order.source, web: true });
+            if (where.kind !== 'resolved' || !where.subject) {
+              why = `The source is not an item on a forge this install can read: ${order.source}`;
+            } else {
+              const ref = { repo: where.repo, number: where.subject.number };
+              const work = forge('workitem.view', { ref });
+              const seen = forge('workitem.comments', { subject: { kind: where.subject.kind, ref } });
+              const talk = (seen.comments ?? [])
+                .map((c: any) => `**${c.author?.login ?? 'someone'}**:\n\n${String(c.body ?? '').trim()}`)
+                .join('\n\n');
+              text =
+                `---\nid: ${where.subject.number}\nsource: ${work.url ?? order.source}\n---\n\n` +
+                `# ${work.title}\n\n${String(work.body ?? '').trim()}\n\n## Discussion\n\n${talk || 'No comments.'}` +
+                (order.text ? `\n\n## From the operator who ordered this\n\n${order.text}` : '');
+            }
+          } catch (error) {
+            why = `The source could not be read: ${error instanceof Error ? error.message : String(error)}`;
           }
         }
+        if (text) end('ready', { item: text });
+        else end('refused', { why });
       }
     output_format:
       type: object
       properties:
-        outcome: { type: string, enum: [ready, waiting, work_order, ask, dropped, refused] }
-        item: { type: string, description: 'The work item as text. Empty unless the outcome is ready or work_order.' }
+        outcome: { type: string, enum: [ready, work_order, refused] }
+        item: { type: string, description: 'The work item as text.' }
         land_on: { type: string, description: 'The branch the change lands on. Empty means the base branch.' }
         part_of: { type: string, description: 'The larger item this one is a member of. Empty when none.' }
-        why: { type: string, description: 'Why the order was refused, what the item waits on, or why it was dropped. Empty when it is ready.' }
-        order: { description: 'The order as it was given: source, text, issue, land_on and part_of. An order that names no work starts from it. Null when no order named work.' }
-        waits_on: { type: array, items: { type: string }, description: 'Keys of the items that have not landed and that this item waits on. Empty unless it waits.' }
-        released: { type: array, items: { type: string }, description: 'Keys of items an operator ruled this one does not wait on.' }
-        stopped: { description: 'When the outcome is ask: the item it waits on that ended without landing, as `key` and `how`. Null otherwise.' }
+        depends_on: { type: array, items: { type: string }, description: 'Keys of the items the order says must land before this one. The link stage reads them.' }
+        why: { type: string, description: 'Why the order was refused. Empty when it was not.' }
+        order: { description: 'The order as it was given: source, text, issue, land_on, part_of and depends_on. An order that names no work starts from it. Null when no order named work.' }
         members: { type: array, description: 'The other members of the work order or split this item is part of: key and title. Empty when it is part of none.' }
         start: { type: array, description: 'For a work order: its members, each with key, title, source, text and depends_on.' }
-      required: [outcome, item, land_on, part_of, why, order, waits_on, released, stopped, members, start]
+      required: [outcome, item, land_on, part_of, depends_on, why, order, members, start]

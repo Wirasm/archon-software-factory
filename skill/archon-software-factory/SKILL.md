@@ -17,7 +17,7 @@ argument-hint: "[item key | ask ref | intent]"
 # Operating the software factory
 
 The pack `Wirasm/archon-software-factory` turns a **work order** into an **item** and moves
-it through **stages**: order, triage, split (when needed), plan, build, check, host round,
+it through **stages**: order, triage, split (when needed), link, plan, build, check, host round,
 land gate, land, landed check, discoveries drain. Each stage is one Archon run on the item.
 **Bindings** start the next stage when one ends. A stage that needs a decision ends and
 leaves an **ask**; the answer starts what follows. To **land** is to merge the change into
@@ -99,7 +99,8 @@ A thin item produces a confident answer to the wrong question; fix the issue fir
   seen starts nothing; remove it and add it again. Put it on issues only: a labelled pull
   request is ordered too.
 - **`depends_on`** in an order, or on a member, states what the person already knows must
-  land first. The item ends `waiting` and is ordered again by itself when it has landed.
+  land first. The link stage takes it as given: the item waits and goes on by itself when
+  it has landed.
   `items.md` says how to read a waiting item.
 
 ## Pause and resume
@@ -119,9 +120,8 @@ the update finish on the pack revision they started with.
 ## What the pack does not do yet
 
 - Nothing enters on its own: every item is ordered by an operator, by hand or by label.
-- The link stage records a blocking link, and holds the item, only inside its work order;
-  outside it names the link as `would_wait` and records nothing. A stated `depends_on`
-  always holds.
+- The link stage waits only on a member of the item's work order or on what its order
+  states; an outside item it names as `would_wait` and does not wait on.
 - A waiting item is told when what it waits on ends, not when it only sits.
 - A work order has no stage after the order: nothing starts when its last member lands.
 - A host round that ends `waiting`, a triage judgment that is not `build`, `narrow` or
