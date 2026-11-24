@@ -84,7 +84,9 @@ A thin item produces a confident answer to the wrong question; fix the issue fir
 - **Several items.** One order file and one fire per item, or one work order that lists
   them: `{ "key": "wo-12", "land_on": "", "items": [{ "key": "issue-41", "source": "..." },
   { "key": "issue-42", "source": "...", "depends_on": "issue-41" }] }`. Each member is
-  recorded as part of `wo-12` and ordered by itself. Stages queue past their capacity
+  recorded as part of `wo-12` and ordered by itself. `depends_on` is optional: the
+  factory's link stage finds and records which member waits for which. Never run
+  `archon workflow link` yourself. Stages queue past their capacity
   (three orders, five builds and one landing at once by default), so fire them all.
 - **An item on its own branch.** Create and record the branch first, then order with
   `"land_on": "<branch>"`:
@@ -96,9 +98,9 @@ A thin item produces a confident answer to the wrong question; fix the issue fir
   issue orders it as `issue-<number>`. A label that was already there when intake was first
   seen starts nothing; remove it and add it again. Put it on issues only: a labelled pull
   request is ordered too.
-- **`depends_on`** in an order, or on a member, names the keys of items that must land
-  first. The item ends `waiting` and is ordered again by itself when they have landed.
-  `items.md` says how to read and release a waiting item.
+- **`depends_on`** in an order, or on a member, states what the person already knows must
+  land first. The item ends `waiting` and is ordered again by itself when it has landed.
+  `items.md` says how to read a waiting item.
 
 ## Pause and resume
 
@@ -117,14 +119,16 @@ the update finish on the pack revision they started with.
 ## What the pack does not do yet
 
 - Nothing enters on its own: every item is ordered by an operator, by hand or by label.
-- A blocking link the link stage finds holds an item only inside its work order; outside
-  it is recorded as `would_wait` and holds nothing. A declared `depends_on` always holds.
+- The link stage records a blocking link, and holds the item, only inside its work order;
+  outside it names the link as `would_wait` and records nothing. A stated `depends_on`
+  always holds.
 - A waiting item is told when what it waits on ends, not when it only sits.
 - A work order has no stage after the order: nothing starts when its last member lands.
 - A host round that ends `waiting`, a triage judgment that is not `build`, `narrow` or
   `split`, and a plan that ends `stop` start nothing and leave no ask.
 - `take-as-is` on a host ask starts nothing.
-- A split starts the members that have a brief, and does not create the landing branch.
+- A split member that waits on a ruling or a signal starts only when the split runs
+  again, and a split does not create the landing branch.
 - Changes built side by side can conflict; the later one goes back to its builder.
 - The discoveries drain files at most three items a run, and none without a tracker.
 - No stage lands a shared branch on the base, and the report carries no screenshots.

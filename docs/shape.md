@@ -126,7 +126,7 @@ Three kinds, each stored with a direction. Only accepted links are stored.
 - Measured on nine items and six models: five found the real duplicate pair and all five read its direction the other way from the maintainer; two models added dependencies that were not real. A wrong `depends_on` stops an item from starting, so the engine never waits on a guess.
 - A link that stops being true is ended by a second fact, not deleted.
 
-**Ruled 2026-11-24 and built:** an item waits only on a blocking link. The link stage says for each `depends_on` whether the item cannot be built before the other lands. A `depends_on` an operator declared in the order always holds. A blocking link between two members of one work order holds at once; one to an item outside it is a shadow, recorded as `would_wait`, until it has been compared with what happened. Landing orders the waiting item again.
+**Ruled 2026-11-24 and built:** an item waits only on a blocking link. The link stage says for each `depends_on` whether the item cannot be built before the other lands, and records the link itself; no operator links by hand and no script turns a proposal into a link. A `depends_on` an operator declared in the order always holds. A blocking link between two members of one work order holds at once; one to an item outside it is a shadow, recorded as `would_wait`, until it has been compared with what happened. Landing orders the waiting item again.
 - Cost: more asks, about one for every three items at first. To be measured, together with how many repeat an answer already given.
 
 ## Discoveries

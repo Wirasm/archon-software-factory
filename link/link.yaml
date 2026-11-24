@@ -3,9 +3,10 @@ description: |
   Place one work item among the project's other open work: what has to land
   before it, or which item it overlaps or is a part of. For each item it would
   follow, it says whether this one cannot be built before that one lands, or is
-  only better after it. Every link is a proposal: triage acts on a blocking one
-  between members of one work order, and on nothing else. Reads the project,
-  changes nothing.
+  only better after it. It records the links itself (`archon workflow link`): a
+  blocking one to another member of the same work order, which holds the item
+  until that member lands, and a duplicate among the members. Every other link
+  it only names. Reads the project, changes nothing in it.
 
 model: ['@link', medium]
 
@@ -22,6 +23,9 @@ inputs:
   members:
     default: "[]"
     description: The other members of the work order or split this item is part of, as JSON, each with its `key` and `title`. Empty when it is part of none.
+  released:
+    default: "[]"
+    description: Keys of items an operator ruled this one does not wait on, as JSON.
 
 returns: { node: link, outcome: outcome }
 
@@ -37,16 +41,18 @@ nodes:
         summary: { type: string, description: 'For whoever orders the work next.' }
         links:
           type: array
-          description: 'With place: every item that has to land before this one. With fold: the item this one overlaps, or is a part of.'
+          description: 'With place: every item that has to land before this one. With fold: the item this one overlaps, duplicates, or is a part of.'
           items:
             type: object
             additionalProperties: false
             properties:
               to: { type: string, description: 'The id of the other item, as the index gives it. For a member of the same work order: its key.' }
-              kind: { type: string, enum: [depends_on, overlaps, part_of] }
+              kind: { type: string, enum: [depends_on, overlaps, part_of, duplicate_of] }
               blocking: { type: boolean, description: 'For depends_on: true when this item cannot be built or judged before the other has landed; false when it would only be better, tidier or easier after it. False for the other kinds.' }
+              recorded: { type: boolean, description: 'True when you recorded this link with `archon workflow link` and the command succeeded.' }
               why: { type: string }
-            required: [to, kind, blocking, why]
+            required: [to, kind, blocking, recorded, why]
+        waits_on: { type: array, items: { type: string }, description: 'Keys of the items this one waits on: each blocking depends_on you recorded. Empty when it does not wait.' }
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
         for_next: { type: string, description: 'Anything whoever orders this work next needs from you that has no field here. Write it to them.' }
-      required: [outcome, summary, links, notes, for_next]
+      required: [outcome, summary, links, waits_on, notes, for_next]

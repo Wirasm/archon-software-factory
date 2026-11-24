@@ -44,15 +44,19 @@ nodes:
       judgment: $judge.output
       open_items: $INPUTS.open_items
       members: $INPUTS.members
+      released: $INPUTS.released
 
-  # What triage returns: the judgment, and whether the item waits. A blocking `depends_on`
-  # the link stage proposes to another member of the same work order holds the item: the
-  # link is recorded, the run ends `waiting`, and the `order-after-blocker-landed` binding
-  # orders the item again when that member lands.
+  # What triage returns: the judgment, and whether the item waits. The link stage decides
+  # that and records the links itself; this node joins the two results into one and
+  # judges nothing. It keeps an item from waiting where no landing could start it again:
+  # on an item it holds no link to, on one that has landed, and on one an operator ruled
+  # it does not wait on. When the item waits, the run ends `waiting`, and the
+  # `order-after-blocker-landed` binding orders it again when what it waits on lands.
   #
-  # Shadow, 2026-11-24: a blocking link to an item outside the work order holds nothing. It
-  # is recorded in `would_wait` and counted, to be compared with what then happened to the
-  # item. To act on every blocking link, delete `inside` below and `would_wait` with it.
+  # Shadow, 2026-11-24: the link stage records nothing to an item outside the work order
+  # and lists it with `recorded: false`. Those that block are named in `would_wait` and
+  # counted, to be compared with what then happened to the item. The switch is the
+  # "What you record" section of `link/commands/link.md`.
   - id: placed
     depends_on: [judge, link]
     trigger_rule: none_failed_min_one_success
@@ -61,25 +65,21 @@ nodes:
     with:
       judgment: $judge.output
       link: $link.output
-      members: $INPUTS.members
       released: $INPUTS.released
     script: |
-      import { emit, input, item, linkItem, packDir } from 'archon:script';
+      import { emit, input, item, packDir } from 'archon:script';
       const { unlanded } = await import(`${packDir()}/.shared/waits.ts`);
       const parse = (name: string) => { try { return JSON.parse(input(name) || 'null'); } catch { return null; } };
       const judgment = JSON.parse(input('judgment'));
       const placed = parse('link');
       const released: string[] = parse('released') ?? [];
-      const members: string[] = (parse('members') ?? []).map((m: any) => String(m.key));
-      const blocking: string[] = (placed?.links ?? [])
-        .filter((l: any) => l.kind === 'depends_on' && l.blocking)
-        .map((l: any) => String(l.to))
-        .filter((key: string) => !released.includes(key));
-      const inside = (key: string) => members.includes(key);
-      const waits_on = unlanded(blocking.filter(inside));
-      for (const key of waits_on) linkItem({ kind: 'depends_on', to: key });
-      const would_wait = blocking.filter(key => !inside(key));
-      const subject = item()?.item.key ?? null;
+      const read = item();
+      const linked = (read?.links ?? []).filter(l => l.kind === 'depends_on' && l.direction === 'outgoing' && !l.ended).map(l => l.other.key);
+      const said: string[] = (placed?.waits_on ?? []).map(String);
+      const unlinked = said.filter(key => !linked.includes(key));
+      if (unlinked.length) throw new Error(`triage: the link stage says the item waits on ${unlinked.join(', ')} and recorded no depends_on link to it, so nothing would start the item again`);
+      const waits_on = unlanded(said.filter(key => !released.includes(key)));
+      const would_wait: string[] = (placed?.links ?? []).filter((l: any) => l.kind === 'depends_on' && l.blocking && !l.recorded).map((l: any) => String(l.to));
       emit({
         ...judgment,
         recommend: waits_on.length ? 'waiting' : judgment.recommend,
@@ -87,7 +87,7 @@ nodes:
         placed,
         waits_on,
         would_wait,
-        metrics: placed ? [{ name: 'sf.link_would_wait', unit: 'items', subject, kind: 'count', value: would_wait.length ? 1 : 0 }] : [],
+        metrics: placed ? [{ name: 'sf.link_would_wait', unit: 'items', subject: read?.item.key ?? null, kind: 'count', value: would_wait.length ? 1 : 0 }] : [],
       });
     output_format:
       type: object
@@ -97,8 +97,8 @@ nodes:
         recommend: { type: string, enum: [build, narrow, split, shape, recipe, native, fold, park, deprecate, decline, close, waiting] }
         judged: { type: string, description: 'What the judgment recommended. It differs from `recommend` only when the item waits.' }
         placed: { description: 'What the link stage returned. Null when the item was not judged build or narrow.' }
-        waits_on: { type: array, items: { type: string }, description: 'Keys of the members of the same work order that have not landed and that this item cannot be built before. Empty unless it waits.' }
-        would_wait: { type: array, items: { type: string }, description: 'Shadow: the items outside the work order the link stage called blocking. Nothing waits on them.' }
+        waits_on: { type: array, items: { type: string }, description: 'Keys of the items the link stage recorded a blocking depends_on to and that have not landed. Empty unless it waits.' }
+        would_wait: { type: array, items: { type: string }, description: 'Shadow: the items the link stage called blocking and recorded no link to. Nothing waits on them.' }
       required: [recommend, judged, waits_on, would_wait]
 
   # Shadow measurement, 2026-11-16: may this item start without an operator? Recorded in the

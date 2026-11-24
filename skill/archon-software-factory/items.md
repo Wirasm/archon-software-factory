@@ -32,24 +32,20 @@ For a few seconds after a stage ends, the next one reads as admitted and not sta
 
 ## An item that waits
 
-An item waits on the items it holds a `depends_on` link to that have not landed: those its
-order declared, and, inside a work order or a split, those the link stage called blocking.
-`archon workflow runs --item <key>` shows the links; the last order or triage run's result
-has the keys in `waits_on`. When one of them lands the item is ordered again and goes on
-when none is left.
+An item waits on the items it holds a `depends_on` link to that have not landed. The
+factory records those links: the link stage between members of one work order, a split
+between its members, and the order stage for a `depends_on` the order states. Never
+record or end a link by hand. `archon workflow runs --item <key>` shows the links; the
+last order or triage run's result has the keys in `waits_on`. When one of them lands the
+item is ordered again and goes on when none is left.
 
 When what it waits on is dropped, judged as not to be built, split, or stopped in planning,
 the item gets an ask with no recommendation: `wait`, `start-anyway` or `drop`. That is the
 person's call unless they told you how to rule on it.
 
 Nothing tells a waiting item that what it waits on only sits: an unanswered ask, a key
-that was never ordered, an issue closed by hand. Report an item that has waited long. To
-release it, end the link and order the item by its key alone:
-
-```bash
-archon workflow link --end <link id>
-archon trigger fire --config <bindings-dir>/<the order file> --inputs order.json   # { "key": "<key>" }
-```
+that was never ordered, an issue closed by hand. Report an item that has waited long, and
+move its blocker: order it, or answer its ask.
 
 ## Splitting a large item
 
@@ -61,6 +57,7 @@ archon workflow run Wirasm/archon-software-factory:split --item <key> --input-fi
 ```
 
 `whole` starts plan on the item. `split` orders each member that starts now as
-`<item key>-<member id>`; one that depends on another member waits as above. Members that
-start later stay in the run's result with what they wait on. Nothing watches that: when it
-has happened, run the split again, or answer the ask if it left one.
+`<item key>-<member id>`, part of the item, exactly like a member of a work order; one that
+depends on another member waits as above and starts by itself. Members that wait on a
+ruling or a signal stay in the run's result. Nothing watches that: when it has happened,
+run the split again, or answer the ask if it left one.

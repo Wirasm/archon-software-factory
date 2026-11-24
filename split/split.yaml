@@ -2,8 +2,10 @@ name: split
 description: |
   Decide how one item that is worth building in full is built: whole, or as members that
   each prove something on their own, by its kind (a PRD, an epic, a bundle of tasks, or
-  parts that must land apart). The members that start now become work items of their own,
-  part of this one; the rest are kept in the result with what they wait on. Triage starts
+  parts that must land apart). Each member with a brief becomes a work item of its own,
+  part of this one, and is ordered like a member of any work order: one that depends on
+  another member waits until that one has landed. A member that waits on a ruling or a
+  signal is kept in the result with what it waits on. Triage starts
   it on an item it judged `split`; an operator can start it on an epic or a PRD directly.
   Reads the project, changes nothing in it.
 
@@ -49,10 +51,10 @@ nodes:
               title: { type: string, description: 'The outcome in one line, as a change title would say it.' }
               proves: { type: string, description: 'What becomes observably true when this member lands.' }
               apart: { type: string, description: 'Why this member cannot be part of the same change as the rest.' }
-              start: { type: string, enum: [now, later] }
-              brief: { type: string, description: 'For a member that starts now: the member as a work item that stands alone. Empty for one that starts later.' }
-              depends_on: { type: array, items: { type: string }, description: 'Ids of members that must land before this one. Empty when none.' }
-              waits_on: { type: string, description: 'For a member that starts later: the ruling, the signal or the member it waits on. Empty for one that starts now.' }
+              start: { type: string, enum: [now, later], description: 'now: it becomes a work item now. With depends_on it is held until those members have landed, and starts by itself then. later: it waits on a ruling or a signal, and becomes a work item when the split runs again.' }
+              brief: { type: string, description: 'For a member that starts now, held or not: the member as a work item that stands alone. Empty for one that starts later.' }
+              depends_on: { type: array, items: { type: string }, description: 'Ids of members that must land before this one can be built. Empty when none.' }
+              waits_on: { type: string, description: 'For a member that starts later: the ruling or the signal it waits on. Empty for one that starts now.' }
             required: [id, title, proves, apart, start, brief, depends_on, waits_on]
         landing:
           type: object
@@ -95,7 +97,8 @@ nodes:
 
   # The one thing code does here: it owns the outcome and the members' keys, which the
   # pack's bindings route on, and it records each member that starts now as part of this
-  # item. Recording the link writes the member's item when nothing has named it yet, and
+  # item, which is the one link no judgment is needed for. What a member depends on goes
+  # to the order stage with the member, as it does for a member of any work order. Recording the link writes the member's item when nothing has named it yet, and
   # recording it again leaves the one link. It starts nothing: the `order-after-split`
   # binding starts the order stage on each member listed in `start`, and the order stage
   # takes a member once.
@@ -124,7 +127,7 @@ nodes:
           start: now ? 'now' : 'later',
           brief: now ? m.brief : '',
           depends_on: dependsOn,
-          waits_on: now ? '' : String(m.waits_on || (dependsOn.length ? `${dependsOn.join(', ')} to land` : 'a later split')),
+          waits_on: now ? (dependsOn.length ? `${dependsOn.join(', ')} to land` : '') : String(m.waits_on || 'a later split'),
         };
       });
       const start = members.filter((m: any) => m.start === 'now');
@@ -154,6 +157,6 @@ nodes:
         kind: { type: string, enum: [prd, epic, bundle, parts, whole] }
         parent: { type: string, description: 'The key of the item that was split.' }
         land_on: { type: string, description: 'The branch the members land on. Empty means the base branch.' }
-        members: { type: array, description: 'Every member with its key: those that start now with their brief, those that wait with what they wait on.' }
-        start: { type: array, description: 'The members this run started: key, title and the member as a work item in `text`.' }
+        members: { type: array, description: 'Every member with its key: those that start now with their brief, and what each waits on.' }
+        start: { type: array, description: 'The members this run made work items: key, title, depends_on and the member as a work item in `text`.' }
       required: [outcome, kind, parent, land_on, members, start]
