@@ -187,3 +187,8 @@
 - 2026-11-24, issue-6197 (PR 6209), stage-check ask after round 3 (run a70cf696). Stage recommended one-more-round on three findings. Answered send-back, narrowed to two: the unguarded acceptance case (the item's own line) and the POSIX-only test. Declined finding 1 (Windows trailing-separator acceptance in the file validator).
   - Why: finding 1 was traced from source and simulated on macOS, never run on Windows, and names nobody who meets it in ordinary use; the Windows runner at the host round is the evidence. Round 2 on this item was returned by the test check alone while review and product approved (see the 11-24 findings read: 44 of 78 findings were test asks).
   - Run metadata: reviewer and test-checker gpt-6.2-sol; project test policy tightened the same day, after this item's first two rounds.
+
+- 2026-11-24, issue-6165 (PR 6188, +1887 lines), stage-check ask after round 4 (run 975b71b3). Stage recommended one-more-round on four findings. Answered replan.
+  - Why: rounds 2, 3 and 4 each found a new fault in how a refusal is cleared (terminal status, run deletion, SQL claim). The stage sees only the last round and said that pattern would change its recommendation. Replan decisions: derive "cleared" from "no run started on the item after the refusal" (as stopped items are derived) and delete the event-driven clearing; cut the GitHub/webhook binding cases to issue 6231; file-store docs.
+  - What the stage lacked: the earlier rounds' findings. An exhausted-rounds ask should be given the kinds of finding per round, not only the last result.
+  - Run metadata: reviewer and test-checker gpt-6.2-sol; item ordered 2026-11-24 10:34 UTC; four check rounds.
