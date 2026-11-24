@@ -31,13 +31,14 @@ const outcome = usedUp ? 'ask'
 const handsOn = ['built', 'built_for_host', 'approve', 'return', 'replan', 'ready', 'waiting'].includes(outcome);
 const summary = String(last.summary || last.stop || '');
 
-// An ask as the engine stores it. One with no recommendation says why in its context: the
-// engine keeps a reason only beside a recommended option.
+// An ask as the engine takes it. One with no recommendation carries the reason in the
+// recommendation's place (`option: null`), and the engine shows it there.
 const ask = (question: unknown, context: unknown[], option: string, why: unknown) => ({
   question: String(question ?? ''),
-  context: [...context, option ? '' : `No recommendation: ${String(why ?? '').trim() || 'the stage gave no reason.'}`]
-    .map(part => String(part ?? '').trim()).filter(Boolean).join('\n\n'),
-  recommendation: option ? { option, why: String(why ?? '') } : null,
+  context: context.map(part => String(part ?? '').trim()).filter(Boolean).join('\n\n'),
+  recommendation: option
+    ? { option, why: String(why ?? '') }
+    : { option: null, why: String(why ?? '').trim() || 'the stage gave no reason.' },
   artifacts: [],
 });
 // The option ids every delivery stage declares. An ask a check, the builder or the host

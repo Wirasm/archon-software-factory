@@ -177,7 +177,7 @@ archon workflow answer --ref <ask ref> --choose <option id> --text "why"
 
 `archon workflow attention` lists the current project's asks, each with its ref (`ask:<id>`); add `--all` for the whole install.
 
-The answer starts what comes next, and what you wrote reaches that run as a decision already made. Rule by answering: a run reads the item as it was ordered, so an edit or a comment on the issue after the order reaches no later stage. To keep an item waiting, leave its ask open and answer when you know. A stage that has no basis to choose leaves its ask without a recommendation and says in the ask's context why it cannot choose; it does not guess one.
+The answer starts what comes next, and what you wrote reaches that run as a decision already made. Rule by answering: a run reads the item as it was ordered, so an edit or a comment on the issue after the order reaches no later stage. To keep an item waiting, leave its ask open and answer when you know. A stage that has no basis to choose leaves its ask without a recommendation and says in the recommendation's place why it cannot choose; it does not guess one.
 
 Which options an ask offers depends on the stage that left it:
 

@@ -28,14 +28,13 @@ const shadowed = !shadow ? ''
   : would === 'land' ? `Shadow: the land policy would have landed this without asking (${String(last.criterion ?? '')}). ${summary}`
   : `Shadow: the land policy would have asked, because: ${summary || String(last.criterion ?? '')}`;
 
-// An ask as the engine stores it. The stage names no option with `none` and says why it
-// cannot choose; that goes in the context, because the engine keeps a reason only beside
-// a recommended option.
+// An ask as the engine takes it. The stage names no option with `none` and says why it
+// cannot choose; that reason goes in the recommendation's place (`option: null`).
 const ask = (question: unknown, context: unknown, option: string, why: unknown) => ({
   question: String(question ?? ''),
-  context: [context, shadowed, option ? '' : `No recommendation: ${String(why ?? '').trim() || 'the stage gave no reason.'}`]
+  context: [context, shadowed]
     .map(part => String(part ?? '').trim()).filter(Boolean).join('\n\n'),
-  recommendation: option ? { option, why: String(why ?? '') } : null,
+  recommendation: option ? { option, why: String(why ?? '') } : { option: null, why: String(why ?? '').trim() || 'the stage gave no reason.' },
   artifacts: [],
 });
 const asks = handsOn ? [] : (last.asks ?? []).map((written: any) => {

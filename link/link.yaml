@@ -116,7 +116,7 @@ nodes:
 
   # The stage's result: what the agent ended with, and the item and its landing branch for
   # the plan stage that `place` starts. It decides nothing. An ask with no recommendation
-  # says why in its context, because the engine keeps a reason only beside a recommended option.
+  # carries the stage's reason in the recommendation's place.
   - id: end
     depends_on: [link]
     runtime: bun
@@ -136,8 +136,7 @@ nodes:
           const recommends = Boolean(ask.recommendation?.option) && ask.recommendation.option !== 'none';
           return {
             ...ask,
-            context: recommends ? ask.context : `${ask.context}\n\nNo recommendation: ${ask.recommendation?.why || 'the stage gave no reason.'}`,
-            recommendation: recommends ? ask.recommendation : null,
+            recommendation: recommends ? ask.recommendation : { option: null, why: ask.recommendation?.why || 'the stage gave no reason.' },
             artifacts: [],
           };
         }),

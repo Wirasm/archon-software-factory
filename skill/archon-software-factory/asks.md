@@ -13,7 +13,7 @@ Every answer carries a reason in `--text`. The next stage reads it as a decision
 made, `send-back` hands it to the builder as the instruction, and `drop` and `reshape`
 write it on the pull request. `--recommended` takes the place of `--choose` when you agree
 with the recommendation; it is refused on an ask that has none. An ask without a
-recommendation says in its context why the stage could not choose: decide it or bring it
+recommendation says in the recommendation's place why the stage could not choose: decide it or bring it
 to the person, do not pick at random. To keep an item waiting, leave its ask open.
 
 | Ask left by | Options |
