@@ -74,7 +74,7 @@ nodes:
     with:
       stage: stage-host
       last: $rounds.output
-      limits: '{"return":"stage-build-after-host"}'
+      ends_as: '{}'
     output_format:
       type: object
       properties:

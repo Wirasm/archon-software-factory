@@ -70,7 +70,7 @@ nodes:
     with:
       stage: stage-build
       last: $build.output
-      limits: '{"stop":"replan-after-build"}'
+      ends_as: '{"stop":"replan"}'
     output_format:
       type: object
       properties:

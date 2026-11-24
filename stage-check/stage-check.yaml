@@ -123,7 +123,7 @@ nodes:
     with:
       stage: stage-check
       last: $verdict.output
-      limits: '{"return":"stage-build-after-check","replan":"replan-after-check"}'
+      ends_as: '{}'
     output_format:
       type: object
       properties:
