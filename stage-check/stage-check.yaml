@@ -16,7 +16,7 @@ inputs:
     description: Decisions an operator already made on this item.
   plan:
     result_of: plan
-    description: What plan concluded, as its result. The verdict reads what it leaves alone.
+    description: What plan concluded, as its result. The verdict reads who the outcome is for and what the change leaves alone.
   change:
     default: ""
     description: Where the change is proposed, as the builder reported it.

@@ -17,7 +17,7 @@ inputs:
     description: Each check's result, labelled with the check it came from.
   plan:
     default: "No plan was given."
-    description: What plan concluded, as its result. Its `not_doing` names what the change leaves alone.
+    description: What plan concluded, as its result. Its `reaches` says who the outcome is for, and its `not_doing` what the change leaves alone.
   sizes:
     default: "Not measured: this change was checked on no item."
     description: The change's size at the end of each delivery run on the item since it was last planned, and now, against the commit it is built on.
