@@ -8,6 +8,13 @@ An **operator** is whoever runs the factory: a person, or more often that person
 
 This README is the setup document. For running the factory day to day, [install the pack's skill](#install-the-skill) and let your agent read it.
 
+**Four things to know before you start.**
+
+- **Where to look.** `archon workflow attention` lists everything that waits on you: an ask to answer, an item that stopped, a run whose owner is gone. `archon workflow attention --watch` keeps the list open and prints each new one as it comes. When it is empty, nothing waits on you. The web UI (`archon serve`) shows the same; it is optional, and nothing starts it for you.
+- **Bindings** are the rules that start the next stage when a run ends or an ask is answered. The pack declares them; step 4 writes them for your repository and registers them. Two of the files it writes are not rules but ways in: the order file (`archon trigger fire`) and the label file.
+- **The label is `factory`.** Adding it to an issue orders that issue, once [label intake](#label-intake-a-label-is-a-work-order) is set up. "Label intake" is the feature's name, not the label's.
+- **Every stage ends in something you can see.** A stage that will not go on by itself (triage judging that an item should be shaped, closed or parked, a check that used up its rounds) leaves an ask in attention with its reason and its options. Answering it starts what you chose.
+
 ## What it is for
 
 Someone installs Archon, points it at their forge and their CI, and work flows from where it starts to merged code. They choose where an operator steps in. Anything that is not the core plugs in at a seam.
@@ -44,7 +51,7 @@ Then check that Archon can run an agent:
 archon doctor
 ```
 
-It must pass before you order anything. On a new install it fails until a default provider is set: `archon ai default <provider>` (for example `claude`), after which the `small`, `medium` and `large` tiers have models. Without a default provider the first order is taken and the next stage is refused without a word in the item's read; `archon trigger list` shows the refusal.
+It must pass before you order anything. A provider login that once worked can have expired: when `doctor` reports a login it cannot use, log in again (`archon ai login <provider>`) and run `doctor` once more. On a new install it fails until a default provider is set: `archon ai default <provider>` (for example `claude`), after which the `small`, `medium` and `large` tiers have models. Without a default provider the first order is taken and the next stage is refused without a word in the item's read; `archon trigger list` shows the refusal.
 
 You also need a git checkout of your project, and Archon's database store, which is the default.
 
@@ -125,6 +132,8 @@ The command prints what it wrote in four groups. Act on each:
   ```
 
   PowerShell: `Get-ChildItem <bindings-dir>\*.json | Where-Object { $_.Name -notmatch '[^k]-order-(on-label-)?[0-9a-f]+\.json$' } | ForEach-Object { archon trigger add $_.FullName }`
+
+  Registering all of them can take several minutes. It is done when the loop returns; `archon trigger check` then lists them.
 
   The pattern leaves out the order file and the label file, and keeps `...-order-after-work-order-work-order-<digest>.json`, which starts the members of an order of several items. A file is active as soon as it is added.
 - **Fire-only bindings**: one file, the order file (`...-order-<digest>.json`). Do not add it. You fire it by hand in step 5.
@@ -225,7 +234,7 @@ The pack ships a skill at [`skill/archon-software-factory/`](skill/archon-softwa
 archon skill add --pack Wirasm/archon-software-factory
 ```
 
-It copies the skill into `.claude/skills/archon-software-factory/` and `.agents/skills/archon-software-factory/`; Claude Code reads the first and Codex the second. Run it again after a pack update: it replaces both folders whole. The skill builds on Archon's own `archon-cli` skill, which `archon skill add` installs into the same two folders.
+It copies the skill into `.claude/skills/archon-software-factory/` and `.agents/skills/archon-software-factory/` in your project; Claude Code reads the first and Codex the second. These are new files in your repository: commit them, or add both folders to `.gitignore`. If your project has its own checks on skill folders or on top-level paths, list them there too. Run it again after a pack update: it replaces both folders whole. The skill builds on Archon's own `archon-cli` skill, which `archon skill add` installs into the same two folders.
 
 ## Optional settings
 
@@ -352,7 +361,7 @@ Archon's own policy files are in its repository under `.archon/factory/policy/`.
 
 ### Label intake: a label is a work order
 
-**What it does.** Adding the label `factory` to an issue orders that issue, on the item `issue-<number>`. No order file, no `trigger fire`.
+**What it does.** Adding the label `factory` to an issue orders that issue, on the item `issue-<number>`. No order file, no `trigger fire`. Only adding the label counts: an issue that already carried it before intake was set up is not ordered. Remove the label and add it again.
 
 **Default.** Off. Items start only from `archon trigger fire`.
 
