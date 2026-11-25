@@ -1,0 +1,106 @@
+name: complexity
+description: |
+  Shadow, since 2026-11-25. Judges how complex an item is to get right: at triage from the
+  item alone, with what a shorter path could skip, and after a build from the change that
+  was built, compared with triage's call. It starts nothing and changes nothing. Its result
+  is only recorded, to find out whether a triage-time judgment could route an item onto a
+  shorter path.
+
+model: ['@judge', medium]
+
+inputs:
+  at:
+    description: "`triage` or `build`: which judgment this run makes. The binding names it."
+  item:
+    description: The work item as text.
+  land_on:
+    default: ""
+    description: "The branch the change lands on, for `at: build`. Empty means the project's base branch."
+  change:
+    default: ""
+    description: "Where the change is proposed, for `at: build`."
+  judgment:
+    result_of: triage
+    description: What triage concluded about the item.
+  earlier:
+    result_of: complexity
+    description: What the last run of this shadow on the item returned. Null on the first.
+
+# `final`: every outcome is, so a run of this shadow never shows its item as stopped. No
+# binding starts from it.
+returns: { node: end, outcome: outcome, final: [recorded, none], summary: why }
+
+nodes:
+  - id: at_triage
+    when: "$INPUTS.at == 'triage'"
+    command: at-triage
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        complexity: { type: string, enum: [plain, ordinary, involved] }
+        why: { type: string, description: 'One sentence.' }
+        would_skip:
+          type: array
+          items: { type: string, enum: [plan, test-check, later-rounds] }
+      required: [complexity, why, would_skip]
+
+  - id: at_build
+    when: "$INPUTS.at == 'build'"
+    command: at-build
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        complexity: { type: string, enum: [plain, ordinary, involved] }
+        why: { type: string, description: 'One sentence.' }
+      required: [complexity, why]
+
+  # The judgment as records for `archon metrics`, one per item, latest wins. A build-time
+  # run compares with triage's call, which the earlier result carries: a triage-time run
+  # holds it as `step`, a build-time run passes it on as `at_triage`.
+  - id: end
+    depends_on: [at_triage, at_build]
+    trigger_rule: none_failed_min_one_success
+    runtime: bun
+    mutates_checkout: false
+    with:
+      at: $INPUTS.at
+      triage: $at_triage.output
+      build: $at_build.output
+      earlier: $INPUTS.earlier
+    script: |
+      import { emit, input, item } from 'archon:script';
+      const parse = (name: string) => { try { return JSON.parse(input(name) || 'null'); } catch { return null; } };
+      const at = input('at').trim();
+      const said = parse(at === 'triage' ? 'triage' : 'build');
+      const step = String(said?.complexity ?? '');
+      const earlier = parse('earlier');
+      const atTriage = at === 'triage' ? step : String((earlier?.at === 'triage' ? earlier?.step : earlier?.at_triage) ?? '');
+      const subject = item()?.item.key ?? null;
+      const count = (name: string, value: number) => ({ name, unit: 'items', subject, kind: 'count', value });
+      const metrics = !step ? []
+        : at === 'triage' ? [count('sf.complexity_at_triage', 1)]
+        : [count('sf.complexity_after_build', 1), ...(atTriage ? [count('sf.complexity_agrees', atTriage === step ? 1 : 0)] : [])];
+      emit({
+        outcome: step ? 'recorded' : 'none',
+        at,
+        step,
+        why: String(said?.why ?? ''),
+        would_skip: said?.would_skip ?? [],
+        at_triage: atTriage,
+        agrees: at === 'build' && atTriage ? atTriage === step : null,
+        metrics,
+        metric_dimensions: metrics.map(() => (at === 'triage' ? { step } : { step, at_triage: atTriage || 'unknown' })),
+      });
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [recorded, none] }
+        at: { type: string }
+        step: { type: string }
+        why: { type: string }
+        at_triage: { type: string }
+      required: [outcome, at, step, why, at_triage]
