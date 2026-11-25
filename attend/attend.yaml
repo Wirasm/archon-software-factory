@@ -1,0 +1,92 @@
+name: attend
+description: |
+  Shadow, since 2026-11-25. When a stage leaves asks on an item, an agent reads them the
+  way an operator's own agent would and records the answer it would give to each, or that
+  it would bring the ask to the operator. It answers nothing, starts nothing and changes
+  nothing on the item or its change. Its result is only recorded, to be compared with
+  what the operator answered.
+
+model: ['@manager', large]
+
+inputs:
+  stage:
+    description: The stage whose run ended and left the asks. The binding names it.
+  asks:
+    default: "[]"
+    description: The asks that run left, as its result holds them.
+
+# `final`: every outcome is, so a run of this shadow never shows its item as stopped. No
+# binding starts from it.
+returns: { node: end, outcome: outcome, final: [recorded, none], summary: summary }
+
+nodes:
+  # A link run that waits ends `waiting` with or without an ask. Count the asks, so the
+  # agent is not started to say there are none.
+  - id: given
+    runtime: bun
+    mutates_checkout: false
+    with:
+      asks: $INPUTS.asks
+    script: |
+      import { emit, input } from 'archon:script';
+      let asks: unknown = [];
+      try { asks = JSON.parse(input('asks') || '[]'); } catch {}
+      emit({ asks: Array.isArray(asks) ? asks.length : 0 });
+
+  - id: attend
+    depends_on: [given]
+    when: "$given.output.asks > 0"
+    command: attend
+    mutates_checkout: false
+    output_format:
+      type: object
+      additionalProperties: false
+      properties:
+        answers:
+          type: array
+          description: 'One entry for each ask the run left that is still open.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              ref: { type: string, description: 'The ask''s ref, `ask:<id>`, as the item lists it.' }
+              would: { type: string, description: 'The id of the option you would choose, exactly as the ask offers it; or `escalate` when you would bring the ask to the operator instead.' }
+              text: { type: string, description: 'The answer text you would give with it, which the next stage reads as a decision. When you escalate: what you would tell the operator.' }
+              why: { type: string, description: 'Why that answer, or why it is the operator''s. One to three sentences.' }
+              confidence: { type: string, enum: [high, medium, low] }
+              read: { type: string, description: 'What you read that the asking stage did not have: earlier rounds, earlier answers or rulings, the code. Empty when nothing.' }
+            required: [ref, would, text, why, confidence, read]
+        summary: { type: string, description: 'One line for whoever reads this item later.' }
+      required: [answers, summary]
+
+  # What the shadow would have done, as records for `archon metrics`: one pair per ask,
+  # under the ask's ref. It acts on nothing.
+  - id: end
+    depends_on: [given, attend]
+    trigger_rule: none_failed_min_one_success
+    runtime: bun
+    mutates_checkout: false
+    with:
+      attend: $attend.output
+    script: |
+      import { emit, input } from 'archon:script';
+      let said: any = null;
+      try { said = JSON.parse(input('attend') || 'null'); } catch {}
+      const answers: any[] = Array.isArray(said?.answers) ? said.answers : [];
+      const count = (name: string, subject: string, value: number) => ({ name, unit: 'asks', subject, kind: 'count', value });
+      emit({
+        outcome: answers.length ? 'recorded' : 'none',
+        summary: String(said?.summary ?? ''),
+        answers,
+        metrics: answers.flatMap(a => {
+          const escalates = a.would === 'escalate';
+          return [count('sf.attend_would_answer', String(a.ref), escalates ? 0 : 1), count('sf.attend_would_escalate', String(a.ref), escalates ? 1 : 0)];
+        }),
+      });
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [recorded, none] }
+        summary: { type: string }
+        answers: { type: array }
+      required: [outcome, summary, answers]
