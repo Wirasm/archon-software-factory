@@ -596,6 +596,8 @@ bindings:
       answers: { item: answers }
       change: { result: /change }
       noticed: { result: /noticed }
+  # `other` (the operator's own words) goes to the builder like a send-back: the builder
+  # reads the answer and carries it out. Without this, an `other` answer starts nothing.
   stage-build-after-landgate-answers:
     workflow: stage-build
     resource: stage-build
@@ -604,7 +606,7 @@ bindings:
     asks_settled:
       workflow: landgate
       settled: answered
-      option: send-back
+      option: [send-back, other]
       checkout: asking-run
     inputs:
       item: { input: item }
@@ -720,7 +722,7 @@ bindings:
     asks_settled:
       workflow: land
       settled: answered
-      option: send-back
+      option: [send-back, other]
       checkout: asking-run
     inputs:
       item: { input: item }
@@ -772,7 +774,7 @@ bindings:
     asks_settled:
       workflow: stage-build
       settled: answered
-      option: send-back
+      option: [send-back, other]
       checkout: asking-run
     inputs:
       item: { input: item }
@@ -816,7 +818,7 @@ bindings:
     asks_settled:
       workflow: stage-check
       settled: answered
-      option: [send-back, one-more-round]
+      option: [send-back, one-more-round, other]
       checkout: asking-run
     inputs:
       item: { input: item }
@@ -861,7 +863,7 @@ bindings:
     asks_settled:
       workflow: stage-host
       settled: answered
-      option: send-back
+      option: [send-back, other]
       checkout: asking-run
     inputs:
       item: { input: item }
