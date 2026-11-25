@@ -7,7 +7,9 @@
     "sf.landgate_would_land": "Changes the land policy would have landed without asking",
     "sf.link_would_wait": "Items that would have waited on work outside their order",
     "sf.admit_would_start": "Items that could have started without an operator",
-    "sf.admit_would_ask": "Items an operator would have been asked about"
+    "sf.admit_would_ask": "Items an operator would have been asked about",
+    "sf.attend_would_answer": "Asks the attend shadow would have answered",
+    "sf.attend_would_escalate": "Asks the attend shadow would have left to an operator"
   },
   "cards": [
     {

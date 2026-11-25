@@ -80,6 +80,13 @@ inputs:
       project's root, for example `cargo test && cargo clippy -- -D warnings`.
       The land stage runs it when the project has no host. Empty means none is
       declared: the land stage then uses the check the maintainers use and says which.
+  attend_policy:
+    default: ""
+    description: >-
+      Path to the project's own attend policy, a document that adds to or narrows
+      which asks the attend shadow must leave to an operator. Relative to the
+      project, or absolute. Empty means the pack's list applies alone. Shadow only
+      for now: the answers are recorded and nothing acts on them.
   product_policy:
     default: ""
     description: >-
@@ -838,3 +845,78 @@ bindings:
     inputs:
       change: { result: /change }
       answers: { answers: true }
+
+  # The attend shadow, since 2026-11-25: when a stage's run ends with asks, an agent records
+  # the answer it would give to each. It answers nothing and starts nothing. Each binding
+  # names the endings of its stage that carry asks and never stop an item without one: a
+  # run whose end starts anything no longer shows its item as stopped. So a split that ends
+  # `waiting` and a plan that ends `stop` are left out. `overlap: skip`, because a start that
+  # waited could begin after a later run stopped the item, and starting closes that stop.
+  # A skipped start is a missed measurement and nothing more. The land gate's and the land
+  # stage's asks are left out: they are always the operator's, so a run would only say so.
+  attend-after-plan:
+    workflow: attend
+    resource: attend
+    capacity: 2
+    overlap: skip
+    run_ended:
+      workflow: plan
+      outcome: ask
+    inputs:
+      stage: plan
+      asks: { result: /asks }
+  attend-after-link:
+    workflow: attend
+    resource: attend
+    capacity: 2
+    overlap: skip
+    run_ended:
+      workflow: link
+      outcome: [waiting, fold]
+    inputs:
+      stage: link
+      asks: { result: /asks }
+  attend-after-split:
+    workflow: attend
+    resource: attend
+    capacity: 2
+    overlap: skip
+    run_ended:
+      workflow: split
+      outcome: [whole, split]
+    inputs:
+      stage: split
+      asks: { result: /asks }
+  attend-after-stage-build:
+    workflow: attend
+    resource: attend
+    capacity: 2
+    overlap: skip
+    run_ended:
+      workflow: stage-build
+      outcome: ask
+    inputs:
+      stage: stage-build
+      asks: { result: /asks }
+  attend-after-stage-check:
+    workflow: attend
+    resource: attend
+    capacity: 2
+    overlap: skip
+    run_ended:
+      workflow: stage-check
+      outcome: ask
+    inputs:
+      stage: stage-check
+      asks: { result: /asks }
+  attend-after-stage-host:
+    workflow: attend
+    resource: attend
+    capacity: 2
+    overlap: skip
+    run_ended:
+      workflow: stage-host
+      outcome: ask
+    inputs:
+      stage: stage-host
+      asks: { result: /asks }
