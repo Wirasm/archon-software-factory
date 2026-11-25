@@ -150,7 +150,7 @@ nodes:
   # the prompt in commands/exhausted.md. The options are the stage's: the recommendation names one.
   - id: exhausted
     depends_on: [limit, sizes]
-    when: "$limit.output.state == 'used_up' && $verdict.output.outcome == 'return'"
+    when: "$limit.output.state == 'used_up'"
     command: exhausted
     model: ['@judge', medium]
     mutates_checkout: false

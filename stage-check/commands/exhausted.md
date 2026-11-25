@@ -1,6 +1,6 @@
 # The rounds ran out: what should happen to this change?
 
-A change was built and checked, sent back to its builder and checked again, and the rounds this stage allows are used up. The checks still return it. Do not fix anything and do not judge the change again. Decide what to ask the operator, and what you would recommend.
+A change was built and checked, sent back to its builder and checked again, and the rounds this stage allows are used up. The checks still return it, or say it should be planned again and it has been planned as often as it may without an operator. Do not fix anything and do not judge the change again. Decide what to ask the operator, and what you would recommend.
 
 The item:
 
