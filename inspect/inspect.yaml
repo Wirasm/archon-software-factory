@@ -104,7 +104,6 @@ nodes:
     with:
       item: $read.output.item
       answers: $INPUTS.answers
-      base: $base.output
       review_policy: $INPUTS.review_policy
       reports: |
         ## From the review (is the change right against the item)

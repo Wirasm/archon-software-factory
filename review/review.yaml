@@ -13,9 +13,6 @@ inputs:
     description: Decisions an operator already made on this item.
   base:
     description: The commit the change was built on.
-  plan:
-    default: "No plan was given."
-    description: What plan concluded, as its result. Its `not_doing` names what the change leaves alone.
   review_policy:
     default: ""
     description: The pack setting of the same name, declared here so a workflow that includes this stage can pass it through.

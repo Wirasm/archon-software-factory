@@ -18,8 +18,9 @@ inputs:
   plan:
     default: "No plan was given."
     description: What plan concluded, as its result. Its `not_doing` names what the change leaves alone.
-  base:
-    description: The commit the change was built on.
+  sizes:
+    default: "Not measured: this change was checked on no item."
+    description: The change's size at the end of each delivery run on the item since it was last planned, and now, against the commit it is built on.
   review_policy:
     default: ""
     description: The pack setting of the same name, declared here so a workflow that includes this stage can pass it through.
@@ -112,6 +113,6 @@ nodes:
                 required: [option, why]
               from: { type: string, description: 'The check that left it.' }
             required: [question, context, options, recommendation, from]
-        growth: { type: string, description: 'How the change''s size moved across its rounds, from `git diff --shortstat` at each run''s commit, and after which return it grew.' }
+        growth: { type: string, description: 'How the change''s size moved across its rounds, from the sizes you were given, and after which return it grew.' }
         for_next: { type: string, description: 'Anything the maintainer deciding on this change needs from you that has no field here. Write it to them.' }
       required: [outcome, summary, findings, notes, disagreements, noticed, asks, growth, for_next]

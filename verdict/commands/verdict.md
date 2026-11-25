@@ -48,4 +48,8 @@ The outcome follows from the reports and is not yours to judge:
 - otherwise **ask** when any report leaves an ask.
 - otherwise **approve**.
 
-Before you write the summary, look at how this change's size moved across its rounds. Each run on this item records the commit it ended at: `archon workflow runs --item-of $WORKFLOW_ID --json` lists them with `resultCommit`, and `git diff --shortstat $INPUTS.base...<commit>` gives the size at each; a change checked on no item has one round. Say in `growth` how it moved and after which return. A change that grew a lot after a return is a fact to weigh when you say what kind a finding on the new part is, not a rule.
+Before you write the summary, look at how this change's size moved across its rounds. Its size at the end of each delivery run on this item since it was last planned, and now, in files and lines added and removed against the commit it is built on:
+
+$INPUTS.sizes
+
+Say in `growth` how it moved and after which return. A change that grew a lot after a return is a fact to weigh when you say what kind a finding on the new part is, not a rule.

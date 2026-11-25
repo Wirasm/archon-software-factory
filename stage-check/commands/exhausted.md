@@ -23,4 +23,8 @@ Leave one ask. Its question is what should happen to this change now. Its contex
 
 Recommend one. When you have no basis to choose, recommend none: the operator then sees that the ask has no recommendation, which is better than a guess. Say why you cannot choose and what you would need to know to choose: the operator reads that in place of a recommendation. A finding that comes back in the same kind twice is the strongest signal you have. You are given only the last round's result above, so read the earlier rounds before you recommend: `archon workflow runs --item-of $WORKFLOW_ID` lists this item's runs, and `archon workflow get <run id> --json` holds what each earlier round of this stage returned and what an operator answered. Say what kind of finding each round returned, whether a kind came back, and what an operator already decided on it.
 
-Look also at how the change's size moved. Each run on the item records the commit it ended at, as `resultCommit` in that list with `--json`, and `git diff --shortstat <base>...<commit>` gives the size at each, where the base is `git merge-base` of the change and the branch it is proposed against. Say in the context how it moved and after which return. A change that grew a lot after a return, and is returned for what it grew, points to removing what was added rather than another round of adding.
+Look also at how the change's size moved. Its size at the end of each delivery run on this item since it was last planned, and now, in files and lines added and removed against the commit it is built on:
+
+$sizes.output
+
+Say in the context how it moved and after which return. A change that grew a lot after a return, and is returned for what it grew, points to removing what was added rather than another round of adding.

@@ -16,7 +16,7 @@ inputs:
     description: Decisions an operator already made on this item.
   plan:
     result_of: plan
-    description: What plan concluded, as its result. The review and the verdict read what it leaves alone.
+    description: What plan concluded, as its result. The verdict reads what it leaves alone.
   change:
     default: ""
     description: Where the change is proposed, as the builder reported it.
@@ -63,6 +63,15 @@ nodes:
       [ -n "$onto" ] || onto=$BASE_BRANCH
       git merge-base HEAD "origin/$onto" 2>/dev/null || git merge-base HEAD "$onto"
 
+  # The change's size at the end of each delivery run since the item was last planned, and
+  # now, for the verdict and the exhausted ask. Temporary: the engine is to report it (issue 6261).
+  - id: sizes
+    depends_on: [base]
+    runtime: bun
+    script: sizes
+    with:
+      base: $base.output
+
   # Each check starts with a fresh context and is told what was returned last round and
   # what the builder says it did about it. Both arrive as this run's inputs, from the
   # result of the build run that ended before it.
@@ -73,7 +82,6 @@ nodes:
       item: $INPUTS.item
       answers: $INPUTS.answers
       base: $base.output
-      plan: $INPUTS.plan
       review_policy: $INPUTS.review_policy
       returned_before: $INPUTS.returned_before
       builder_reply: $INPUTS.builder_reply
@@ -100,12 +108,12 @@ nodes:
 
   - id: verdict
     include: verdict
-    depends_on: [review, tests, product]
+    depends_on: [review, tests, product, sizes]
     with:
       item: $INPUTS.item
       answers: $INPUTS.answers
       plan: $INPUTS.plan
-      base: $base.output
+      sizes: $sizes.output
       review_policy: $INPUTS.review_policy
       reports: |
         ## From the review (is the change right against the item)
@@ -141,7 +149,7 @@ nodes:
   # round is not automatic: an agent reads what is left and recommends what to do, with
   # the prompt in commands/exhausted.md. The options are the stage's: the recommendation names one.
   - id: exhausted
-    depends_on: [limit]
+    depends_on: [limit, sizes]
     when: "$limit.output.state == 'used_up' && $verdict.output.outcome == 'return'"
     command: exhausted
     model: ['@judge', medium]
