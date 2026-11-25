@@ -30,7 +30,7 @@ The review policy says what returns a change and what is a note. Read the pack's
 
 Something that worked before this change and does not after is never beside: it is inside when the item asked for the part that broke it, and caused by the change when it did not. Then sort it into one of three:
 
-- **a finding**: inside or caused by, and it must change before this lands. It goes back to the builder.
+- **a finding**: inside or caused by, and it must change before this lands. It goes back to the builder. Your findings are all the builder is given from this round: it does not see the reports. Write each so it can be fixed from your words alone: where it is, the evidence as the report gave it, and for one caused by the change, what to remove or shrink. When two reports found the same thing, it is one finding.
 - **a note**: inside or caused by, real, and on the record, and it does not return the change. Keep its evidence.
 - **noticed**: beside the item. The project hears of it and files it; the builder does not fix it here, and it never returns the change.
 
@@ -52,7 +52,7 @@ The outcome follows from the reports and is not yours to judge:
 - otherwise **ask** when any report leaves an ask.
 - otherwise **approve**.
 
-Before you write the summary, look at how this change's size moved across its rounds. Its size at the end of each delivery run on this item since it was last planned, and now, in files and lines added and removed against the commit it is built on:
+Before you write the summary, look at how this change's size moved across its rounds. Its size at the end of each delivery run on this item since it was last planned, in files and lines added and removed against the commit the item's work was cut from, as the engine recorded it (`null` where it could not measure):
 
 $INPUTS.sizes
 

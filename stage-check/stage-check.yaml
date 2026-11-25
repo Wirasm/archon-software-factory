@@ -63,14 +63,12 @@ nodes:
       [ -n "$onto" ] || onto=$BASE_BRANCH
       git merge-base HEAD "origin/$onto" 2>/dev/null || git merge-base HEAD "$onto"
 
-  # The change's size at the end of each delivery run since the item was last planned, and
-  # now, for the verdict and the exhausted ask. Temporary: the engine is to report it (issue 6261).
+  # The change's size at the end of each delivery run since the item was last planned, as
+  # the engine recorded it, for the verdict and the exhausted ask.
   - id: sizes
-    depends_on: [base]
     runtime: bun
+    mutates_checkout: false
     script: sizes
-    with:
-      base: $base.output
 
   # Each check starts with a fresh context and is told what was returned last round and
   # what the builder says it did about it. Both arrive as this run's inputs, from the
@@ -194,27 +192,23 @@ nodes:
       exhausted: { from: $exhausted.output, if_skipped: "" }
       next: ""      # build stage only
       checked: ""   # host stage only
-      # What the builder gets when this round returns the change: where it is proposed, the
-      # verdict, then the three reports as written, because a merged finding can be shorter
-      # than its source.
+      # What the builder gets when this round returns the change: where it is proposed and
+      # the verdict's findings, each once. The verdict is the one place that has the item,
+      # the plan and all three reports, and it has already sorted them: its notes and what
+      # the checks noticed beside the item are for the maintainers, on the change's report,
+      # and reach the builder nowhere. The three reports are not handed on.
       returned: |
         The change is proposed at $INPUTS.change
 
-        ## What the checks returned, merged from three reports
+        ## What must change before this lands
 
-        $verdict.output
+        $verdict.output.findings
 
-        ## From the review
+        ## How the change grew across its rounds
 
-        $review.output
+        $verdict.output.growth
 
-        ## From the test check
-
-        $tests.output
-
-        ## From the product review
-
-        $product.output
+        These findings are everything that returned the change. The checks also left notes and things they noticed beside the item; those are on the change's report for the maintainers and are not yours to act on.
     output_format:
       type: object
       properties:

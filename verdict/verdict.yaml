@@ -20,7 +20,7 @@ inputs:
     description: What plan concluded, as its result. Its `reaches` says who the outcome is for, and its `not_doing` what the change leaves alone.
   sizes:
     default: "Not measured: this change was checked on no item."
-    description: The change's size at the end of each delivery run on the item since it was last planned, and now, against the commit it is built on.
+    description: The change's size at the end of each delivery run on the item since it was last planned, as the engine recorded it.
   review_policy:
     default: ""
     description: The pack setting of the same name, declared here so a workflow that includes this stage can pass it through.

@@ -989,7 +989,8 @@ bindings:
       asks: { result: /asks }
 
   # The complexity shadow, since 2026-11-25: how complex an item is to get right, judged at
-  # triage and again after each build, and compared. It starts nothing and changes nothing.
+  # triage. It starts nothing and changes nothing. (A second judgment after each build was
+  # dropped the same day: it said `involved` for nearly every change and told nothing.)
   # It runs as its own workflow so a failure in it can never fail the stage it watches. The
   # endings it starts on always start another stage too, so starting it never hides an item
   # that stopped. `overlap: skip`: a skipped start is a missed measurement and nothing more.
@@ -1002,19 +1003,4 @@ bindings:
       workflow: triage
       outcome: [build, narrow]
     inputs:
-      at: triage
       item: { input: item }
-  complexity-after-build:
-    workflow: complexity
-    resource: complexity
-    capacity: 2
-    overlap: skip
-    run_ended:
-      workflow: stage-build
-      outcome: [built, built_for_host]
-      checkout: ended-run
-    inputs:
-      at: build
-      item: { input: item }
-      land_on: { input: land_on }
-      change: { result: /change }
