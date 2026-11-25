@@ -54,7 +54,10 @@ nodes:
 
   # Builds the ask for a judgment that does not start the next stage by itself.
   - id: verdict
+    # all_done: the include's last nodes (the admit shadow) are skipped for every
+    # judgment but build and narrow, and this node must run after every judgment.
     depends_on: [judge]
+    trigger_rule: all_done
     runtime: bun
     mutates_checkout: false
     with:
