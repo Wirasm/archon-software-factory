@@ -197,3 +197,8 @@
   - Why: the stage's own summary said the refusal was machinery this change added. Landing a new way for install to fail in order to fix a spelling problem was a bad trade.
   - What followed: the round did what was asked; round 4 found a fourth case of the same kind and I then took it as is. A blind review later preferred the other pack's change for this issue (half the code, no ID migration) and marked this one's extras as a risk, including the distinct status value I had asked for.
   - Lesson: narrowing a grown change by hand does not make it the small change. The scope rule (findings beside the item never return a change; a finding caused by the change is fixed by removing what caused it) has to act from round one.
+
+- 2026-11-25, issue-6190 (PR 6232), stage-check ended `replan` with its replan starts used up, so the stage left the generic "work stopped" ask with no recommendation (run 71672ff4). Answered take-as-is against the verdict's replan.
+  - Why: the item's outcome was met and the product check approved. The two findings left were the refusal wording for a short run id typed inside an unregistered bare repository, and the message for an omitted id. Five rounds had each found one more directory layout; this one is not a place an operator works.
+  - Pack gap seen: the exhausted-rounds agent only judges when the verdict is `return`. A verdict of `replan` with its starts used up skips it, and the operator gets an ask with no judgment. The agent should judge that case too.
+  - Run metadata: reviewer and test-checker gpt-6.2-sol; scope rule (three kinds) live since earlier the same day; this item's plan predates it.
