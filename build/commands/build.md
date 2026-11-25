@@ -20,7 +20,7 @@ What the last delivery run on this item ended with (`null` when there was none):
 
 $INPUTS.before
 
-When it names a change that is already proposed, continue that change on its branch; do not open a second one.
+When it names a change that is already proposed, continue that change on its branch; do not open a second one. When the plan or an operator's decision says to start over instead, the new change replaces the old one: once yours is open, close the old one without merging (`archon forge pr.close`), with a comment that names your change as the one that replaces it. Its branch stays. An item has one open change at a time.
 
 The plan names under `carried_by` what in the project carries this outcome, and under `disappears` what the change removes. Build on that owner. When you find yourself adding a branch, a guard, a flag passed through layers or a second place that knows the same rule, and the plan did not name it, stop and look for the shape where the owner carries it; when there is none, say so in your notes, since the plan was wrong about the design and whoever reads the change needs to know.
 

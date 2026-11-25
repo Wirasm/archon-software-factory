@@ -19,7 +19,7 @@ Leave one ask. Its question is what should happen to this change now. Its contex
 - replan: the approach cannot meet the item, so more rounds will not help. Right when the same kind of finding keeps coming back.
 - split: the change is too wide to get right in one piece. Right when each round finds a new real defect somewhere else.
 - drop: the change is closed without merging. Right when the item is no longer worth this change.
-- reshape: the change stays open as a draft and the item is shaped again with the operator. Right when what is open is what the item should be, not how it was built.
+- reshape: the change is closed, its branch kept, and the item is shaped again with the operator. Right when what is open is what the item should be, not how it was built.
 
 Recommend one. When you have no basis to choose, recommend none: the operator then sees that the ask has no recommendation, which is better than a guess. Say why you cannot choose and what you would need to know to choose: the operator reads that in place of a recommendation. A finding that comes back in the same kind twice is the strongest signal you have. You are given only the last round's result above, so read the earlier rounds before you recommend: `archon workflow runs --item-of $WORKFLOW_ID` lists this item's runs, and `archon workflow get <run id> --json` holds what each earlier round of this stage returned and what an operator answered. Say what kind of finding each round returned, whether a kind came back, and what an operator already decided on it.
 

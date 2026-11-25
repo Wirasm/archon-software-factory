@@ -201,7 +201,7 @@ Except for plan and split, a stage's options are declared in its workflow (`retu
 | `drop` | The close step: the change is closed without merging, with your answer written on it. The item ends. On a link ask there is no change yet: the link stage ends `dropped`. |
 | `wait` | The link stage, which ends `waiting` again. The item goes on when what it waits on lands. |
 | `start-anyway` | The link stage, which ends the item's links to what it waited on and ends `place`, so plan starts. On an ask about two items that overlap, the item is planned as it is. |
-| `reshape` | The close step: the change stays open as a draft, with your answer written on it. Nothing more is built until the item is shaped again. |
+| `reshape` | The close step: the change is closed without merging, its branch kept, with your answer written on it. Nothing more is built until the item is shaped again; the next build starts a new change. |
 
 When a run left several asks, answer all of them: the next stage starts when the last one is answered. For build, check, host and landing asks it starts only when every answer chose the same option. `archon workflow answer` says so when a settlement starts nothing.
 

@@ -38,7 +38,7 @@ An ask is how your run ends. Your result is the asks, and nothing that follows y
 
 When they are answered, this same work runs again with the answers as decisions already made. That run finishes what yours could not.
 
-In delivery the operator's answer also picks what happens next, from five routes: `send-back` (the builder continues with the answer), `replan`, `take-as-is` (the change goes on as it is and nothing more is built), `drop` (the change is closed without merging) and `reshape` (the change stays open as a draft until the item is shaped again). An option the builder should carry out needs nothing from you: it is shown as a send-back. When an option of yours is itself one of the other four, such as "leave it as it is" or "plan it again", give it that route's id, so your recommendation is not shown as a send-back.
+In delivery the operator's answer also picks what happens next, from five routes: `send-back` (the builder continues with the answer), `replan`, `take-as-is` (the change goes on as it is and nothing more is built), `drop` (the change is closed without merging) and `reshape` (the change is closed, its branch kept, until the item is shaped again). An option the builder should carry out needs nothing from you: it is shown as a send-back. When an option of yours is itself one of the other four, such as "leave it as it is" or "plan it again", give it that route's id, so your recommendation is not shown as a send-back.
 
 So before you end:
 

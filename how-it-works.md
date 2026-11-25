@@ -74,7 +74,7 @@ The host round reads what the project's own CI and the reviewers on the pull req
 - **Land.** Merges the change into its landing branch: the project's base branch, or the branch its work order names.
 - **Landed check.** Looks at the branch after the landing, and starts a fix when the change broke it.
 - **Discoveries.** What the agents noticed along the way becomes new work.
-- **Close.** A change you dropped is closed with your reason; one you sent back to shaping stays open as a draft.
+- **Close.** A change you dropped is closed with your reason; one you sent back to shaping is closed too, its branch kept, and the item waits to be shaped again.
 
 ## You
 

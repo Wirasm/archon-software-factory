@@ -47,8 +47,8 @@ returns:
       does: The change is closed without merging and the item ends here. Your answer is written on the change as the reason.
       cost: The work on this change is given up; its branch stays.
     - id: reshape
-      does: The change stays open as a draft and nothing more is built until the item is shaped again. Your answer is written on the change.
-      cost: The item waits for shaping, and the draft can stop merging while it does.
+      does: The change is closed without merging, its branch kept, and nothing more is built until the item is shaped again. Your answer is written on the change.
+      cost: The item waits for shaping, and the next build starts a new change from what is decided then.
 
 nodes:
   - id: land
