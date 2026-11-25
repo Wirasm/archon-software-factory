@@ -852,7 +852,8 @@ bindings:
   # run whose end starts anything no longer shows its item as stopped. So a split that ends
   # `waiting` and a plan that ends `stop` are left out. `overlap: skip`, because a start that
   # waited could begin after a later run stopped the item, and starting closes that stop.
-  # A skipped start is a missed measurement and nothing more.
+  # A skipped start is a missed measurement and nothing more. The land gate's and the land
+  # stage's asks are left out: they are always the operator's, so a run would only say so.
   attend-after-plan:
     workflow: attend
     resource: attend
@@ -918,26 +919,4 @@ bindings:
       outcome: ask
     inputs:
       stage: stage-host
-      asks: { result: /asks }
-  attend-after-landgate:
-    workflow: attend
-    resource: attend
-    capacity: 2
-    overlap: skip
-    run_ended:
-      workflow: landgate
-      outcome: ask
-    inputs:
-      stage: landgate
-      asks: { result: /asks }
-  attend-after-land:
-    workflow: attend
-    resource: attend
-    capacity: 2
-    overlap: skip
-    run_ended:
-      workflow: land
-      outcome: [ask, stop]
-    inputs:
-      stage: land
       asks: { result: /asks }
