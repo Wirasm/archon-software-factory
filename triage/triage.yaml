@@ -18,13 +18,29 @@ inputs:
     default: "[]"
     description: Keys of the items the order says must land before this one, as JSON. The order stage's result carries them.
 
-# `final`: the outcomes after which the item needs nothing more. A run that ends in any
-# other outcome, starts nothing and leaves no ask shows the item as stopped in attention,
-# with `summary` as the reason.
-# No judgment is final: `build`, `narrow` and `split` start the next stage, and every other
-# one is a call a maintainer has to see and act on (shape it, close it, fold it, park it),
-# so the item shows as stopped with the reason until someone does.
-returns: { node: judge, outcome: recommend, summary: why }
+# Every judgment but `build`, `narrow` and `split` is a call a maintainer has to make
+# (shape it, close it, fold it, park it), so the `verdict` node leaves an ask with the
+# judgment, its reason and its options. The ask shows in attention; its answer starts
+# the next stage: `build` the link stage, `split` the split stage, `drop` and `reshape`
+# the close stage, which ends the item or leaves it waiting to be shaped.
+returns:
+  node: verdict
+  outcome: outcome
+  asks: asks
+  summary: why
+  options:
+    - id: build
+      does: The item is built as it stands. It goes on to the link stage and then to plan.
+      cost: Work starts on something triage judged should not be built as it is.
+    - id: split
+      does: The item is split into smaller items, each ordered and triaged on its own.
+      cost: One split run; the pieces may still need shaping.
+    - id: reshape
+      does: Nothing is built. The item waits to be shaped, with triage's open questions on it.
+      cost: It stays open until someone shapes it and orders it again.
+    - id: drop
+      does: Nothing is built and the item ends here. Your answer is the reason.
+      cost: The work it asked for is not done under this item.
 
 nodes:
   - id: judge
@@ -35,3 +51,46 @@ nodes:
       members: $INPUTS.members
       depends_on: $INPUTS.depends_on
       admit_policy: $INPUTS.admit_policy
+
+  # Builds the ask for a judgment that does not start the next stage by itself.
+  - id: verdict
+    depends_on: [judge]
+    runtime: bun
+    mutates_checkout: false
+    with:
+      judged: $judge.output
+    script: |
+      import { emit, input } from 'archon:script';
+      const j = JSON.parse(input('judged'));
+      const verb = String(j.recommend ?? '');
+      const goesOn = ['build', 'narrow', 'split'].includes(verb);
+      // What each of triage's own verbs means as one of the ask's options.
+      const asOption: Record<string, string> = {
+        build: 'build', narrow: 'build', split: 'split',
+        shape: 'reshape', recipe: 'reshape', native: 'reshape', fold: 'reshape',
+        park: 'drop', deprecate: 'drop', decline: 'drop', close: 'drop',
+      };
+      const options = (j.options ?? []).map((o: any) => `- ${o.verb}: ${o.does} Cost: ${o.cost}`).join('\n');
+      const open = (j.open_questions ?? []).map((q: string) => `- ${q}`).join('\n');
+      const context = [
+        j.summary,
+        `Triage recommends ${verb}: ${j.why}`,
+        options ? `The options triage weighed:\n${options}` : '',
+        open ? `What has to be decided before it can be planned:\n${open}` : '',
+      ].filter(Boolean).join('\n\n');
+      emit({
+        outcome: verb,
+        why: j.why,
+        asks: goesOn ? [] : [{
+          question: `Triage recommends "${verb}" for this item, so nothing is built yet. Build it anyway, split it, keep it for shaping, or drop it?`,
+          context,
+          recommendation: { option: asOption[verb] ?? null, why: j.why },
+          artifacts: [],
+        }],
+      });
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [build, narrow, split, shape, recipe, native, fold, park, deprecate, decline, close] }
+        why: { type: string }
+      required: [outcome, why]

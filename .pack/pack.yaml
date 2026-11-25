@@ -296,6 +296,44 @@ bindings:
   # member this split started, once, and from there a member goes through triage like
   # any other item. Waiting: nothing starts.
   # An answer on an ask the split left starts the split again.
+  # A triage judgment that does not build leaves an ask (see triage.yaml). Its answer
+  # starts what the operator chose.
+  link-after-triage-answers:
+    workflow: link
+    resource: link
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: triage
+      settled: answered
+      option: build
+    inputs:
+      answers: { item: answers }
+  split-after-triage-answers:
+    workflow: split
+    resource: split
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: triage
+      settled: answered
+      option: split
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      judgment: { result: "" }
+      answers: { item: answers }
+  close-after-triage-answers:
+    workflow: close
+    resource: close
+    capacity: 2
+    overlap: queue
+    asks_settled:
+      workflow: triage
+      settled: answered
+      option: [drop, reshape]
+    inputs:
+      answers: { answers: true }
   split-after-triage:
     workflow: split
     resource: split
