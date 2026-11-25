@@ -57,6 +57,8 @@ nodes:
           items: { type: string }
           description: 'For each thing the item asks for, how the change will be shown to do it.'
         reaches: { type: string, description: 'Who or what is meant to see or use the outcome, through which path, and what would show that it arrives there.' }
+        carried_by: { type: string, description: 'The existing primitive or owner that carries the outcome, where it lives, and why the change extends it and does not add beside it. Or: that nothing carries it, what you looked at, and where the new thing belongs.' }
+        disappears: { type: string, description: 'What the change removes or makes unnecessary: a branch, a guard, a copy of a rule, a special case, a superseded path. Nothing, when it only adds, with why no smaller shape exists.' }
         not_doing:
           type: array
           items: { type: string }
@@ -64,4 +66,4 @@ nodes:
         stop: { type: string, description: 'Why it cannot be planned, and what has to happen first. Empty otherwise.' }
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
         for_next: { type: string, description: 'Anything the engineer who builds this needs from you that has no field here. Write it to them.' }
-      required: [outcome, options, recommend, why, plan, proves, reaches, not_doing, stop, notes, for_next]
+      required: [outcome, options, recommend, why, plan, proves, reaches, carried_by, disappears, not_doing, stop, notes, for_next]

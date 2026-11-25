@@ -20,6 +20,8 @@ $INPUTS.before
 
 When it names a change that is already proposed, continue that change on its branch; do not open a second one.
 
+The plan names under `carried_by` what in the project carries this outcome, and under `disappears` what the change removes. Build on that owner. When you find yourself adding a branch, a guard, a flag passed through layers or a second place that knows the same rule, and the plan did not name it, stop and look for the shape where the owner carries it; when there is none, say so in your notes, since the plan was wrong about the design and whoever reads the change needs to know.
+
 When it returns findings, ask first of each one whether the thing it is about needs to exist for the item. When it does not, remove it or shrink it until the finding no longer applies; that is the fix, and a smaller change is the better one. Do not add cases, guards or paths to something the item did not ask for, and leave alone what the plan lists under `not_doing`.
 
 The build policy is what this project's maintainers hold the code of a change to. Read the pack's default at `$PACK_DIR/policy/build.md`. Then read the project's own at `$INPUTS.build_policy`, when one is named there. Where they differ, the project's wins.
