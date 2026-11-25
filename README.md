@@ -106,6 +106,16 @@ archon pack bindings Wirasm.archon-software-factory --repo github.com/<owner>/<n
 | `--cwd` | The checkout runs launch in. It is written as an absolute path. |
 | `--out` | A directory of your choice for the files. Keep it: you fire the order file from it. |
 
+The command needs the project's base branch, the branch changes land on. It reads it from the checkout's remote, so on a fresh setup check two things first:
+
+- **The remote can be reached.** `git -C <path to the checkout> ls-remote origin HEAD` prints a line. A remote that exists but cannot be read (a typo, a private repository without credentials) fails the command with `repository not found`, and nothing is written.
+- **Or the base branch is named.** For a checkout with no remote, or one you do not want read, name the branch in the project's `.archon/config.yaml`:
+
+  ```yaml
+  worktree:
+    baseBranch: main
+  ```
+
 The command prints what it wrote in four groups. Act on each:
 
 - **Run-ended bindings** and **asks-settled bindings**: register every one. The command prints an `archon trigger add '<file>'` line for each, about sixty-five of them. Run those lines, or register them in one go: every generated file except the order file and the label file.
