@@ -209,24 +209,13 @@ Delivery keeps one report on the pull request and replaces it after every round:
 
 ## Install the skill
 
-The pack ships a skill at [`skill/archon-software-factory/`](skill/archon-software-factory/SKILL.md) that teaches a coding agent to operate the factory: where every item is, what waits on an operator, ordering, answering asks, pausing, and what to check when a session starts. There is no installer yet. Copy the folder into the project your agent works in:
+The pack ships a skill at [`skill/archon-software-factory/`](skill/archon-software-factory/SKILL.md) that teaches a coding agent to operate the factory: where every item is, what waits on an operator, ordering, answering asks, pausing, and what to check when a session starts. Install it from the project your agent works in, after the pack itself is installed:
 
 ```bash
-git clone https://github.com/Wirasm/archon-software-factory
-mkdir -p <project>/.claude/skills <project>/.agents/skills
-cp -R archon-software-factory/skill/archon-software-factory <project>/.claude/skills/
-cp -R archon-software-factory/skill/archon-software-factory <project>/.agents/skills/
+archon skill add --pack Wirasm/archon-software-factory
 ```
 
-PowerShell:
-
-```powershell
-git clone https://github.com/Wirasm/archon-software-factory
-Copy-Item -Recurse -Force archon-software-factory\skill\archon-software-factory <project>\.claude\skills\archon-software-factory
-Copy-Item -Recurse -Force archon-software-factory\skill\archon-software-factory <project>\.agents\skills\archon-software-factory
-```
-
-Claude Code reads `.claude/skills/`; Codex reads `.agents/skills/`. Copy it again after a pack update. The skill builds on Archon's own `archon-cli` skill, which `archon skill add` installs into the same two folders.
+It copies the skill into `.claude/skills/archon-software-factory/` and `.agents/skills/archon-software-factory/`; Claude Code reads the first and Codex the second. Run it again after a pack update: it replaces both folders whole. The skill builds on Archon's own `archon-cli` skill, which `archon skill add` installs into the same two folders.
 
 ## Optional settings
 
@@ -524,7 +513,7 @@ Pass `--config` again if you used it. Then:
 3. If you use label intake, replace the binding object in your sources file with the new `...-order-on-label-<digest>.json`.
 4. Run `archon trigger check` and fix what it reports.
 5. Run `archon hold lift`.
-6. Copy the [skill](#install-the-skill) again.
+6. Install the [skill](#install-the-skill) again.
 
 The hold keeps a stage from ending in the middle of the update, when half the bindings are new. A run that started before the update finishes on the pack revision it started with.
 
@@ -674,7 +663,6 @@ It starts after these endings, the ones that carry asks: plan `ask`, link `waiti
 - **Changes built side by side can conflict.** A change that was ready stops merging when a sibling lands first. The land gate names the other open changes that touch the same files and the order it would land them in; nothing brings the later one up to date before its land is refused and it goes back to its builder. (The landed check used to name such siblings as a shadow. It named one in 41 runs and missed six of seven real conflicts, so it was removed.)
 - **The landing branch is enforced at the merge, not before it.** `land_on` reaches every stage, and the land stage merges only a change proposed against it: one proposed against another branch stops with an ask. Unless an operator records the branch on the item first ([landing branch](#landing-branch-and-work-that-is-part-of-a-larger-item)), the engine cuts the first worktree from the base branch, and only the build prompt moves the builder onto `land_on`. When the land stage merges through the forge, the engine records the merge and the branch on the item, so later work on the item is cut from it.
 - **After a landing, one result is acted on.** When the landed check finds the change broke its branch and writes a work order, that order starts as new work on the same item. Every other result of the landed check is only recorded.
-- **No skill installer.** The skill is copied by hand.
 - **No screenshots in the report.** The forge has no way to attach a file.
 
 ## License
