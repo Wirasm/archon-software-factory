@@ -4,7 +4,7 @@ A software factory that runs on [Archon](https://github.com/coleam00/Archon): it
 
 An **operator** is whoever runs the factory: a person, or more often that person's coding agent. This README is written for both.
 
-**Status: early, and it runs.** It has delivered real changes to Archon since 2026-11-13: triage, plan, build, three checks, a verdict and a read of the project's own CI, with asks where a decision belongs to an operator, and an answer that starts the next stage. It merges a ready change when the project's land policy or an operator says so. Nothing enters on its own. See [what is not there yet](#what-is-not-there-yet).
+**Status.** It has delivered real changes to Archon since 2026-11-13: triage, plan, build, three checks, a verdict and a read of the project's own CI, with asks where a decision belongs to an operator, and an answer that starts the next stage. It merges a ready change when the project's land policy or an operator says so. Nothing enters on its own. See [what is not there yet](#what-is-not-there-yet).
 
 This README is the setup document. For running the factory day to day, [install the pack's skill](#install-the-skill) and let your agent read it.
 
@@ -36,7 +36,7 @@ archon --version
 - **It prints a version.** Go on. A source install also prints its git commit.
 - **The command is not found.** Archon is a prerequisite and this pack never installs it. If you are an agent, stop and ask the person you act for before installing anything. The install instructions for macOS, Linux and Windows are at [archon.diy/getting-started/installation](https://archon.diy/getting-started/installation/). After installing, `archon doctor` lists the providers Archon can run.
 
-The pack is developed against Archon's `dev` branch and uses engine commands that are recent: `archon pack bindings`, `archon trigger add`, `archon trigger check`, `archon hold` and `archon workflow wake schedule`. If Archon rejects one of them as unknown, the install is older than the pack needs. Update it ([updating Archon](https://archon.diy/getting-started/updating/)), or run Archon from a source checkout on `dev`.
+The pack needs Archon 0.15.0 or later. It uses engine commands that are recent: `archon pack bindings`, `archon trigger add`, `archon trigger check`, `archon hold`, `archon workflow wake schedule` and `archon skill add --pack`. If Archon rejects one of them as unknown, the install is older than the pack needs: update it ([updating Archon](https://archon.diy/getting-started/updating/)).
 
 Then check that Archon can run an agent:
 
