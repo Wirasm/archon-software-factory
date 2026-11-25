@@ -37,7 +37,8 @@ Route by intent:
 | Use an Archon command this skill does not teach (resume, cancel, wait, logs) | the `archon-cli` skill |
 
 - Run every command from the project's checkout; the directory selects the project.
-- In run lists a stage reads as `Wirasm/archon-software-factory:<stage>`.
+- In run lists a stage reads as `Wirasm/archon-software-factory:<stage>`, or as the bare stage name when the pack is run from a folder. Other packs' runs and items share the lists: a factory item is one whose runs include `order`.
+- Answer and rule with `--as <a name for yourself>`, the same name every time, so the record says who decided.
 
 ## Each time a session starts
 
@@ -46,12 +47,17 @@ Do these before anything else, and tell the person what you found in a few lines
 1. `archon workflow status --json`: is the install hold set (`hold`), which runs are active,
    and which have a stalled tool call (`attention`).
 2. `archon workflow attention --json`: every open ask, and every item that stopped (`kind: stopped`,
-   with the stage, the outcome and why). Both wait on an operator. A stopped item takes no
-   answer: start the stage it needs, or order it again.
+   with the stage, the outcome and why), including one whose last run failed, a run whose
+   process is gone and a start that was refused. All of them wait on an operator. A stopped
+   item takes no answer: `items.md`, "An item that stopped or failed", says what to run.
+   An empty list means nothing recorded a stop; it does not prove every item is moving,
+   so do step 4 as well.
 3. `archon trigger check`: exits nonzero and names the file when a binding is broken.
    A broken binding refuses item runs on the whole install, so fix it first.
-4. `archon workflow items --since 7d --json`: every item with a run in the window, each
-   with its runs, open asks, answers and merge.
+4. `archon workflow items --since 7d --limit 100 --json`: every item with a run in the window,
+   each with its runs, open asks (`questions`), answers and merge. It is paged: pass the
+   `next` value back until there is none. Look for an item with no merge, no open ask and
+   no run in flight whose last run ended hours ago: that is one to read with step 5.
 5. For an item that should be moving and is not: `archon workflow runs --item <key>`
    (`items.md` says what each outcome leads to). It
    says what a start waits behind, when a run's owner process is gone (with the `resume`
@@ -114,10 +120,22 @@ or when spend must stop. Nothing lifts it on a timer, so say who must lift it.
 
 ## After a pack update
 
-Follow "Update the pack" in the README: hold, `archon plugin update`, `archon pack bindings`
-with `--force`, every printed `archon trigger add`, remove files of bindings the pack
-dropped, `archon trigger check`, lift, and copy this skill again. Runs that started before
-the update finish on the pack revision they started with.
+Follow "Update the pack" in the README, in this order:
+
+1. `archon hold set --reason "updating the pack"`, and wait until `archon workflow status`
+   shows no start queued. If the pack was already updated without a hold, set it now and go on.
+2. `archon plugin update Wirasm/archon-software-factory`.
+3. `archon pack bindings Wirasm/archon-software-factory --force` with the same `--repo`,
+   `--host`, `--run-as`, `--out` and `--config` setup used. They are in the README's setup
+   step and in the binding files setup wrote; if you cannot find them, ask. Do not guess.
+4. Run every `archon trigger add` line it prints. A file with the same name replaces the old one.
+5. Delete from Archon's triggers directory only the files an earlier `pack bindings` run
+   wrote for this repository that are not in the new list. Leave every other file.
+6. `archon trigger check`, and fix what it reports.
+7. `archon hold lift`, then check that what the hold kept has started.
+8. `archon skill add --pack Wirasm/archon-software-factory`, to replace this skill.
+
+Runs that started before the update finish on the pack revision they started with.
 
 ## What the pack does not do yet
 

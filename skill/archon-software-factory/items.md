@@ -32,6 +32,31 @@ Read both with `archon workflow runs --item <key>`.
 A run's full result: `archon workflow get <run-id> --json`, under `terminal_record.returns.value`.
 For a few seconds after a stage ends, the next one reads as admitted and not started.
 
+## An item that stopped or failed
+
+First read `archon workflow runs --item <key>`. When it says the item's change merged, the
+item is done whatever its last run says: do nothing. Never order an item again that has a
+change proposed; that plans and builds it a second time.
+
+- **Its last stage failed, or was cancelled.** Start that run again from its own record:
+  `archon workflow run --supersedes <run-id>`, with no workflow name. It reuses the run's
+  inputs, branch and checkout. Use the id of a run that actually started: one cancelled
+  before it ran has no inputs on record, and a restart from it fails at once. A stage
+  started by hand with `archon workflow run <stage> --item <key>` and nothing else has no
+  inputs either. Then read the item again and confirm the new run is running.
+- **Its run's process is gone.** The item read names the run with its `resume` and
+  `abandon` commands. Resume it. Abandon only a run whose process you checked is gone.
+- **A start was refused.** The item read says which binding and why. Fix the cause (a
+  missing file a setting names, a provider with no credential), then restart the run that
+  ended before it, as above.
+- **A start limit is reached** (`Start limits: 2 of 2`). A returned change goes back to
+  its builder twice without an operator; the third time the stage asks. Answer the ask.
+  The count starts over when the item is planned again.
+- **It ended where nothing starts** (a triage judgment that is not `build`, `narrow` or
+  `split`, a plan `stop`, a host round `waiting`). Report it with the stage's reason. When
+  the person says it is over, end it: `archon workflow end --item <key> --as <you> -- <reason>`.
+  An ended item leaves attention, and a new order opens it again.
+
 ## An item that waits
 
 The link stage, an agent, decides after triage whether an item can be built now, and

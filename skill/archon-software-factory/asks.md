@@ -4,6 +4,14 @@ Read with the `archon-software-factory` skill. Run every command from the projec
 
 ## Answering asks
 
+Yours to answer: an ask the person's standing direction already decides, where the attend
+stage's advice (below) names an option and does not say `escalate`. The person's: any ask
+about landing unless they told you which changes you may land; an ask whose answer adds or
+changes something public (a format, an API, a stored shape); an ask the advice escalates;
+and any ask on an item where a stage was already overruled. The project's rules for this
+are in its attend policy: the file the `attend_policy` setting names in
+`.archon/packs/Wirasm.archon-software-factory.yaml`. Read it once a session.
+
 ```bash
 archon workflow attention --json                 # open asks, each with its ref, options and recommendation
 archon workflow answer --ref ask:<id> --choose <option id> --text "<the reason>" --as <your name>
@@ -71,9 +79,11 @@ archon workflow get <attend run id> --json        # .terminal_record.returns.val
 Each entry has `ref`, `would` (an option id, or `escalate`), `text`, `why`, `confidence`,
 `read` (what it saw that the asking stage did not) and `alone`. `escalate` means bring the
 ask to the person. `alone` is true when the project's attend policy names that kind of
-ask as one an agent may answer without the person; it is recorded only, so today it tells
+ask as one an agent may answer without the person (runs before 2026-11-25 do not carry it); it is recorded only, so today it tells
 you what the policy would allow and nothing answers by itself. The policy is the file the
 `attend_policy` setting names: the person edits it to change what an agent may do alone.
+
+An ask that is already answered no longer shows in attention. Its question, context and recommendation are in the asking run's result: `archon workflow get <run id> --json`, under `terminal_record.returns.value.asks`.
 
 ## Reading the report
 
