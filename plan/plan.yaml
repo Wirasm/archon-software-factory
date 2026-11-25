@@ -56,7 +56,12 @@ nodes:
           type: array
           items: { type: string }
           description: 'For each thing the item asks for, how the change will be shown to do it.'
+        reaches: { type: string, description: 'Who or what is meant to see or use the outcome, through which path, and what would show that it arrives there.' }
+        not_doing:
+          type: array
+          items: { type: string }
+          description: 'Each thing next to the item that the change leaves alone, one a line, with why when it is not plain. Empty when nothing is near enough to tempt.'
         stop: { type: string, description: 'Why it cannot be planned, and what has to happen first. Empty otherwise.' }
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
         for_next: { type: string, description: 'Anything the engineer who builds this needs from you that has no field here. Write it to them.' }
-      required: [outcome, options, recommend, why, plan, proves, stop, notes, for_next]
+      required: [outcome, options, recommend, why, plan, proves, reaches, not_doing, stop, notes, for_next]

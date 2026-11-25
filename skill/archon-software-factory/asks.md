@@ -47,6 +47,11 @@ planned; the third that would return the change asks instead (`archon workflow r
 <key>` shows the limits). After one `send-back` or `one-more-round` on top of those, prefer
 `replan`, a split, or the person's ruling over another round.
 
+A check returns a change only for a finding inside the item or caused by the change; what
+is beside the item goes to discoveries. When a change grew across rounds and is returned
+for what it grew, the usual answer is `send-back` with "remove what was added", not
+another round of fixes.
+
 The land gate asks before every merge unless the project set `land_gate: policy`. Its
 ask's context says what the project's land policy would have done: "would have landed
 this without asking" or "would have asked, because ...". That line is information for

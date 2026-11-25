@@ -24,6 +24,8 @@ What the builder says it did about that:
 
 $INPUTS.builder_reply
 
+You are given only the last result. Read the item's history before you judge: `archon workflow runs --item-of $WORKFLOW_ID` lists this item's runs, and `archon workflow get <run id> --json` holds what each returned, the asks it left and what an operator answered. Look for what was already decided and what came back before: a ruling an operator made holds here too, and a question already answered is not asked again.
+
 The host policy says what this project requires of a proposed change that the host does not start on its own, and how to start it. Read the pack's default at `$PACK_DIR/policy/host.md`. Then read the project's own at `$INPUTS.host_policy`, when one is named there. Where they differ, the project's wins. What the policy has you start is part of what the host says: wait for it and judge it like any other check.
 
 Use `archon forge` to read the host; run `archon forge --help` once to see what it offers. It reads a change's checks and the end of a failed check's log, the reviews and review threads on it, and whether it still merges with the branch it targets. Read nothing by scraping pages.

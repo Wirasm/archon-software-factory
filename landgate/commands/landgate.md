@@ -20,6 +20,8 @@ Decisions an operator already made on this item, oldest first; where two disagre
 
 $INPUTS.answers
 
+You are given only the last result. Read the item's history before you decide: `archon workflow runs --item-of $WORKFLOW_ID` lists this item's runs, and `archon workflow get <run id> --json` holds what each returned, the asks it left and what an operator answered. Look for what was already decided and what came back before: a ruling an operator made holds here too, and a question already answered is not asked again.
+
 The project's land policy says which changes may land without an ask. Read it at `$INPUTS.land_policy`, when one is named there. A project that names none has not allowed anything to land by itself: the answer is then an ask, and the criterion is "no policy".
 
 Find the facts yourself, on the host and in the change, and do not take them from what you were told above. Use `archon forge` to read the host; run `archon forge --help` once. Read the state of the project's checks at the head commit, whether the change still merges with the branch it targets, how large it is, and which files it touches. A change proposed against another branch than the one it lands on is an ask. A wrong landing breaks the branch everyone builds on, so where you cannot establish a fact, or cannot tell whether a line of the policy holds, it is an ask.

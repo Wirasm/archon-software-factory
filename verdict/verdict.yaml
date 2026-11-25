@@ -1,7 +1,8 @@
 name: verdict
 description: |
   Put the reports several checks made on one change into one report and one
-  outcome. Sorts what they found into findings, notes and things noticed.
+  outcome. Says of each thing found whether it is inside the item, caused by
+  the change or beside the item, and sorts it into findings, notes and things noticed.
   Trusts the reports; checks nothing again and reads no code.
 
 model: ['@verdict', small]
@@ -14,6 +15,12 @@ inputs:
     description: Decisions an operator already made on this item.
   reports:
     description: Each check's result, labelled with the check it came from.
+  plan:
+    default: "No plan was given."
+    description: What plan concluded, as its result. Its `reaches` says who the outcome is for, and its `not_doing` what the change leaves alone.
+  sizes:
+    default: "Not measured: this change was checked on no item."
+    description: The change's size at the end of each delivery run on the item since it was last planned, and now, against the commit it is built on.
   review_policy:
     default: ""
     description: The pack setting of the same name, declared here so a workflow that includes this stage can pass it through.
@@ -37,6 +44,8 @@ nodes:
             type: object
             additionalProperties: false
             properties:
+              kind: { type: string, enum: [inside, caused_by], description: 'inside: the item is not met. caused_by: what this change added or altered is wrong and the item did not ask for it; `what` says what to remove or shrink.' }
+              against: { type: string, description: 'With inside: the words of the item it fails, quoted. Empty otherwise.' }
               what: { type: string }
               where: { type: string }
               path: { type: string, description: 'The one file this is best shown on, relative to the repository root, as the report names it. Empty when the report names no file.' }
@@ -44,7 +53,7 @@ nodes:
               evidence: { type: string }
               cost_to_leave: { type: string }
               reported_by: { type: array, items: { type: string }, description: 'Every check that reported it.' }
-            required: [what, where, path, line, evidence, cost_to_leave, reported_by]
+            required: [kind, against, what, where, path, line, evidence, cost_to_leave, reported_by]
         notes:
           type: array
           description: 'Real and on the record, and not a reason to return the change. Trial from 2026-11-17.'
@@ -52,6 +61,7 @@ nodes:
             type: object
             additionalProperties: false
             properties:
+              kind: { type: string, enum: [inside, caused_by], description: 'As on a finding.' }
               what: { type: string }
               where: { type: string }
               path: { type: string, description: 'As on a finding.' }
@@ -59,14 +69,14 @@ nodes:
               evidence: { type: string }
               why_a_note: { type: string, description: 'Which line of the review policy makes this a note and not a finding.' }
               reported_by: { type: array, items: { type: string } }
-            required: [what, where, path, line, evidence, why_a_note, reported_by]
+            required: [kind, what, where, path, line, evidence, why_a_note, reported_by]
         disagreements:
           type: array
           items: { type: string }
           description: 'Where two reports contradict each other. Empty when none do.'
         noticed:
           type: array
-          description: 'What the checks noticed that this change did not cause, each once.'
+          description: 'What is beside the item, each once: there before this change, a case the item does not name and the change did not make worse, or something the plan leaves alone.'
           items:
             type: object
             additionalProperties: false
@@ -103,5 +113,6 @@ nodes:
                 required: [option, why]
               from: { type: string, description: 'The check that left it.' }
             required: [question, context, options, recommendation, from]
+        growth: { type: string, description: 'How the change''s size moved across its rounds, from the sizes you were given, and after which return it grew.' }
         for_next: { type: string, description: 'Anything the maintainer deciding on this change needs from you that has no field here. Write it to them.' }
-      required: [outcome, summary, findings, notes, disagreements, noticed, asks, for_next]
+      required: [outcome, summary, findings, notes, disagreements, noticed, asks, growth, for_next]
