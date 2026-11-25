@@ -25,7 +25,7 @@ Landing is merging the proposed change into the branch it targets. Use `archon f
 What must hold:
 
 - The branch the change targets is the landing branch. When it is proposed against another branch, stop and name both. Do not retarget it and do not merge it.
-- It still merges with that branch, and the host's checks at its head commit are green. When it conflicts or a check is red, return it and say what a builder needs to fix. When checks have not finished, stop and say which.
+- It still merges with that branch, and the host's checks at its head commit are green. When the only thing wrong is that it no longer merges with the landing branch, or the host wants it up to date with that branch, it is behind. When a check is red, return it and say what a builder needs to fix. When checks have not finished, stop and say which.
 - Merge it pinned to the head commit you read the checks at, so a change that moved since is refused, not merged.
 - Change nothing else on the host, and nothing in the checkout.
 
@@ -52,9 +52,10 @@ What must hold:
 
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, and what we expect in one. The options of an ask here are fixed, so you write none: `land` (this stage tries again), `send-back` (the builder continues with what the operator says), `drop` (the change is closed without merging) and `reshape` (the change stays open as a draft until the item is shaped again). Recommend one. When you have no basis to choose, recommend `none`: the operator then sees that the ask has no recommendation, which is better than a guess. Say why you cannot choose and what you would need to know to choose: the operator reads that in place of a recommendation.
 
-End in one of four outcomes:
+End in one of five outcomes:
 
 - **landed**: the change is merged into the landing branch, or with no host the landing branch now points at the checked tree.
-- **returned**: the change does not land as it is, because it conflicts or a check fails. Say what a builder needs to know to fix it. It goes back to its builder and comes here again.
+- **behind**: nothing is wrong with the change except that the landing branch moved: it no longer merges, or the host wants it up to date. Say in `returned` which files conflict, when you can see them. Its builder brings it up to date and it comes straight back here when nothing but that changed.
+- **returned**: the change does not land as it is, because a check fails, or something besides the landing branch moving is wrong. Say what a builder needs to know to fix it. It goes back to its builder and comes here again.
 - **stop**: something outside the change prevents landing. Say what, and what you recommend. An operator is told.
 - **ask**: finishing needs a decision that is not yours. Leave it as an ask and end here.

@@ -57,13 +57,13 @@ nodes:
       type: object
       additionalProperties: false
       properties:
-        outcome: { type: string, enum: [landed, returned, stop, ask] }
+        outcome: { type: string, enum: [landed, behind, returned, stop, ask] }
         summary: { type: string, description: 'For a maintainer who has not followed the item.' }
         landing_branch: { type: string, description: 'The branch it landed on, or would have.' }
         from: { type: string, description: 'The commit the landing branch pointed at when you started.' }
         to: { type: string, description: 'The commit it points at now: on a host, the commit the change landed as. Empty unless landed.' }
         checked: { type: string, description: 'On a host: the state of its checks at the head commit you merged. With no host: the command run on the combined tree, and what it showed.' }
-        returned: { type: string, description: 'With returned: what a builder needs to fix. Empty otherwise.' }
+        returned: { type: string, description: 'With returned: what a builder needs to fix. With behind: what it conflicts with on the landing branch. Empty otherwise.' }
         stop: { type: string, description: 'With stop: what prevents landing, and what you recommend. Empty otherwise.' }
         asks:
           type: array
@@ -106,7 +106,7 @@ nodes:
     output_format:
       type: object
       properties:
-        outcome: { type: string, enum: [landed, returned, stop, ask] }
+        outcome: { type: string, enum: [landed, behind, returned, stop, ask] }
         change: { type: string }
         summary: { type: string }
         returned: { type: string, description: 'What goes back to the builder: why the change did not land.' }

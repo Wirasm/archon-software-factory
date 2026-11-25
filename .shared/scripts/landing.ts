@@ -22,7 +22,7 @@ const would = gate ? (last.land === 'auto' ? 'land' : 'ask') : '';
 const shadow = gate && input('land_gate').trim() !== 'policy';
 const outcome = gate ? (shadow ? 'ask' : would) : String(last.outcome ?? '');
 // An outcome that a binding hands on to the next stage leaves no ask.
-const handsOn = ['land', 'landed', 'returned'].includes(outcome);
+const handsOn = ['land', 'landed', 'behind', 'returned'].includes(outcome);
 const summary = String(gate ? last.why ?? '' : last.summary || last.stop || '');
 const shadowed = !shadow ? ''
   : would === 'land' ? `Shadow: the land policy would have landed this without asking (${String(last.criterion ?? '')}). ${summary}`
@@ -59,7 +59,11 @@ emit({
   summary,
   // What the builder gets when the change goes back: from the land stage, or from an
   // operator who answered `send-back`, whose answer the builder is given beside it.
-  returned: outcome === 'land' || outcome === 'landed' ? '' : [
+  returned: outcome === 'land' || outcome === 'landed' ? '' : outcome === 'behind' ? [
+    `The change is proposed at ${change}`,
+    `It was approved and is sound, but its landing branch moved and it no longer merges:\n\n${said}`,
+    'Merge the landing branch into the change\'s branch and resolve the conflicts. Change nothing else: what was approved is the change as it is, and anything more sends it through the host round and the land gate again. Do not rebase and do not force-push. Commit the merge and push it to where the change is proposed.',
+  ].join('\n\n') : [
     `The change is proposed at ${change}`,
     gate ? `The land gate asked an operator, who sent it back. What the gate said:\n\n${said}` : `It did not land:\n\n${said}`,
     'Commit on the same branch and push it to where the change is proposed, so the host looks again.',

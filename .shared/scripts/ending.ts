@@ -24,11 +24,11 @@ const usedUp = state === 'used_up';
 
 const outcome = usedUp ? 'ask'
   : stage === 'stage-build'
-    ? (said === 'built' ? (input('next').trim() === 'host' ? 'built_for_host' : 'built') : said === 'stop' ? 'replan' : said)
+    ? (said === 'built' ? ({ host: 'built_for_host', land: 'built_for_land' }[input('next').trim()] ?? 'built') : said === 'stop' ? 'replan' : said)
   : stage === 'stage-host' ? (said === 'clear' || said === 'none' ? 'ready' : said)
   : said;
 // An outcome that a binding hands on to the next stage leaves no ask.
-const handsOn = ['built', 'built_for_host', 'approve', 'return', 'replan', 'ready', 'waiting'].includes(outcome);
+const handsOn = ['built', 'built_for_host', 'built_for_land', 'approve', 'return', 'replan', 'ready', 'waiting'].includes(outcome);
 const summary = String(last.summary || last.stop || '');
 
 // An ask as the engine takes it. One with no recommendation carries the reason in the

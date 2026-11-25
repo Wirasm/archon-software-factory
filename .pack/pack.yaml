@@ -567,6 +567,72 @@ bindings:
       answers: { item: answers }
       returned: { result: /returned }
       next: host
+  # The short way back, since 2026-11-25. A change the land stage found behind its landing
+  # branch, with nothing else wrong, goes to its builder to be brought up to date, and then
+  # to the catch-up stage. When the lines the change adds and removes are the ones that
+  # were approved and the host's checks are green, it goes straight to the land stage: no
+  # host round and no second gate for a change nobody changed. Anything else goes the long
+  # way, through the host round and the gate.
+  stage-build-after-land-behind:
+    workflow: stage-build
+    resource: stage-build
+    capacity: 5
+    overlap: queue
+    run_ended:
+      workflow: land
+      outcome: behind
+      checkout: ended-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      returned: { result: /returned }
+      next: land
+  catchup-after-build:
+    workflow: catchup
+    resource: stage-host
+    capacity: 5
+    overlap: queue
+    run_ended:
+      workflow: stage-build
+      outcome: built_for_land
+      checkout: ended-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      change: { result: /change }
+  land-after-catchup:
+    workflow: land
+    resource: land
+    capacity: 1
+    overlap: queue
+    run_ended:
+      workflow: catchup
+      outcome: ready
+      checkout: ended-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      change: { result: /change }
+      noticed: { result: /noticed }
+  stage-host-after-catchup:
+    workflow: stage-host
+    resource: stage-host
+    capacity: 5
+    overlap: queue
+    run_ended:
+      workflow: catchup
+      outcome: changed
+      checkout: ended-run
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      change: { result: /change }
+      returned_before: { result: /returned }
+      builder_reply: { result: /reply }
   # A land run that ends `stop` or `ask` leaves an ask with the same three options.
   land-after-land-answers:
     workflow: land

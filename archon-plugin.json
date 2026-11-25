@@ -14,6 +14,7 @@
     "review": "review/review.yaml",
     "tests": "tests/tests.yaml",
     "discoveries": "discoveries/discoveries.yaml",
+    "catchup": "catchup/catchup.yaml",
     "land": "land/land.yaml",
     "landed": "landed/landed.yaml",
     "landgate": "landgate/landgate.yaml",

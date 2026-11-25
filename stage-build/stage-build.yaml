@@ -21,7 +21,7 @@ inputs:
     description: What a check, the host or an asking stage returned for the builder to act on. `null` on a first build.
   next:
     default: check
-    description: The stage that looks at the change after this build. `host` when the host returned it, so our own checks do not run again.
+    description: The stage that looks at the change after this build. `host` when the host returned it, so our own checks do not run again. `land` when the land stage found it behind its landing branch, so the catch-up stage looks at it.
 
 # The options every ask of this stage offers. The id an operator chooses decides what starts
 # next: the pack's asks-settled bindings name them.
@@ -95,7 +95,7 @@ nodes:
     output_format:
       type: object
       properties:
-        outcome: { type: string, enum: [built, built_for_host, replan, ask] }
+        outcome: { type: string, enum: [built, built_for_host, built_for_land, replan, ask] }
         change: { type: string }
         summary: { type: string }
         for_next: { type: string }

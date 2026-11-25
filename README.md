@@ -630,6 +630,17 @@ To start a build by hand on an item:
 archon workflow run Wirasm/archon-software-factory:stage-build --item <key> --input-file item=<a file with the item's text>
 ```
 
+## A change that fell behind: the short way back to landing
+
+**Since 2026-11-25.** A change can be approved and then fall behind: another change lands first and the two no longer merge. Nothing is wrong with it. The land stage ends `behind`, and the item takes a short way back:
+
+1. **The same builder** merges the landing branch into the change and resolves the conflicts. It is told to change nothing else.
+2. **The `catchup` stage** compares the change before and after. A script lists the lines the change adds and removes on top of its landing branch at the commit the land stage read, and at the new head. Context lines are left out, because a merge moves them. Equal lists mean the change is the one that was approved. An agent then waits for the host's checks at the new head.
+3. **Same and green:** the land stage starts again. There is no host round and no second land gate, because the approval was for this change and it still holds.
+4. **Anything else** (other lines added or removed, a red check, nothing pushed) goes the long way: the host round and then the land gate, where an operator is asked again.
+
+`archon metrics sf.catchup_ready` counts the changes that took the short way (1) and the long way (0). A check that fails at land time, or anything else wrong with the change, still ends the land stage `returned` and goes to the builder and the host round.
+
 ## The attend stage: advice on each ask
 
 **Advice, as of 2026-11-25.** When a stage's run ends with asks, the `attend` stage starts on the item and an agent (`@manager`) reads them the way an operator's own agent would: the asks with their options, every earlier run and answer on the item, its rulings, and the project's policies. For each open ask it records the option it would choose and the answer text it would give, or that it would bring the ask to the operator, with why, how sure it is, and what it read that the asking stage did not have. It answers nothing, starts nothing and changes nothing on the item or the change. Its outcomes are final, so it never shows an item as stopped.

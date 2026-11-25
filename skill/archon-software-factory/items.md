@@ -19,12 +19,13 @@ Read both with `archon workflow runs --item <key>`.
 | triage, any other judgment | Nothing, and no ask. The item shows as stopped in `archon workflow attention` with the reason; `shape` also lists open questions for a maintainer. Report it. |
 | split `whole` / `split` / `waiting` | Plan / each member that starts now is ordered as its own item / nothing. |
 | plan `planned` | Build starts. `ask`: an ask is open. `stop`: nothing; the result says why. |
-| stage-build `built` / `built_for_host` | The checks / the host round. `replan`: plan starts with what the builder said (once on an item; after that it asks). `ask`: an ask is open. |
+| stage-build `built` / `built_for_host` / `built_for_land` | The checks / the host round / the catch-up stage. `replan`: plan starts with what the builder said (once on an item; after that it asks). `ask`: an ask is open. |
 | stage-check `approve` / `return` | The host round / the builder. `replan`: plan starts with what the checks said (once on an item; after that it asks). `ask`: an ask is open. |
 | stage-host `ready` / `return` | The land gate / the builder, then the host again. `ask`: an ask is open. |
 | stage-host `waiting` | Nothing, and no ask. It gave up waiting for the project's checks. The item shows as stopped in `archon workflow attention`. Report it. |
 | landgate `ask` | An ask is open; its context says what the land policy would have done. With the setting `land_gate: policy`, a change the policy lets land ends `land` and the land stage starts. |
-| land `landed` | The landed check and the discoveries drain. `returned`: the builder. `stop`, `ask`: an ask is open. |
+| land `landed` | The landed check and the discoveries drain. `behind`: the builder brings the change up to date with its landing branch, then the catch-up stage. `returned`: the builder, then the host round. `stop`, `ask`: an ask is open. |
+| catchup `ready` | The land stage, with no host round and no second land gate: the change is the one that was approved, and its checks are green. `changed`: the host round, then the land gate. |
 | landed `broken_here` | A fix is ordered on the same item. Every other outcome is only recorded. |
 | close `dropped` / `reshape` | The item ended / it waits to be shaped. `not_closed`: close the pull request by hand. |
 
