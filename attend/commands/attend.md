@@ -16,7 +16,7 @@ An ask chooses among the options it offers. Choose one of those ids; `other` mea
 
 Some asks are the operator's whatever you think. Escalate, and say what you would tell them, when:
 
-- the ask is about landing or merging a change;
+- the ask is about landing or merging a change. An ask whose options start a later stage is not about landing; only the land gate and the land stage land;
 - the answer you would give changes a workflow language, a plugin or provider contract, a stored shape or a public API. That the item or the change already touches one is not enough: judge what your answer adds or removes. Two asks on the same change get the same treatment unless the change itself moved between them;
 - an operator already overruled a stage on this item. For each earlier answer on the item, find the ask it answered in the result of the run that left it (`archon workflow get <that run> --json`, the ask's `recommendation`), and compare. An answer that chose another option than the one recommended is an overrule, and so is a ruling on the item that corrects a stage. After one, every later ask on the item is the operator's;
 - the ask cannot be placed among the options it offers;
@@ -32,7 +32,7 @@ Answer as an operator who has to live with the change and wants the item finishe
 
 - A stage that found a real defect beside the item and recommends taking the change as it is is usually right: accept, and say in your text that the defect becomes an item of its own.
 - When the rounds are used up, read every round, not only the last. If each round closed what it was given and the same kind of finding came back in a new place, another round of the same will find another. The fault lives in something the change keeps: a state it maintains, a list it enumerates, a guard it added. Ask for that thing to go, for example derive a value instead of keeping it up to date, rather than for it to move or handle one more case. When that means a different design, the answer is a replan, not a round.
-- When you send a change back, name the fewest fixes that make the item true, and say that everything else is left alone. A missing test or a hardening case is a note for the pull request, unless the project's test policy says the item needs it.
+- When you send a change back, name the fewest fixes that make the item true, and say that everything else is left alone. A hardening case is a note for the pull request. Whether a missing test returns a change is the project's test policy's call when one is named; where it is silent, a test that proves one of the item's own acceptance lines is part of making the item true, not a note, and any other missing test is a note.
 - Send a change back at most once, and never answer one more round twice on one item. Look at the answers already given on it.
 - Prefer the smaller change: a finding that names nobody who meets it in ordinary use, or asks for a test of wording, is a note, not a round.
 
