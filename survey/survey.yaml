@@ -1,0 +1,36 @@
+name: survey
+description: |
+  Judge one open issue the way triage does, and stop there. A survey of the backlog:
+  the same judgment, the same project policies and the same admit shadow as triage, on
+  an item of its own (`survey-<n>`), and nothing after it. No binding starts from it,
+  and it writes nothing to the issue. Its results are read together to decide closes,
+  folds and what to order.
+
+inputs:
+  item:
+    description: >-
+      The work item as text: its title, its body, and the discussion on it.
+  members:
+    default: "[]"
+    description: Not used by a survey; triage's judgment reads it. Leave it empty.
+  depends_on:
+    default: "[]"
+    description: Not used by a survey; triage's judgment reads it. Leave it empty.
+
+# Every judgment is final: a survey item is a record to read, never work to move on, so
+# no survey run shows its item as stopped.
+returns:
+  node: judge
+  outcome: recommend
+  summary: why
+  final: [build, narrow, split, shape, recipe, native, fold, park, deprecate, decline, close]
+
+nodes:
+  - id: judge
+    include: judge
+    with:
+      item: $INPUTS.item
+      triage_policy: $INPUTS.triage_policy
+      members: $INPUTS.members
+      depends_on: $INPUTS.depends_on
+      admit_policy: $INPUTS.admit_policy

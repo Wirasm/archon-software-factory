@@ -28,6 +28,7 @@
     "stage-check": "stage-check/stage-check.yaml",
     "stage-host": "stage-host/stage-host.yaml",
     "report": "report/report.yaml",
-    "attend": "attend/attend.yaml"
+    "attend": "attend/attend.yaml",
+    "survey": "survey/survey.yaml"
   }
 }

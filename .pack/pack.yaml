@@ -2,18 +2,24 @@
 # `.archon/packs/Wirasm.archon-software-factory.yaml`, under `settings:`.
 inputs:
   triage_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own triage policy, a document that says what its
       maintainers judge work items against. Relative to the project, or absolute.
       Empty means the project has none and the pack's default applies alone.
   plan_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own plan policy, a document that says what its
       maintainers hold a design to. Relative to the project, or absolute. Empty
       means the project has none and the pack's default applies alone.
   split_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own split policy, a document that says when its
@@ -21,30 +27,40 @@ inputs:
       bundle of tasks are cut. Relative to the project, or absolute. Empty means
       the project has none and the pack's default applies alone.
   build_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own build policy, a document that says what its
       maintainers hold the code of a change to. Relative to the project, or absolute. Empty
       means the project has none and the pack's default applies alone.
   review_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own review policy, a document that says what its
       maintainers hold a change to before it lands. Relative to the project, or
       absolute. Empty means the project has none and the pack's default applies alone.
   test_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own test policy, a document that says what its
       maintainers hold tests to. Relative to the project, or absolute. Empty
       means the project has none and the pack's default applies alone.
   host_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own host policy, a document that says which checks a
       proposed change needs that the host does not start on its own, and how to
       start them. Relative to the project, or absolute. Empty means the project has none.
   admit_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own admit policy, a document that says which items
@@ -52,6 +68,8 @@ inputs:
       absolute. Empty means the project has none. Shadow only for now: the
       judgment is recorded and nothing acts on it.
   land_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own land policy, a document that says which ready
@@ -68,6 +86,8 @@ inputs:
       `sf.landgate_would_land` say what the policy would have done. `policy`: a
       change the policy lets land starts the land stage with no ask.
   discoveries_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own discoveries policy, a document that says what
@@ -81,6 +101,8 @@ inputs:
       The land stage runs it when the project has no host. Empty means none is
       declared: the land stage then uses the check the maintainers use and says which.
   attend_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own attend policy, a document that says what an agent
@@ -89,6 +111,8 @@ inputs:
       Relative to the project, or absolute. Empty means the pack's list applies
       alone. The attend stage only advises for now: nothing acts on its answers.
   product_policy:
+    section: Policies
+    file: true
     default: ""
     description: >-
       Path to the project's own product policy, a document that says what the

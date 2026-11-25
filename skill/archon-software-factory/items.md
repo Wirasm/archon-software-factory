@@ -38,12 +38,14 @@ First read `archon workflow runs --item <key>`. When it says the item's change m
 item is done whatever its last run says: do nothing. Never order an item again that has a
 change proposed; that plans and builds it a second time.
 
-- **Its last stage failed, or was cancelled.** Start that run again from its own record:
-  `archon workflow run --supersedes <run-id>`, with no workflow name. It reuses the run's
-  inputs, branch and checkout. Use the id of a run that actually started: one cancelled
-  before it ran has no inputs on record, and a restart from it fails at once. A stage
-  started by hand with `archon workflow run <stage> --item <key>` and nothing else has no
-  inputs either. Then read the item again and confirm the new run is running.
+- **Its last stage failed, or was killed.** Resume it in place: `archon workflow resume <run-id>`.
+  It keeps the run's id, inputs, source, configuration and checkout, skips the nodes that
+  completed, and runs the rest; a run where no node completed runs again from its first node.
+  When a resume is refused (its checkout is gone, or it was cancelled), start it again from
+  its own record instead: `archon workflow run --supersedes <run-id>`, with no workflow name.
+  Never start a stage by hand with `archon workflow run <stage> --item <key>` and nothing
+  else: that run has none of the inputs the binding passes. Then read the item again and
+  confirm the run is running.
 - **Its run's process is gone.** The item read names the run with its `resume` and
   `abandon` commands. Resume it. Abandon only a run whose process you checked is gone.
 - **A start was refused.** The item read says which binding and why. Fix the cause (a
