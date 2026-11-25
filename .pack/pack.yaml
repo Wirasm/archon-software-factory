@@ -83,10 +83,11 @@ inputs:
   attend_policy:
     default: ""
     description: >-
-      Path to the project's own attend policy, a document that adds to or narrows
-      which asks the attend shadow must leave to an operator. Relative to the
-      project, or absolute. Empty means the pack's list applies alone. Shadow only
-      for now: the answers are recorded and nothing acts on them.
+      Path to the project's own attend policy, a document that says what an agent
+      may do with an ask: which asks are always the operator's, beyond the pack's
+      list, which kinds an agent may answer alone, and the rulings already made.
+      Relative to the project, or absolute. Empty means the pack's list applies
+      alone. The attend stage only advises for now: nothing acts on its answers.
   product_policy:
     default: ""
     description: >-
@@ -846,8 +847,8 @@ bindings:
       change: { result: /change }
       answers: { answers: true }
 
-  # The attend shadow, since 2026-11-25: when a stage's run ends with asks, an agent records
-  # the answer it would give to each. It answers nothing and starts nothing. Each binding
+  # The attend stage, since 2026-11-25: when a stage's run ends with asks, an agent records
+  # the answer it would give to each, as advice for whoever answers. It answers nothing and starts nothing. Each binding
   # names the endings of its stage that carry asks and never stop an item without one: a
   # run whose end starts anything no longer shows its item as stopped. So a split that ends
   # `waiting` and a plan that ends `stop` are left out. `overlap: skip`, because a start that

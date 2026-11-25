@@ -253,7 +253,7 @@ Everything in this section has a working default. Change a setting when its "cha
 | `@host` | Reading what the host's own checks and reviews say | `medium` |
 | `@lander` | The land stage | `medium` |
 | `@reporter` | Writing the report on the pull request | `medium` |
-| `@manager` | The discoveries drain, and the attend shadow | `large` |
+| `@manager` | The discoveries drain, and the attend stage's advice | `large` |
 
 **How.** Define aliases for the whole install:
 
@@ -282,7 +282,7 @@ aliases:
 | Role | Recommendation | Reason |
 |---|---|---|
 | `@planner`, `@builder` | Your strongest coding model | The plan and the first build decide how many rounds follow. A weaker model here costs more in fix rounds than it saves. |
-| `@manager` | Your strongest model | It decides what becomes new work in the project's tracker, and it runs at most once per landed change. The attend shadow runs on it once for each run that leaves asks. |
+| `@manager` | Your strongest model | It decides what becomes new work in the project's tracker, and it runs at most once per landed change. The attend stage runs on it once for each run that leaves asks. |
 | `@reviewer`, `@product-reviewer` | A strong model from a different provider than the builder | A check that shares the builder's model tends to share its blind spots. |
 | `@host` | A strong model | It reads CI logs and review comments and decides what goes back to the builder. On trial on the working install; it ran on the medium tier before. |
 | `@judge`, `@link` | A mid-size model | Short judgments from a policy and a few facts. They run often. |
@@ -340,7 +340,7 @@ Paths are relative to the project, or absolute. An unknown key refuses the run b
 | `land_policy` | Which ready changes may land without an ask, how a change is merged, what must hold after | Land gate, land, landed check |
 | `discoveries_policy` | What maintainers want filed from what agents notice | Discoveries drain |
 | `admit_policy` | Which items may start without an operator being asked | Triage's admit shadow. Recorded; nothing acts on it. |
-| `attend_policy` | Which asks the attend shadow must leave to an operator, beyond the pack's list | The attend shadow. Recorded; nothing acts on it. |
+| `attend_policy` | What an agent may do with an ask: which are always the operator's, which kinds it may answer alone, the rulings already made | The attend stage. It advises; nothing acts on its answers. |
 | `validate_command` | Not a document: the command that proves a change works, run from the project's root | The land stage when the project has no host |
 | `land_gate` | Not a document: `shadow` (the default) or `policy`. Whether the land gate acts on the land policy | Land gate |
 
@@ -630,17 +630,19 @@ To start a build by hand on an item:
 archon workflow run Wirasm/archon-software-factory:stage-build --item <key> --input-file item=<a file with the item's text>
 ```
 
-## The attend shadow
+## The attend stage: advice on each ask
 
-**Shadow, as of 2026-11-25.** When a stage's run ends with asks, the `attend` stage starts on the item and an agent (`@manager`) reads them the way an operator's own agent would: the asks with their options, every earlier run and answer on the item, its rulings, and the project's policies. For each open ask it records the option it would choose and the answer text it would give, or that it would bring the ask to the operator, with why, how sure it is, and what it read that the asking stage did not have. It answers nothing, starts nothing and changes nothing on the item or the change. Its outcomes are final, so it never shows an item as stopped.
+**Advice, as of 2026-11-25.** When a stage's run ends with asks, the `attend` stage starts on the item and an agent (`@manager`) reads them the way an operator's own agent would: the asks with their options, every earlier run and answer on the item, its rulings, and the project's policies. For each open ask it records the option it would choose and the answer text it would give, or that it would bring the ask to the operator, with why, how sure it is, and what it read that the asking stage did not have. It answers nothing, starts nothing and changes nothing on the item or the change. Its outcomes are final, so it never shows an item as stopped.
 
 It always leaves to the operator an ask about landing or merging; one whose answer would change a workflow language, a plugin or provider contract, a stored schema or a public API; any ask on an item where an operator already overruled a stage; one it cannot place among the ask's options; and what the project's policy names as the operator's. The `attend_policy` setting adds to or narrows that list.
 
-**Read it on an item.** `archon workflow runs --item <key>` lists the `attend` runs beside the stage runs they follow. `archon workflow get <attend run id> --json` has, under `terminal_record.returns.value.answers`, one entry per ask: `ref`, `would` (an option id or `escalate`), `text`, `why`, `confidence` and `read`.
+**The policy is the dial.** The project's attend policy is one document with three parts: the asks that are always the operator's, the kinds of ask an agent may answer alone, and the rulings already made. Today the second part is recorded only: an entry carries `alone: true` when the policy names its kind and the agent would answer it, and nothing acts on that. Compare those entries with what the operator answered; when a kind has held up, the same list is what will let the stage answer it. A project widens or narrows what an agent does with and without its operator by editing that document, never the pack.
 
-**Compare.** Match each entry by `ref` with the answer the operator gave in the item's `answers` (`archon workflow runs --item <key> --json`): same option, same option with a materially different instruction, a different option, or escalated. `archon metrics sf.attend_would_answer` and `sf.attend_would_escalate` count the asks it would have answered and escalated, one record per ask.
+**Read it on an item.** `archon workflow runs --item <key>` lists the `attend` runs beside the stage runs they follow. `archon workflow get <attend run id> --json` has, under `terminal_record.returns.value.answers`, one entry per ask: `ref`, `would` (an option id or `escalate`), `text`, `why`, `confidence`, `alone` and `read`. Whoever answers an ask reads its entry first, as advice.
 
-It starts after these endings, the ones that carry asks: plan `ask`, link `waiting` and `fold`, split `whole` and `split`, and `ask` of each delivery stage. Landing asks, from the land gate and the land stage, are outside the shadow: they are always the operator's. A split that ends `waiting` and a plan that ends `stop` are left out: a run that starts anything no longer shows its item as stopped, and those endings can stop an item with no ask. A second ask on an item while its first `attend` run is still running is skipped, not queued.
+**Compare.** Match each entry by `ref` with the answer the operator gave in the item's `answers` (`archon workflow runs --item <key> --json`): same option, same option with a materially different instruction, a different option, or escalated. `archon metrics sf.attend_would_answer` and `sf.attend_would_escalate` count the asks it would have answered and escalated, and `sf.attend_would_answer_alone` those the policy would let it answer alone, one record per ask.
+
+It starts after these endings, the ones that carry asks: plan `ask`, link `waiting` and `fold`, split `whole` and `split`, and `ask` of each delivery stage. Landing asks, from the land gate and the land stage, are outside it: they are always the operator's. A split that ends `waiting` and a plan that ends `stop` are left out: a run that starts anything no longer shows its item as stopped, and those endings can stop an item with no ask. A second ask on an item while its first `attend` run is still running is skipped, not queued.
 
 ## What is not there yet
 

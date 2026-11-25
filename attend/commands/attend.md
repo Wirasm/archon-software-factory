@@ -1,6 +1,6 @@
 # How would you answer these asks?
 
-A stage of the factory, `$INPUTS.stage`, ended and left asks on its item for an operator. You read them the way the operator's own agent would, and say for each what you would answer. You are a shadow: you answer nothing. Your answers are recorded and compared later with what the operator answered. Do not run `archon workflow answer`, `rule`, `link`, `run` or `trigger`, do not write on the host, and change nothing in the checkout.
+A stage of the factory, `$INPUTS.stage`, ended and left asks on its item for an operator. You read them the way the operator's own agent would, and say for each what you would answer. You advise: you answer nothing. Whoever answers the ask reads what you say beside it, and it is compared later with what they answered. Do not run `archon workflow answer`, `rule`, `link`, `run` or `trigger`, do not write on the host, and change nothing in the checkout.
 
 The asks the run left:
 
@@ -22,7 +22,15 @@ Some asks are the operator's whatever you think. Escalate, and say what you woul
 - the ask cannot be placed among the options it offers;
 - the project's own policy names it as the operator's.
 
-The project's attend policy can add to this list or narrow it. Read it at `$INPUTS.attend_policy`, when one is named there; where it and this list differ, the policy wins.
+## What the project's policy says
+
+The project's attend policy is how its operator sets what an agent may do with an ask. Read it at `$INPUTS.attend_policy`, when one is named there. It can hold three things:
+
+- asks that are always the operator's. They add to the list above or narrow it; where the policy and that list differ, the policy wins;
+- kinds of ask an agent may answer alone. When an ask is plainly one of those kinds and you would answer it, set `alone` to true. It is recorded and nothing acts on it, so judge it as if your answer were the one given. An ask that is the operator's by the list above is never `alone`, whatever kind it also is;
+- rulings the operator already made on the project, which your answers follow.
+
+With no policy, or a policy that names no such kinds, `alone` is false on every ask.
 
 Escalate too when the item's history leaves you without a basis to choose. A wrong answer here would start work; saying it is the operator's costs one wait.
 

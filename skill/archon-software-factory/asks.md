@@ -57,6 +57,24 @@ ask's context says what the project's land policy would have done: "would have l
 this without asking" or "would have asked, because ...". That line is information for
 your answer, not a decision: nothing lands until an answer chooses `land`.
 
+## The attend stage's advice
+
+When a run leaves asks, the `attend` stage reads the whole item and records, for each
+ask, the option it would choose and why, or that the ask is the operator's. It answers
+nothing. Read it before you answer:
+
+```bash
+archon workflow runs --item <key>                 # the attend run follows the run that asked
+archon workflow get <attend run id> --json        # .terminal_record.returns.value.answers
+```
+
+Each entry has `ref`, `would` (an option id, or `escalate`), `text`, `why`, `confidence`,
+`read` (what it saw that the asking stage did not) and `alone`. `escalate` means bring the
+ask to the person. `alone` is true when the project's attend policy names that kind of
+ask as one an agent may answer without the person; it is recorded only, so today it tells
+you what the policy would allow and nothing answers by itself. The policy is the file the
+`attend_policy` setting names: the person edits it to change what an agent may do alone.
+
 ## Reading the report
 
 Delivery keeps one comment on the pull request, headed `## Factory report:`, and replaces
