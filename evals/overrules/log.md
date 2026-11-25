@@ -202,3 +202,7 @@
   - Why: the item's outcome was met and the product check approved. The two findings left were the refusal wording for a short run id typed inside an unregistered bare repository, and the message for an omitted id. Five rounds had each found one more directory layout; this one is not a place an operator works.
   - Pack gap seen: the exhausted-rounds agent only judges when the verdict is `return`. A verdict of `replan` with its starts used up skips it, and the operator gets an ask with no judgment. The agent should judge that case too.
   - Run metadata: reviewer and test-checker gpt-6.2-sol; scope rule (three kinds) live since earlier the same day; this item's plan predates it.
+
+- 2026-11-25, OUTCOME of the 2026-11-24 entry on issue-6197 (PR 6209): the finding I declined was real. Dev's scheduled Windows suite failed on exactly it (run 45546599576: a file setting written with a trailing separator passes validation on Windows). Fix ordered as https://github.com/coleam00/Archon/issues/6286.
+  - What I got wrong: I treated "traced from source, never run on Windows" as "speculative". The trace named the mechanism (Bun's Windows stat drops a final separator) and the test that would fail. A finding with a named mechanism and a named failing test is evidence, even unrun.
+  - What the gate missed: push runs on dev do not run the Windows package tests, so the landing and its landed check were green. Only the nightly run showed it. A change whose check names a platform-specific risk should have the Windows suite dispatched on its branch before it lands.
