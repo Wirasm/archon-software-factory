@@ -8,6 +8,9 @@
     "sf.link_would_wait": "Items that would have waited on work outside their order",
     "sf.admit_would_start": "Items that could have started without an operator",
     "sf.admit_would_ask": "Items an operator would have been asked about",
+    "sf.complexity_at_triage": "Items triage judged for complexity, by step",
+    "sf.complexity_after_build": "Built changes judged for complexity, by step",
+    "sf.complexity_agrees": "Built changes whose complexity matched triage's",
     "sf.attend_would_answer": "Asks the attend shadow would have answered",
     "sf.attend_would_escalate": "Asks the attend shadow would have left to an operator"
   },
@@ -32,7 +35,15 @@
       "shape": "ratio",
       "title": "Could have started without asking",
       "numerator": "sf.admit_would_start",
-      "denominator": "sf.admit_would_ask"
+      "denominator": "sf.admit_would_ask",
+      "denominator_label": "items an operator would be asked about"
+    },
+    {
+      "shape": "ratio",
+      "title": "Complexity: the build agreed with triage",
+      "numerator": "sf.complexity_agrees",
+      "denominator": "sf.complexity_after_build",
+      "denominator_label": "changes judged after the build"
     }
   ]
 }
