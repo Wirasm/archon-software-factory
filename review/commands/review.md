@@ -46,6 +46,12 @@ Hold your own findings to the test you hold the builder's guards to. For each on
 
 Something wrong that this change did not cause is not a finding against it. Code that came in through a merge of the branch the change is proposed against is not this change either, unless the way a conflict was resolved made it wrong. Report it as noticed. When what you found sits next to the change, check the commit it was built on before you decide which it is.
 
+The plan this change was built from:
+
+$INPUTS.plan
+
+Judge the change against the item, not against the plan. Read the plan for its `not_doing`: what the change leaves alone on purpose. A fault there is noticed, unless the item itself asks for it.
+
 When what you are about to return is another case of a kind of fault that was returned before and fixed, do not return the case. The change decides that thing in more than one place, and fixing cases will not end it. Return the cause as one finding: name the kind, the places that decide it now, and the one place that should. Keep the new case as its evidence. When no single place can decide it under this approach, that is a replan.
 
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.

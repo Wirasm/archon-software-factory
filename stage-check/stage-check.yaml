@@ -14,6 +14,9 @@ inputs:
   answers:
     default: "None."
     description: Decisions an operator already made on this item.
+  plan:
+    result_of: plan
+    description: What plan concluded, as its result. The review and the verdict read what it leaves alone.
   change:
     default: ""
     description: Where the change is proposed, as the builder reported it.
@@ -70,6 +73,7 @@ nodes:
       item: $INPUTS.item
       answers: $INPUTS.answers
       base: $base.output
+      plan: $INPUTS.plan
       review_policy: $INPUTS.review_policy
       returned_before: $INPUTS.returned_before
       builder_reply: $INPUTS.builder_reply
@@ -100,6 +104,8 @@ nodes:
     with:
       item: $INPUTS.item
       answers: $INPUTS.answers
+      plan: $INPUTS.plan
+      base: $base.output
       review_policy: $INPUTS.review_policy
       reports: |
         ## From the review (is the change right against the item)
