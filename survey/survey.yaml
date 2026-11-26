@@ -8,8 +8,19 @@ description: |
 
 inputs:
   item:
+    default: ""
     description: >-
-      The work item as text: its title, its body, and the discussion on it.
+      The work item as text: its title, its body, and the discussion on it. A run by hand
+      gives this; the binding on a newly opened issue gives `issue` instead.
+  issue:
+    default: ""
+    description: The number of the issue to judge, on the repository `repo_host` and `repo_path` name. Set by the binding that starts a survey when an issue is opened.
+  repo_host:
+    default: ""
+    description: The host of the project's repository, such as github.com. Read with `issue`.
+  repo_path:
+    default: ""
+    description: The path of the project's repository on its host, such as acme/widgets. Read with `issue`.
   members:
     default: "[]"
     description: Not used by a survey; triage's judgment reads it. Leave it empty.
@@ -25,10 +36,46 @@ returns:
   summary: why
 
 nodes:
-  - id: judge
-    include: judge
+  # The item as text: what a run by hand gave, or the issue the binding names, read
+  # through the forge. An issue that cannot be read fails the run with the reason.
+  - id: read
+    runtime: bun
+    mutates_checkout: false
     with:
       item: $INPUTS.item
+      issue: $INPUTS.issue
+      repo_host: $INPUTS.repo_host
+      repo_path: $INPUTS.repo_path
+    script: |
+      import { emit, forge, input } from 'archon:script';
+      const given = input('item').trim();
+      const issue = Number(input('issue').trim());
+      if (given || !(Number.isInteger(issue) && issue > 0)) {
+        if (!given) throw new Error('A survey needs the item as text, or the number of an issue to read.');
+        emit({ item: given });
+      } else {
+        const ref = { repo: { host: input('repo_host').trim(), path: input('repo_path').trim() }, number: issue };
+        const work = forge('workitem.view', { ref });
+        const seen = forge('workitem.comments', { subject: { kind: 'issue', ref } });
+        const talk = (seen.comments ?? [])
+          .map((c: any) => `**${c.author?.login ?? 'someone'}**:\n\n${String(c.body ?? '').trim()}`)
+          .join('\n\n');
+        emit({
+          item: `---\nid: ${issue}\nsource: ${work.url ?? ''}\nopened_by: ${work.author?.login ?? 'unknown'}\n---\n\n` +
+            `# ${work.title}\n\n${String(work.body ?? '').trim()}\n\n## Discussion\n\n${talk || 'No comments.'}`,
+        });
+      }
+    output_format:
+      type: object
+      properties:
+        item: { type: string, description: 'The work item as text.' }
+      required: [item]
+
+  - id: judge
+    depends_on: [read]
+    include: judge
+    with:
+      item: $read.output.item
       triage_policy: $INPUTS.triage_policy
       members: $INPUTS.members
       depends_on: $INPUTS.depends_on

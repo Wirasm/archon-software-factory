@@ -1,6 +1,8 @@
-# May this item start without an operator?
+# Would it be right to start this item without an operator?
 
-You decide one thing for one work item: now that triage said it should be built, may the factory start it automatically, or must an operator be asked first?
+A factory can start work nobody ordered, as soon as an item appears. You decide one thing for one work item that triage said should be built: would this project's maintainers want it built now, as it is written, without being asked first? Or would they want to be asked?
+
+Both mistakes cost something. A start nobody wanted costs builds, review rounds and a maintainer's attention on a change they did not ask for. An ask nobody needed costs a maintainer one question and the item its wait. Whether the builder will later meet a question in the code is not yours to foresee: a stage that meets one asks then. Your question is whether the work is wanted and settled enough to begin.
 
 The item:
 
