@@ -175,6 +175,8 @@ A work order is a small JSON file. `key` and one of `source` or `text` are requi
 
 ```bash
 archon trigger fire --config <bindings-dir>/<the order file> --inputs order.json
+# or, for one issue, with no file:
+archon trigger fire --config <bindings-dir>/<the order file> --input key=issue-123 --input source=https://github.com/<owner>/<repo>/issues/123
 ```
 
 The command returns as soon as the order is taken; the stages that follow run in the background. The first order registers the project with Archon; there is no separate step. The order becomes a work item, and the engine starts each next stage when the one before ends: triage, the split when triage calls for one, the link stage, plan, build, check and host rounds, the land gate, the land stage, the landed check and the discoveries drain. An order that names only a `key` orders that item again from its own last order.
@@ -408,6 +410,8 @@ Things to know before you rely on it:
 - **The forge plugin must support `workitem.label.added`.** Check it with `archon forge check` as in step 2 of the setup.
 - Each start is an ordinary binding start, so the `order` capacity and the run limit decide when it runs.
 
+**A label on a pull request asks for a review.** The generated `...-inspect-on-label-<digest>.json` file is a second binding for the same `bindings` array: adding the label `factory-review` to a pull request starts [`inspect`](#review-someone-elses-pull-request) on the item `pr-<number>`, which posts its report on the pull request and changes nothing in it. The same rules hold: only adding the label counts, once per add. `archon trigger check` says when a binding is not observed.
+
 **On an install that receives webhooks,** the same binding object goes into the same `bindings` array of a source with `webhookSecretEnv`, and a server started with `ARCHON_TRIGGER_HOST=<host-id>` starts the runs. Archon's guide covers the server side: [configure GitHub event starts](https://archon.diy/guides/workflow-triggers/#configure-github-event-starts).
 
 ### The wake timer
@@ -511,7 +515,7 @@ While the hold is set, no new run starts from any source on the install, not onl
 
 ## Update the pack
 
-Update when no start of the pack is queued. A start that is already queued (waiting for capacity, for its item or for its checkout) keeps the inputs it was prepared with, and the hold does not move it: it stays queued until the hold lifts. When the update removed a setting or an input its stage declared, that start is then refused, the stage never runs, and its item looks finished when it is not.
+Prefer a moment when no start of the pack is queued. A start that is already queued (waiting for capacity, for its item or for its checkout) follows its trigger file when you register it again, so an update that only changes bindings loses no start. A start whose trigger file the update removed still runs as it was prepared, and when the update also removed a setting or an input its stage declared, that start is refused; the refusal is listed in `archon workflow attention`.
 
 ```bash
 archon workflow status    # lists running runs and queued starts; wait until none is of this pack
@@ -545,7 +549,7 @@ Work through these in order, from the project's checkout.
 3. **The hold is set.** `archon workflow status` says so. Lift it with `archon hold lift`.
 4. **A binding is broken or missing.** `archon trigger check` exits nonzero and names the file. `archon pack graph Wirasm.archon-software-factory` shows every arrow between stages, whether it is active on this install, and which outcomes start nothing.
 5. **The item waits on another item.** Its last link run ended `waiting`. The item read lists what it depends on under `Links`, and the run's result names it in `waits_on`. See [items that wait](#items-that-wait).
-6. **The item stopped, or it is finished.** `archon workflow attention` lists an item as `stopped`, with the stage, the outcome and one line of why, when its last run ended where nothing starts and left no ask: an order that was `refused`; a plan that ended `stop`; a split that ended `waiting`; a host round that ended `waiting`; a landed check that ended `broken_before`, `unclear`, `waiting` or `not_landed`; a close step that ended `reshape` or `not_closed`. It needs an operator, takes no answer, and stays listed until a run starts on the item again. An item that is finished is not listed: each stage declares the outcomes after which the item needs nothing more (`returns.final`). Those are a link run that ended `dropped` or `none`, a close step that ended `dropped`, and a landed check that ended `clear` or `none`. A link run that ended `waiting` is not listed either: the item is woken when what it waits on ends. Read any run's result with `archon workflow get <run-id> --json`.
+6. **The item stopped, or it is finished.** `archon workflow attention` lists an item as `stopped`, with the stage, the outcome and one line of why, when its last run ended where nothing starts and left no ask: an order that was `refused`; a plan that ended `stop`; a split that ended `waiting`; a host round that ended `waiting`; a link run that ended `none`; a close step that ended `reshape` or `not_closed`. It needs an operator, takes no answer, and stays listed until a run starts on the item again. An item that is finished is not listed: each stage declares the outcomes that finish its item (`returns.ends`). Those are an order that ended `work_order`, a split that ended `split`, a link run that ended `dropped` and a close step that ended `dropped`. The stages that only observe an item (`observes: true`: attend, complexity, landed, inspect, survey) never stop, end or move it, whatever they end with. A link run that ended `waiting` is not listed either: the item holds a `depends_on` the engine counts as a wait, and it is woken when what it waits on ends. Read any run's result with `archon workflow get <run-id> --json`.
 7. **Its stage is full.** The item read says what the start waits behind. See [how many items run at once](#how-many-items-run-at-once).
 8. **A start was admitted and nothing runs it.** The item read shows its state as `unowned`. Run it once with `archon trigger execute <request-id> --host <host-id>`.
 9. **A run on the item lost its process.** One run of a stage works an item at a time, so a dead run holds the item. The item read says when a run's owner is gone and prints `archon workflow resume <run-id>` and `archon workflow abandon <run-id>`.
@@ -651,7 +655,7 @@ archon workflow run Wirasm/archon-software-factory:stage-build --item <key> --in
 
 ## The attend stage: advice on each ask
 
-**Advice, as of 2026-11-25.** When a stage's run ends with asks, the `attend` stage starts on the item and an agent (`@manager`) reads them the way an operator's own agent would: the asks with their options, every earlier run and answer on the item, its rulings, and the project's policies. For each open ask it records the option it would choose and the answer text it would give, or that it would bring the ask to the operator, with why, how sure it is, and what it read that the asking stage did not have. It answers nothing, starts nothing and changes nothing on the item or the change. Its outcomes are final, so it never shows an item as stopped.
+**Advice, as of 2026-11-25.** When a stage's run ends with asks, the `attend` stage starts on the item and an agent (`@manager`) reads them the way an operator's own agent would: the asks with their options, every earlier run and answer on the item, its rulings, and the project's policies. For each open ask it records the option it would choose and the answer text it would give, or that it would bring the ask to the operator, with why, how sure it is, and what it read that the asking stage did not have. It answers nothing, starts nothing and changes nothing on the item or the change. It observes the item (`observes: true`), so its runs never stop, end or move it.
 
 It always leaves to the operator an ask about landing or merging; one whose answer would change a workflow language, a plugin or provider contract, a stored schema or a public API; any ask on an item where an operator already overruled a stage; one it cannot place among the ask's options; and what the project's policy names as the operator's. The `attend_policy` setting adds to or narrows that list.
 
@@ -661,7 +665,7 @@ It always leaves to the operator an ask about landing or merging; one whose answ
 
 **Compare.** Match each entry by `ref` with the answer the operator gave in the item's `answers` (`archon workflow runs --item <key> --json`): same option, same option with a materially different instruction, a different option, or escalated. `archon metrics sf.attend_would_answer` and `sf.attend_would_escalate` count the asks it would have answered and escalated, and `sf.attend_would_answer_alone` those the policy would let it answer alone, one record per ask.
 
-It starts after these endings, the ones that carry asks: plan `ask`, link `waiting` and `fold`, split `whole` and `split`, and `ask` of each delivery stage. Landing asks, from the land gate and the land stage, are outside it: they are always the operator's. A split that ends `waiting` and a plan that ends `stop` are left out: a run that starts anything no longer shows its item as stopped, and those endings can stop an item with no ask. A second ask on an item while its first `attend` run is still running is skipped, not queued.
+It starts after these endings, the ones that carry asks: plan `ask`, link `waiting` and `fold`, split `whole` and `split`, and `ask` of each delivery stage. Landing asks, from the land gate and the land stage, are outside it: they are always the operator's. A split that ends `waiting` and a plan that ends `stop` are left out: they carry no asks. A second ask on an item while its first `attend` run is still running is skipped, not queued.
 
 ## What is not there yet
 

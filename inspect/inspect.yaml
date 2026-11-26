@@ -8,7 +8,17 @@ description: |
 
 inputs:
   change:
-    description: A link to where the change is proposed (a pull request).
+    default: ""
+    description: A link to where the change is proposed (a pull request). A run by hand gives this.
+  number:
+    default: ""
+    description: The number of the pull request, on the repository `repo_host` and `repo_path` name. Set by the binding that starts a review when a label is put on a pull request.
+  repo_host:
+    default: ""
+    description: The host of the project's repository, such as github.com. Read with `number`.
+  repo_path:
+    default: ""
+    description: The path of the project's repository on its host, such as acme/widgets. Read with `number`.
   answers:
     default: "None."
     description: Decisions an operator already made about this change.
@@ -33,9 +43,14 @@ nodes:
     mutates_checkout: false
     with:
       change: $INPUTS.change
+      number: $INPUTS.number
+      repo_host: $INPUTS.repo_host
+      repo_path: $INPUTS.repo_path
     script: |
       import { emit, forge, input } from 'archon:script';
-      const change = input('change').trim();
+      // A label binding names the pull request by its number on the project's repository.
+      const change = input('change').trim() ||
+        (input('number').trim() ? `https://${input('repo_host').trim()}/${input('repo_path').trim()}/pull/${input('number').trim()}` : '');
       const refused = (why: string) => emit({ outcome: 'refused', item: '', head: '', number: '', onto: '', why });
       try {
         const where = forge('resolve', { remote: change, web: true });
