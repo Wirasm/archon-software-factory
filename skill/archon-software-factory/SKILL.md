@@ -104,8 +104,8 @@ A thin item produces a confident answer to the wrong question; fix the issue fir
   members take it. Landing the branch on the base is not a stage: the operator does it.
 - **The label as an order.** With label intake set up, adding the label `factory` to an
   issue orders it as `issue-<number>`. A label that was already there when intake was first
-  seen starts nothing; remove it and add it again. Put it on issues only: a labelled pull
-  request is ordered too.
+  seen starts nothing; remove it and add it again. Only issues are ordered: the label on a
+  pull request starts nothing.
 - **`depends_on`** in an order, or on a member, states what the person already knows must
   land first. The link stage takes it as given: the item waits and goes on by itself when
   it has landed.
@@ -144,11 +144,12 @@ Runs that started before the update finish on the pack revision they started wit
   states; an outside item it names as `would_wait` and does not wait on.
 - A waiting item is told when what it waits on ends, not when it only sits.
 - A work order has no stage after the order: nothing starts when its last member lands.
-- A host round that ends `waiting`, a triage judgment that is not `build`, `narrow` or
-  `split`, and a plan that ends `stop` start nothing and leave no ask.
+- A host round that ends `waiting` and a plan that ends `stop` start nothing and leave no
+  ask; the item shows as stopped. A triage judgment that is not `build`, `narrow` or
+  `split` leaves an ask, and its answer starts the next stage.
 - Nothing lands without an answer unless the project set `land_gate: policy`.
 - A split member that waits on a ruling or a signal starts only when the split runs
   again, and a split does not create the landing branch.
 - Changes built side by side can conflict; the later one goes back to its builder.
-- The discoveries drain files at most three items a run, and none without a tracker.
+- The discoveries drain files nothing without a tracker.
 - No stage lands a shared branch on the base, and the report carries no screenshots.
