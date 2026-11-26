@@ -8,6 +8,12 @@ $INPUTS.item
 
 The triage policy is what this project's maintainers judge items against. Read the pack's default at `$PACK_DIR/policy/triage.md`. Then read the project's own at `$INPUTS.triage_policy`, when one is named there. Where they differ, the project's wins.
 
+Decisions an operator already made on this item, oldest first; where two disagree, the later one holds:
+
+$INPUTS.answers
+
+A decision is part of the item. Where it settles what you would otherwise send to a maintainer, judge the item with it settled, and do not raise the same question again.
+
 The other members of the work order this item is part of (`[]` when it is part of none):
 
 $INPUTS.members

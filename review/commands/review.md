@@ -38,6 +38,10 @@ Read the change for what it could do without. For each guard, state, option, ret
 
 Where the change could be wrong in a way its own tests do not show, find out by running something. Say for each thing you report whether you ran it or read it.
 
+The project's own checks (its test suite, type check, lint and build) ran before this change reached you, and they run again on the host after you. Do not run them: a whole run tells you what is already known, and it takes the machine from every other check working beside you. Run the software itself where behaviour is in question: start its server or its command on scratch data and look at what it does. When you break the code to see what fails, run only the tests that read what you broke.
+
+When what you report is something seen (a page, a screen, rendered output), a picture says it faster than a description. Take a screenshot, store it with `archon forge attachment.put` (`archon forge attachment.put --help` shows the request), and put the link it returns in the evidence of that finding. Only where it shows the fault; never as decoration.
+
 Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit that you make under `$NODE_SCRATCH_DIR`: that directory is yours alone and is removed when you finish. Change nothing in the change itself.
 
 Report everything you can find in this reading. Each round costs the builder a fix and every check another run, so a finding held back for later is the expensive kind.

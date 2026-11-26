@@ -19,6 +19,9 @@ inputs:
   depends_on:
     default: "[]"
     description: Keys of the items the order says must land before this one, as JSON. Empty when none.
+  answers:
+    default: "None."
+    description: Decisions an operator already made on this item, oldest first.
   admit_policy:
     default: ""
     description: The pack setting of the same name, declared here so a workflow that includes this block can pass it through.
