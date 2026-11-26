@@ -26,6 +26,7 @@ to the person, do not pick at random. To keep an item waiting, leave its ask ope
 
 | Ask left by | Options |
 |---|---|
+| triage | `build`, `split`, `drop`, `reshape`. An answer in your own words starts triage again with it. |
 | plan, split | The stage's own options for that question. Any answer starts the same stage again with it. |
 | stage-build | `send-back`, `replan`, `take-as-is`, `drop`, `reshape`. |
 | stage-check, stage-host | `send-back`, `one-more-round`, `replan`, `take-as-is`, `drop`, `reshape`. |
@@ -43,9 +44,11 @@ Except for plan and split, each stage declares its options, so `archon workflow 
 | `take-as-is` | After a build or check ask: the host round on the change as it is. After a host ask: the land gate. |
 | `land` | The land stage. It merges only when the change still merges and its checks are green. |
 | `wait` | On a link ask: the item keeps waiting, and goes on when what it waits on lands. |
+| `build` | On a triage ask: the item is built as it stands; the link stage starts, then plan. |
+| `split` | On a triage ask: the split stage cuts the item into members. |
 | `start-anyway` | On a link ask: the link stage stops waiting and plan starts. |
 | `drop` | The pull request is closed without merging. The item ends. |
-| `reshape` | The pull request becomes a draft. Nothing more is built until the item is shaped and ordered again. |
+| `reshape` | The pull request is closed without merging and its branch kept. Nothing more is built until the item is shaped and ordered again. |
 
 When a run left several asks, answer all of them: the start happens when the last one is
 answered. For delivery and landing asks, every answer must choose the same option, or
@@ -79,7 +82,7 @@ archon workflow get <attend run id> --json        # .terminal_record.returns.val
 Each entry has `ref`, `would` (an option id, or `escalate`), `text`, `why`, `confidence`,
 `read` (what it saw that the asking stage did not) and `alone`. `escalate` means bring the
 ask to the person. `alone` is true when the project's attend policy names that kind of
-ask as one an agent may answer without the person (runs before 2026-11-25 do not carry it); it is recorded only, so today it tells
+ask as one an agent may answer without the person; it is recorded only, so today it tells
 you what the policy would allow and nothing answers by itself. The policy is the file the
 `attend_policy` setting names: the person edits it to change what an agent may do alone.
 

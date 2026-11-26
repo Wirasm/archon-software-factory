@@ -697,7 +697,7 @@ bindings:
       answers: { item: answers }
       returned: { result: /returned }
       next: host
-  # The short way back, since 2026-11-25. A change the land stage found behind its landing
+  # The short way back. A change the land stage found behind its landing
   # branch, with nothing else wrong, goes to its builder to be brought up to date, and then
   # to the catch-up stage. When the lines the change adds and removes are the ones that
   # were approved and the host's checks are green, it goes straight to the land stage: no
