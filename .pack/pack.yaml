@@ -398,6 +398,19 @@ bindings:
     inputs:
       text: { result: /work_order }
       land_on: { input: land_on }
+  # An ask the check after a merge left (see landed.yaml): `fix` orders the fix.
+  order-after-landed-answers:
+    workflow: order
+    resource: order
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: landed
+      settled: answered
+      option: fix
+    inputs:
+      text: { result: /work_order }
+      land_on: { input: land_on }
   plan-after-answers:
     workflow: plan
     resource: plan

@@ -18,12 +18,25 @@ inputs:
     description: The branch this item's change landed on. Empty means the project's base branch. Passed on to the work order a break starts.
 
 # The check after a merge. `broken_here` starts a fix through a binding. The item's merge
-# is recorded, so the engine never lists it as stopped: an outcome that needs an operator
-# (unclear, broken_before, not_landed, waiting) is seen only in its report for now.
+# is recorded, so the engine never lists it as stopped: every other outcome that needs an
+# operator (unclear, broken_before, not_landed, waiting) leaves an ask, made by the
+# `verdict` node, so it shows in attention. `fix` orders the work order as new work;
+# `dismiss` leaves it.
 # `observes: true`: its runs act on an item without being steps of it, so they never
-# stop, end or move the item, and never hide a stop on it.
+# stop, end or move the item, and never hide a stop on it. It can still leave asks.
 observes: true
-returns: { node: landed, outcome: outcome, summary: why }
+returns:
+  node: verdict
+  outcome: outcome
+  asks: asks
+  summary: why
+  options:
+    - id: fix
+      does: The work order this check wrote (or its finding, when it wrote none) is ordered as new work.
+      cost: A new item goes through triage and the rest of the factory.
+    - id: dismiss
+      does: Nothing more happens. The finding stays in this run's report.
+      cost: If the branch is broken, nothing fixes it.
 
 nodes:
   - id: landed
@@ -65,3 +78,41 @@ nodes:
         work_order: { type: string, description: 'When you would start a fix: the work order as text that stands alone. Empty otherwise.' }
         for_next: { type: string, description: 'Anything the operator who reads this needs from you that has no field here.' }
       required: [outcome, would, why, facts, failures, candidates, work_order, for_next]
+
+  # Turns an outcome that needs an operator into an ask, so it shows in attention.
+  - id: verdict
+    depends_on: [landed]
+    runtime: bun
+    mutates_checkout: false
+    with:
+      found: $landed.output
+    script: |
+      import { emit, input } from 'archon:script';
+      const f = JSON.parse(input('found'));
+      const needs = ['unclear', 'broken_before', 'not_landed', 'waiting'].includes(f.outcome);
+      const order = f.work_order || [f.why, ...(f.failures ?? []).map((x: any) => `${x.check}: ${x.what}`)].filter(Boolean).join('\n');
+      const failures = (f.failures ?? []).map((x: any) => `- ${x.check}: ${x.what} (${x.whose})`).join('\n');
+      emit({
+        ...f,
+        work_order: order,
+        asks: needs ? [{
+          question: `After this change merged, the check reads "${f.outcome}": ${f.why} Order a fix, or leave it?`,
+          context: [
+            `Branch ${f.facts?.branch || '(unknown)'} at ${f.facts?.landed_at || '(not merged)'}. Checks: ${f.facts?.checks || '(not read)'}.`,
+            failures ? `What failed:\n${failures}` : '',
+            (f.candidates ?? []).length ? `Changes it may belong to: ${f.candidates.join(', ')}` : '',
+            f.for_next,
+          ].filter(Boolean).join('\n\n'),
+          recommendation: f.would === 'fix_forward'
+            ? { option: 'fix', why: f.why }
+            : { option: null, why: `The check would ${f.would}; it has no basis to choose between fixing and leaving it.` },
+          artifacts: [],
+        }] : [],
+      });
+    output_format:
+      type: object
+      properties:
+        outcome: { type: string, enum: [clear, broken_here, broken_before, unclear, waiting, not_landed, none] }
+        why: { type: string }
+        work_order: { type: string }
+      required: [outcome, why, work_order]
