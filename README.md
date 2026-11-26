@@ -408,6 +408,8 @@ Things to know before you rely on it:
 - **The forge plugin must support `workitem.label.added`.** Check it with `archon forge check` as in step 2 of the setup.
 - Each start is an ordinary binding start, so the `order` capacity and the run limit decide when it runs.
 
+**A label on a pull request asks for a review.** The generated `...-inspect-on-label-<digest>.json` file is a second binding for the same `bindings` array: adding the label `factory-review` to a pull request starts [`inspect`](#review-someone-elses-pull-request) on the item `pr-<number>`, which posts its report on the pull request and changes nothing in it. The same rules hold: only adding the label counts, once per add. `archon trigger check` says when a binding is not observed.
+
 **On an install that receives webhooks,** the same binding object goes into the same `bindings` array of a source with `webhookSecretEnv`, and a server started with `ARCHON_TRIGGER_HOST=<host-id>` starts the runs. Archon's guide covers the server side: [configure GitHub event starts](https://archon.diy/guides/workflow-triggers/#configure-github-event-starts).
 
 ### The wake timer

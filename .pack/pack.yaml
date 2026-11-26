@@ -157,6 +157,23 @@ bindings:
       issue: { event: subject.number }
       repo_host: { repo: host }
       repo_path: { repo: path }
+  # A label on a pull request asks for a review of it: adding the label `factory-review` to
+  # a pull request someone else proposed starts the inspect stage on the item `pr-<number>`,
+  # which posts its report there and changes nothing. Same setup as the label above.
+  inspect-on-label:
+    workflow: inspect
+    resource: inspect
+    capacity: 2
+    overlap: queue
+    event:
+      kind: label.changed
+      actions: [added]
+      predicates: [{ field: label.name, equals: factory-review }, { field: subject.kind, equals: pr }]
+    item: { field: subject.number, prefix: pr- }
+    inputs:
+      number: { event: subject.number }
+      repo_host: { repo: host }
+      repo_path: { repo: path }
   triage-after-order:
     workflow: triage
     resource: triage
