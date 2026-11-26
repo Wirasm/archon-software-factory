@@ -43,7 +43,7 @@ archon --version
 - **It prints a version.** Go on. A source install also prints its git commit.
 - **The command is not found.** Archon is a prerequisite and this pack never installs it. If you are an agent, stop and ask the person you act for before installing anything. The install instructions for macOS, Linux and Windows are at [archon.diy/getting-started/installation](https://archon.diy/getting-started/installation/). After installing, `archon doctor` lists the providers Archon can run.
 
-The pack needs Archon 0.15.0 or later. It uses engine commands that are recent: `archon pack bindings`, `archon trigger add`, `archon trigger check`, `archon hold`, `archon workflow wake schedule` and `archon skill add --pack`. If Archon rejects one of them as unknown, the install is older than the pack needs: update it ([updating Archon](https://archon.diy/getting-started/updating/)).
+The `main` branch of this pack, which `archon plugin add` installs, is for the released Archon: 0.15.0 today. It does not load on an Archon built from its `dev` branch after 0.15.0, which changed how a workflow says its item is finished; an operator who runs Archon from `dev` uses this pack's `dev` branch, as [CONTRIBUTING.md](CONTRIBUTING.md) describes. It uses engine commands that are recent: `archon pack bindings`, `archon trigger add`, `archon trigger check`, `archon hold`, `archon workflow wake schedule` and `archon skill add --pack`. If Archon rejects one of them as unknown, the install is older than the pack needs: update it ([updating Archon](https://archon.diy/getting-started/updating/)).
 
 Then check that Archon can run an agent:
 
@@ -128,16 +128,16 @@ The command prints what it wrote in four groups. Act on each:
 - **Run-ended bindings** and **asks-settled bindings**: register every one. The command prints an `archon trigger add '<file>'` line for each, about sixty-five of them. Run those lines, or register them in one go: every generated file except the order file and the label file.
 
   ```bash
-  for f in <bindings-dir>/*.json; do echo "$f" | grep -Eq -- '[^k]-order-(on-label-)?[0-9a-f]+\.json$' || archon trigger add "$f"; done
+  for f in <bindings-dir>/*.json; do echo "$f" | grep -Eq -- '([^k]-order|-(order|inspect)-on-label|-survey-on-opened)-[0-9a-f]+\.json$' || archon trigger add "$f"; done
   ```
 
-  PowerShell: `Get-ChildItem <bindings-dir>\*.json | Where-Object { $_.Name -notmatch '[^k]-order-(on-label-)?[0-9a-f]+\.json$' } | ForEach-Object { archon trigger add $_.FullName }`
+  PowerShell: `Get-ChildItem <bindings-dir>\*.json | Where-Object { $_.Name -notmatch '([^k]-order|-(order|inspect)-on-label|-survey-on-opened)-[0-9a-f]+\.json$' } | ForEach-Object { archon trigger add $_.FullName }`
 
   Registering all of them can take several minutes. It is done when the loop returns; `archon trigger check` then lists them.
 
-  The pattern leaves out the order file and the label file, and keeps `...-order-after-work-order-work-order-<digest>.json`, which starts the members of an order of several items. A file is active as soon as it is added.
+  The pattern leaves out the order file and the three event files, and keeps `...-order-after-work-order-work-order-<digest>.json`, which starts the members of an order of several items. A file is active as soon as it is added.
 - **Fire-only bindings**: one file, the order file (`...-order-<digest>.json`). Do not add it. You fire it by hand in step 5.
-- **Event bindings**: one file, `...-order-on-label-<digest>.json`. Leave it unless you set up [label intake](#label-intake-a-label-is-a-work-order). The command's own output tells you to add it to a sources file and start a server; that is the label intake setup, and nothing else needs it.
+- **Event bindings**: three files, `...-order-on-label-<digest>.json`, `...-inspect-on-label-<digest>.json` and `...-survey-on-opened-<digest>.json`. Do not add them with `archon trigger add`. Leave them unless you set up [label intake](#label-intake-a-label-is-a-work-order), which says what each is for. The command's own output tells you to add it to a sources file and start a server; that is the label intake setup, and nothing else needs it.
 
 Then check everything that is registered:
 
@@ -202,6 +202,7 @@ Which options an ask offers depends on the stage that left it:
 
 | Ask left by | Options |
 |---|---|
+| Triage | `build`, `split`, `drop`, `reshape`. An answer in your own words starts triage again with it. |
 | Plan, split | The stage's own options, written for that question. An answer starts the same stage again with the answer. |
 | Link | `wait`, `start-anyway`, `drop`. An answer starts the link stage again, which carries it out. |
 | Build | `send-back`, `replan`, `take-as-is`, `drop`, `reshape`. |
@@ -214,6 +215,8 @@ Except for plan and split, a stage's options are declared in its workflow (`retu
 |---|---|
 | `send-back` | The builder, in the checkout it left, with your answer. Then the checks look at the change again. (After a build that was itself a host fix, the host round looks at it.) |
 | `one-more-round` | The builder, with what was returned, and then one more round: after a check ask the checks run again; after a host ask the change goes straight back to the host round. If that round returns the change again, you are asked again. |
+| `build` | On a triage ask: the link stage, then plan. The item is built as it stands. |
+| `split` | On a triage ask: the split stage, which cuts the item into members. |
 | `replan` | Plan, then delivery. |
 | `take-as-is` | After a build or check ask: the host round, on the change as it is. After a host ask: the land gate. |
 | `land` | The land stage, which merges the change when it still merges and its checks are green. |
@@ -234,7 +237,7 @@ The pack ships a skill at [`skill/archon-software-factory/`](skill/archon-softwa
 archon skill add --pack Wirasm/archon-software-factory
 ```
 
-It copies the skill into `.claude/skills/archon-software-factory/` and `.agents/skills/archon-software-factory/` in your project; Claude Code reads the first and Codex the second. These are new files in your repository: commit them, or add both folders to `.gitignore`. If your project has its own checks on skill folders or on top-level paths, list them there too. Run it again after a pack update: it replaces both folders whole. The skill builds on Archon's own `archon-cli` skill, which `archon skill add` installs into the same two folders.
+It copies the skill into `.claude/skills/archon-software-factory/` and `.agents/skills/archon-software-factory/` in your project; Claude Code reads the first; Codex and Pi read the second. An agent that reads neither folder needs the skill copied to wherever it looks for skills. The pack's skill covers running the factory; Archon's own commands are in the `archon-cli` skill, which `archon skill add` installs the same way. These are new files in your repository: commit them, or add both folders to `.gitignore`. If your project has its own checks on skill folders or on top-level paths, list them there too. Run it again after a pack update: it replaces both folders whole. The skill builds on Archon's own `archon-cli` skill, which `archon skill add` installs into the same two folders.
 
 ## Optional settings
 
@@ -409,6 +412,8 @@ Things to know before you rely on it:
 - Each start is an ordinary binding start, so the `order` capacity and the run limit decide when it runs.
 
 **A label on a pull request asks for a review.** The generated `...-inspect-on-label-<digest>.json` file is a second binding for the same `bindings` array: adding the label `factory-review` to a pull request starts [`inspect`](#review-someone-elses-pull-request) on the item `pr-<number>`, which posts its report on the pull request and changes nothing in it. The same rules hold: only adding the label counts, once per add. `archon trigger check` says when a binding is not observed.
+
+**Every new issue can be judged as a shadow.** The generated `...-survey-on-opened-<digest>.json` file is a third binding for the same `bindings` array. With it, each newly opened issue is judged once by the survey stage on the item `survey-<number>`: triage's judgment, and for an issue that should be built, whether the admit judgment would have started it with no operator. It starts nothing and writes nothing on the issue; it is a measurement, read with `archon metrics sf.admit_would_start`. Leave it out unless you want that measurement: each new issue costs one judgment.
 
 **On an install that receives webhooks,** the same binding object goes into the same `bindings` array of a source with `webhookSecretEnv`, and a server started with `ARCHON_TRIGGER_HOST=<host-id>` starts the runs. Archon's guide covers the server side: [configure GitHub event starts](https://archon.diy/guides/workflow-triggers/#configure-github-event-starts).
 
@@ -642,7 +647,7 @@ archon workflow run Wirasm/archon-software-factory:stage-build --item <key> --in
 
 ## A change that fell behind: the short way back to landing
 
-**Since 2026-11-25.** A change can be approved and then fall behind: another change lands first and the two no longer merge. Nothing is wrong with it. The land stage ends `behind`, and the item takes a short way back:
+A change can be approved and then fall behind: another change lands first and the two no longer merge. Nothing is wrong with it. The land stage ends `behind`, and the item takes a short way back:
 
 1. **The same builder** merges the landing branch into the change and resolves the conflicts. It is told to change nothing else.
 2. **The `catchup` stage** compares the change before and after. A script lists the lines the change adds and removes on top of its landing branch at the commit the land stage read, and at the new head. Context lines are left out, because a merge moves them. Equal lists mean the change is the one that was approved. An agent then waits for the host's checks at the new head.
@@ -683,7 +688,7 @@ It starts after these endings, the ones that carry asks: plan `ask`, link `waiti
 - **Changes built side by side can conflict.** A change that was ready stops merging when a sibling lands first. The land gate names the other open changes that touch the same files and the order it would land them in; nothing brings the later one up to date before its land is refused and it goes back to its builder. (The landed check used to name such siblings as a shadow. It named one in 41 runs and missed six of seven real conflicts, so it was removed.)
 - **The landing branch is enforced at the merge, not before it.** `land_on` reaches every stage, and the land stage merges only a change proposed against it: one proposed against another branch stops with an ask. Unless an operator records the branch on the item first ([landing branch](#landing-branch-and-work-that-is-part-of-a-larger-item)), the engine cuts the first worktree from the base branch, and only the build prompt moves the builder onto `land_on`. When the land stage merges through the forge, the engine records the merge and the branch on the item, so later work on the item is cut from it.
 - **After a landing, one result is acted on.** When the landed check finds the change broke its branch and writes a work order, that order starts as new work on the same item. Every other result of the landed check is only recorded.
-- **No screenshots in the report.** The forge can store an image for a comment (`archon forge attachment.put`), and no stage uses it yet.
+- **Screenshots are not proven yet.** The review and the product review may store a screenshot with `archon forge attachment.put` and put its link in a finding, and the report embeds it. No real report has carried one so far.
 
 ## License
 

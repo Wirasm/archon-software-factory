@@ -16,7 +16,7 @@ Read both with `archon workflow runs --item <key>`.
 | link `waiting` | Nothing until what it waits on ends; then the link stage runs again by itself. See below. An open ask means what it waits on will not land. |
 | link `fold` | An ask is open: it overlaps another item. `dropped`: the item ended. `none`: nothing changed. |
 | triage `split` | The split starts. |
-| triage, any other judgment | Nothing, and no ask. The item shows as stopped in `archon workflow attention` with the reason; `shape` also lists open questions for a maintainer. Report it. |
+| triage, any other judgment | An ask is open, with the judgment, its reason and, for `shape`, the open questions. `build` starts the link stage, `split` the split stage, `drop` and `reshape` the close step; an answer in the person's own words starts triage again with it. |
 | split `whole` / `split` / `waiting` | Plan / each member that starts now is ordered as its own item / nothing. |
 | plan `planned` | Build starts. `ask`: an ask is open. `stop`: nothing; the result says why. |
 | stage-build `built` / `built_for_host` / `built_for_land` | The checks / the host round / the catch-up stage. `replan`: plan starts with what the builder said (once on an item; after that it asks). `ask`: an ask is open. |
@@ -54,8 +54,7 @@ change proposed; that plans and builds it a second time.
 - **A start limit is reached** (`Start limits: 2 of 2`). A returned change goes back to
   its builder twice without an operator; the third time the stage asks. Answer the ask.
   The count starts over when the item is planned again.
-- **It ended where nothing starts** (a triage judgment that is not `build`, `narrow` or
-  `split`, a plan `stop`, a host round `waiting`). Report it with the stage's reason. When
+- **It ended where nothing starts** (a plan `stop`, a host round `waiting`). Report it with the stage's reason. When
   the person says it is over, end it: `archon workflow end --item <key> --as <you> -- <reason>`.
   An ended item leaves attention, and a new order opens it again.
 

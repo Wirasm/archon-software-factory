@@ -9,7 +9,7 @@ description: |
   factory waiting on", "where is issue N", "order this issue", "send this through the
   factory", "answer that ask", "land it", "send it back", "pause the factory", or starts
   a session on a project where the pack is set up.
-  NOT for: setting the pack up (read the pack's README), or Archon's own commands and
+  NOT for: setting the pack up (read the README in the pack's repository), or Archon's own commands and
   run control (use the archon-cli skill).
 argument-hint: "[item key | ask ref | intent]"
 ---
@@ -33,7 +33,7 @@ Route by intent:
 | Know where an item is, why it does not move, or split a large one | `items.md` |
 | Answer an ask, or read the report on a pull request | `asks.md` |
 | Start a session, order work, pause, or handle a pack update | this file |
-| Set the pack up or change a setting | the pack's README |
+| Set the pack up or change a setting | The README in the pack's repository. `archon plugin list` shows where the pack came from; the installed copy holds the same file. |
 | Use an Archon command this skill does not teach (resume, cancel, wait, logs) | the `archon-cli` skill |
 
 - Run every command from the project's checkout; the directory selects the project.
@@ -104,8 +104,10 @@ A thin item produces a confident answer to the wrong question; fix the issue fir
   members take it. Landing the branch on the base is not a stage: the operator does it.
 - **The label as an order.** With label intake set up, adding the label `factory` to an
   issue orders it as `issue-<number>`. A label that was already there when intake was first
-  seen starts nothing; remove it and add it again. Only issues are ordered: the label on a
-  pull request starts nothing.
+  seen starts nothing; remove it and add it again. Only issues are ordered by it.
+- **The label as a review.** With the `inspect-on-label` binding set up the same way, adding
+  the label `factory-review` to a pull request someone else proposed starts `inspect` on
+  `pr-<number>`: it posts its report on the pull request and changes nothing in it.
 - **`depends_on`** in an order, or on a member, states what the person already knows must
   land first. The link stage takes it as given: the item waits and goes on by itself when
   it has landed.
@@ -126,7 +128,7 @@ Follow "Update the pack" in the README, in this order:
    shows no start queued. If the pack was already updated without a hold, set it now and go on.
 2. `archon plugin update Wirasm/archon-software-factory`.
 3. `archon pack bindings Wirasm/archon-software-factory --force` with the same `--repo`,
-   `--host`, `--run-as`, `--out` and `--config` setup used. They are in the README's setup
+   `--host`, `--run-as`, `--cwd`, `--out` and `--config` setup used. They are in the README's setup
    step and in the binding files setup wrote; if you cannot find them, ask. Do not guess.
 4. Run every `archon trigger add` line it prints. A file with the same name replaces the old one.
 5. Delete from Archon's triggers directory only the files an earlier `pack bindings` run
@@ -152,4 +154,4 @@ Runs that started before the update finish on the pack revision they started wit
   again, and a split does not create the landing branch.
 - Changes built side by side can conflict; the later one goes back to its builder.
 - The discoveries drain files nothing without a tracker.
-- No stage lands a shared branch on the base, and the report carries no screenshots.
+- No stage lands a shared branch on the base. A review may attach a screenshot to a finding; no real report has carried one yet.
