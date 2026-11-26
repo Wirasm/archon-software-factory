@@ -40,7 +40,13 @@ Where the change could be wrong in a way its own tests do not show, find out by 
 
 The project's own checks (its test suite, type check, lint and build) ran before this change reached you, and they run again on the host after you. Do not run them: a whole run tells you what is already known, and it takes the machine from every other check working beside you. Run the software itself where behaviour is in question: start its server or its command on scratch data and look at what it does. When you break the code to see what fails, run only the tests that read what you broke.
 
-When what you report is something seen (a page, a screen, rendered output), a picture says it faster than a description. Take a screenshot, store it with `archon forge attachment.put` (`archon forge attachment.put --help` shows the request), and put the link it returns in the evidence of that finding. Only where it shows the fault; never as decoration.
+When what you report is something seen (a page, a screen, rendered output), a picture says it faster than a description. Take a screenshot with the browser tool this project's product policy names, as a PNG. Then store it:
+
+1. Write a request file under `$NODE_SCRATCH_DIR`: `{ "repo": { "host": "<host>", "path": "<owner>/<name>" }, "contentType": "image/png", "content": "<the file's bytes as base64>" }`. The repository is the one the change is proposed to; `archon forge resolve` on the checkout's remote names it.
+2. Run `archon forge attachment.put --data-file <that file>`. The result's `attachment.url` is the link.
+3. Put the link in the evidence of the finding it shows, as an image: `![what it shows](<link>)`.
+
+An image over 5 MiB is refused: crop it to the part that shows the fault. The picture is as visible as the repository, so show scratch data only and nothing secret. Use it where it shows the fault, never as decoration. When the store is refused, say so in the finding and describe what you saw.
 
 Other checks may be working in this checkout at the same time as you. Do anything that writes (a test of your own, breaking the code to see what fails) in a copy of the checkout at this commit that you make under `$NODE_SCRATCH_DIR`: that directory is yours alone and is removed when you finish. Change nothing in the change itself.
 
