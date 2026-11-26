@@ -48,8 +48,9 @@ Name in `not_doing` what the change leaves alone: the things next to the item a 
 
 Read `$PACK_DIR/.shared/ask.md` before you end: it says when a decision is yours to make and when it is an ask, what we expect in one, and what happens after.
 
-End in one of three outcomes:
+End in one of four outcomes:
 
 - **planned**: the plan is written and a builder can make it.
 - **ask**: finishing needs a decision that is not yours. Leave it as an ask and end here; nothing that follows your work starts until it is answered, and then this work runs again.
 - **stop**: it cannot be built as stated, or something else has to exist first. Say what.
+- **dropped**: a decision above says this item is not to be built: an operator answered an ask by dropping it, or by saying the work is done somewhere else. The item ends here and nothing is built. Say in `stop` whose decision it was and what they said. When a change is already proposed for the item, close it without merging first (`archon forge pr.close`), with a comment that gives the decision; its branch stays. Do not use this for a doubt of your own: that is `stop` or an ask.

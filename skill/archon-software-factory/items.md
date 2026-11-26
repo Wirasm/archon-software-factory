@@ -18,7 +18,7 @@ Read both with `archon workflow runs --item <key>`.
 | triage `split` | The split starts. |
 | triage, any other judgment | An ask is open, with the judgment, its reason and, for `shape`, the open questions. `build` starts the link stage, `split` the split stage, `drop` and `reshape` the close step; an answer in the person's own words starts triage again with it. |
 | split `whole` / `split` / `waiting` | Plan / each member that starts now is ordered as its own item / nothing. |
-| plan `planned` | Build starts. `ask`: an ask is open. `stop`: nothing; the result says why. |
+| plan `planned` | Build starts. `ask`: an ask is open. `stop`: nothing; the result says why. `dropped`: the item ended, on an operator's answer. |
 | stage-build `built` / `built_for_host` / `built_for_land` | The checks / the host round / the catch-up stage. `replan`: plan starts with what the builder said (once on an item; after that it asks). `ask`: an ask is open. |
 | stage-check `approve` / `return` | The host round / the builder. `replan`: plan starts with what the checks said (once on an item; after that it asks). `ask`: an ask is open. |
 | stage-host `ready` / `return` | The land gate / the builder, then the host again. `ask`: an ask is open. |

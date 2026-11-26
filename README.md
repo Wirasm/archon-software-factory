@@ -224,7 +224,7 @@ Except for plan and split, a stage's options are declared in its workflow (`retu
 | `fix` | On an ask of the check after a merge: its work order is ordered as new work on the item. `dismiss` leaves it. |
 | `take-as-is` | After a build or check ask: the host round, on the change as it is. After a host ask: the land gate. |
 | `land` | The land stage, which merges the change when it still merges and its checks are green. |
-| `drop` | The close step: the change is closed without merging, with your answer written on it. The item ends. On a link ask there is no change yet: the link stage ends `dropped`. |
+| `drop` | The close step: the change is closed without merging, with your answer written on it. The item ends. On a link ask there is no change yet: the link stage ends `dropped`. A plan's ask has options the planner wrote, so no fixed one starts the close step: say in your answer that the item is to be dropped, and the plan stage ends `dropped`, which ends the item. |
 | `wait` | The link stage, which ends `waiting` again. The item goes on when what it waits on lands. |
 | `start-anyway` | The link stage, which ends the item's links to what it waited on and ends `place`, so plan starts. On an ask about two items that overlap, the item is planned as it is. |
 | `reshape` | The close step: the change is closed without merging, its branch kept, with your answer written on it. Nothing more is built until the item is shaped again; the next build starts a new change. |
@@ -621,7 +621,7 @@ A member's key is its item's key from then on. Firing the same order again order
 
 A work order is done when every member is: its change merged, it ended without landing, or it was itself cut into members that are all done. An item a split cut into members is a work order in the same way. The engine derives that from the members each time the item is read; `archon workflow runs --item <order key>` prints `Work order: open` with the members that keep it open, or `Work order: done`.
 
-Each time a member lands or ends without landing (its land stage ended `landed`, or the close step or the link stage ended `dropped`), the `order-done` stage starts on the item the member is part of. While a member is still open it ends `open` and nothing shows anywhere. The order stage ended the work order's item when it handed the work to the members, so the item is in no list, and `order-done` only observes it (`observes: true`): its run cannot stop the item or open it again.
+Each time a member lands or ends without landing (its land stage ended `landed`, or the close step, the link stage or the plan stage ended `dropped`), the `order-done` stage starts on the item the member is part of. While a member is still open it ends `open` and nothing shows anywhere. The order stage ended the work order's item when it handed the work to the members, so the item is in no list, and `order-done` only observes it (`observes: true`): its run cannot stop the item or open it again.
 
 When no member is open, it runs once. An agent (`@reporter`) reads the order and each member's runs and writes the report: what was ordered, each member with its change and how it ended, and what is left open.
 
