@@ -28,6 +28,7 @@ Read both with `archon workflow runs --item <key>`.
 | catchup `ready` | The land stage, with no host round and no second land gate: the change is the one that was approved, and its checks are green. `changed`: the host round, then the land gate. |
 | landed `broken_here` | A fix is ordered on the same item. Every other outcome is only recorded. |
 | close `dropped` / `reshape` | The item ended / it waits to be shaped. `not_closed`: close the pull request by hand. |
+| order-done `open` | Nothing: a member of the work order is still open. It runs on the work order's item each time a member lands or is dropped. `reported`: the order's report is in the result, and nothing was proposed. `proposed`: the members' shared branch is proposed against the base branch, and the land gate starts on the work order's item. `already`: reported before. |
 
 A run's full result: `archon workflow get <run-id> --json`, under `terminal_record.returns.value`.
 For a few seconds after a stage ends, the next one reads as admitted and not started.

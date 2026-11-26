@@ -7,7 +7,7 @@ groups:
   - name: Checks
     stages: [stage-check, stage-host]
   - name: Landing
-    stages: [landgate, land, landed, discoveries, close]
+    stages: [landgate, land, landed, discoveries, close, order-done]
 ---
 
 # How the factory works
@@ -75,6 +75,7 @@ The host round reads what the project's own CI and the reviewers on the pull req
 - **Landed check.** Looks at the branch after the landing, and starts a fix when the change broke it.
 - **Discoveries.** What the agents noticed along the way becomes new work.
 - **Close.** A change you dropped is closed with your reason; one you sent back to shaping is closed too, its branch kept, and the item waits to be shaped again.
+- **Order done.** When the last member of a work order is done, the order is reported: each member and how it ended. Members that landed together on a branch of their own are proposed against the base branch as one change, which goes to the land gate.
 
 ## You
 

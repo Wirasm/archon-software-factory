@@ -76,6 +76,8 @@ A work order is a planned group of items: a release, a batch, a backlog switched
 
 **Ruled 2026-11-24 and built:** a work order of several items is an item whose members are `part_of` it. One order names the members, the order stage records the links, and each member is ordered like any other item. A member that records no landing branch takes the work order's. The README says how to fire one. The rest of this section is still hypothesis.
 
+**Built 2026-11-26, not ruled and not measured:** the `order-done` stage. It starts on a work order when a member lands or is dropped, does nothing while a member is open, and when none is, reports the order once and proposes a shared branch against the base branch for the land gate. It does not use `depends_on` from the order to its members, as the first bullet below supposed: the engine derives a work order's state from its `part_of` members, and a `linked` binding starts the stage.
+
 - The order depends on its members (`depends_on` from the order to each). When every member has landed the order is ready, and its own stage starts, for example cutting the release.
 - Intake starts only members of an active order, top-ranked first, up to what capacity takes. The backlog waits as items, not as queued starts, so the start queue stays short and an answered item waits behind a few runs, not behind the backlog.
 - The order has its own asks and its own outcome, like any item.
