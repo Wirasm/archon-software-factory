@@ -36,7 +36,7 @@ A maintainer should find in it, in this order and only when there is something t
 - When an operator must decide something: the questions, first, so they are not missed.
 - The verdict's summary.
 - The rounds so far, as a table: round, result, how many things to change, how many notes, and what the builder did before that round. Keep the earlier rows as they are and add this round.
-- What must still change: where, what, and what it costs to leave. Put the evidence for each in a folded `<details>` block.
+- What must still change: where, what, and what it costs to leave. Put the evidence for each in a folded `<details>` block, and where a check left a link to an image there, embed it as an image.
 - What earlier rounds returned, folded, so a reader can see what was already fixed.
 - What the item asks for, line by line: met, not met or not checked, and whether that was run or read. How each was checked goes in a folded block.
 - Notes that do not hold the change.

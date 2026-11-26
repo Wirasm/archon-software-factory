@@ -340,6 +340,23 @@ bindings:
       land_on: { input: land_on }
       judgment: { result: "" }
       answers: { item: answers }
+  # An answer in the operator's own words is a ruling on the item: triage judges it again
+  # with that answer, and what it then judges starts what follows.
+  triage-after-triage-answers:
+    workflow: triage
+    resource: triage
+    capacity: 3
+    overlap: queue
+    asks_settled:
+      workflow: triage
+      settled: answered
+      option: other
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      members: { input: members }
+      depends_on: { input: depends_on }
+      answers: { item: answers }
   close-after-triage-answers:
     workflow: close
     resource: close

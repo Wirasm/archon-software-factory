@@ -20,6 +20,10 @@ When you run the project's own software, give it scratch data and a scratch home
 
 Use what the change touches the way its users would. Run the command and read what it prints. Trigger the error and read the message as someone who has never seen the code. Follow the changed documentation step by step and see whether it works. Where the change has a screen and a browser is available, look at it. Say for each thing you report whether you used it or only read it.
 
+The project's own checks (its test suite, type check, lint and build) ran before this change reached you, and they run again on the host after you. Do not run them: a whole run tells you what is already known, and it takes the machine from every other check working beside you. Run the software itself where behaviour is in question: start its server or its command on scratch data and look at what it does.
+
+When what you report is something seen (a page, a screen, rendered output), a picture says it faster than a description. Take a screenshot, store it with `archon forge attachment.put` (`archon forge attachment.put --help` shows the request), and put the link it returns in the evidence of that finding. Only where it shows the fault; never as decoration.
+
 Prose is in scope. Docs that the change made untrue, and a new behaviour its users need and cannot find in the docs, are findings. A sentence in the docs, a help text or an error that is true and still leaves its reader unable to act is a finding.
 
 Judge by the project's own direction and design, not by your taste. Something you would have done differently that the project's documents do not speak to is not a finding.
