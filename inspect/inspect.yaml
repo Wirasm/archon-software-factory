@@ -20,7 +20,10 @@ inputs:
     description: The pack setting of the same name.
 
 # A review of someone else's change ends with its verdict, whatever it is.
-returns: { node: verdict, outcome: outcome, final: [approve, return, replan, ask] }
+# `observes: true`: its runs act on an item without being steps of it, so they never
+# stop, end or move the item, and never hide a stop on it.
+observes: true
+returns: { node: verdict, outcome: outcome }
 
 nodes:
   # What is proposed, read through the forge: the description is the item, and the forge

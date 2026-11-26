@@ -17,9 +17,10 @@ inputs:
     default: "[]"
     description: The asks that run left, as its result holds them.
 
-# `final`: every outcome is, so a run of this shadow never shows its item as stopped. No
-# binding starts from it.
-returns: { node: end, outcome: outcome, final: [recorded, none], summary: summary }
+# `observes: true`: its runs act on an item without being steps of it, so they never
+# stop, end or move the item, and never hide a stop on it.
+observes: true
+returns: { node: end, outcome: outcome, summary: summary }
 
 nodes:
   # A link run that waits ends `waiting` with or without an ask. Count the asks, so the

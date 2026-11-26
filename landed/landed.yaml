@@ -17,12 +17,13 @@ inputs:
     default: ""
     description: The branch this item's change landed on. Empty means the project's base branch. Passed on to the work order a break starts.
 
-# `final`: the outcomes after which the item needs nothing more. A run that ends in any
-# other outcome, starts nothing and leaves no ask shows the item as stopped in attention,
-# with `summary` as the reason.
-# A branch that is sound, or a policy that waits for nothing, ends the item. `broken_here`
-# starts a fix through a binding. Every other outcome needs an operator.
-returns: { node: landed, outcome: outcome, final: [clear, none], summary: why }
+# The check after a merge. `broken_here` starts a fix through a binding. The item's merge
+# is recorded, so the engine never lists it as stopped: an outcome that needs an operator
+# (unclear, broken_before, not_landed, waiting) is seen only in its report for now.
+# `observes: true`: its runs act on an item without being steps of it, so they never
+# stop, end or move the item, and never hide a stop on it.
+observes: true
+returns: { node: landed, outcome: outcome, summary: why }
 
 nodes:
   - id: landed

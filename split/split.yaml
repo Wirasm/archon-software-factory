@@ -29,7 +29,8 @@ inputs:
 
 # The engine defines the `asks` property of the result, so the `members` node's output format leaves it out.
 # A split that ends `waiting` with no ask shows the item as stopped in attention, with `why`.
-returns: { node: members, outcome: outcome, asks: asks, summary: why }
+# `split` ends this item: the work goes on as its members, each its own item.
+returns: { node: members, outcome: outcome, asks: asks, ends: [split], summary: why }
 
 nodes:
   - id: cut

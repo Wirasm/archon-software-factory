@@ -52,7 +52,9 @@ inputs:
     description: What the last order on this item returned. An order that names no work is the item's last order again.
 
 # A refused order starts nothing and shows the item as stopped in attention, with `why`.
-returns: { node: order, outcome: outcome, summary: why }
+# `work_order` ends the order's own item: the work goes on as its members, and the item
+# read derives the work order's open or done from them. `refused` stops it with the reason.
+returns: { node: order, outcome: outcome, ends: [work_order], summary: why }
 
 nodes:
   - id: order

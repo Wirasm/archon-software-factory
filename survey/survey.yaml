@@ -17,13 +17,12 @@ inputs:
     default: "[]"
     description: Not used by a survey; triage's judgment reads it. Leave it empty.
 
-# Every judgment is final: a survey item is a record to read, never work to move on, so
-# no survey run shows its item as stopped.
+# A survey records a judgment to read; it is never a step of the item.
+observes: true
 returns:
   node: judge
   outcome: recommend
   summary: why
-  final: [build, narrow, split, shape, recipe, native, fold, park, deprecate, decline, close]
 
 nodes:
   - id: judge

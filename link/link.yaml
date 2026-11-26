@@ -36,11 +36,11 @@ returns:
   node: end
   outcome: outcome
   asks: asks
-  # The outcomes after which the item needs nothing from an operator. `waiting` is one of
-  # them: the item holds a recorded `depends_on` to what it waits on, and the pack's
-  # bindings start this stage on it again when that item ends. An item it waits on that
-  # will not land leaves an ask here, and one that needs someone shows as stopped itself.
-  final: [waiting, dropped, none]
+  # `dropped` ends the item. `waiting` and `none` are not ends: an item that waits holds a
+  # recorded `depends_on`, and the engine does not yet count that as a wait, so a waiting
+  # item is listed as stopped (with the summary saying what it waits on) until the item it
+  # waits on ends and this stage runs again. Listed beats silent.
+  ends: [dropped]
   summary: summary
   options:
     - id: wait

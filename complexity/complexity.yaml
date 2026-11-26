@@ -14,9 +14,10 @@ inputs:
     result_of: triage
     description: What triage concluded about the item.
 
-# `final`: every outcome is, so a run of this shadow never shows its item as stopped. No
-# binding starts from it.
-returns: { node: end, outcome: outcome, final: [recorded, none], summary: why }
+# `observes: true`: its runs act on an item without being steps of it, so they never
+# stop, end or move the item, and never hide a stop on it.
+observes: true
+returns: { node: end, outcome: outcome, summary: why }
 
 nodes:
   - id: at_triage
