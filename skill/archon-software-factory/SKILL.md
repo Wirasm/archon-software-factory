@@ -16,7 +16,7 @@ argument-hint: "[item key | ask ref | intent]"
 
 # Operating the software factory
 
-The pack `Wirasm/archon-software-factory` turns a **work order** into an **item** and moves
+The pack `dynamous-community/archon-software-factory` turns a **work order** into an **item** and moves
 it through **stages**: order, triage, split (when needed), link, plan, build, check, host round,
 land gate, land, landed check, discoveries drain. Each stage is one Archon run on the item.
 **Bindings** start the next stage when one ends. A stage that needs a decision ends and
@@ -37,7 +37,7 @@ Route by intent:
 | Use an Archon command this skill does not teach (resume, cancel, wait, logs) | the `archon-cli` skill |
 
 - Run every command from the project's checkout; the directory selects the project.
-- In run lists a stage reads as `Wirasm/archon-software-factory:<stage>`, or as the bare stage name when the pack is run from a folder. Other packs' runs and items share the lists: a factory item is one whose runs include `order`.
+- In run lists a stage reads as `dynamous-community/archon-software-factory:<stage>`, or as the bare stage name when the pack is run from a folder. Other packs' runs and items share the lists: a factory item is one whose runs include `order`.
 - Answer and rule with `--as <a name for yourself>`, the same name every time, so the record says who decided.
 
 ## Each time a session starts
@@ -129,8 +129,8 @@ Follow "Update the pack" in the README, in this order:
 
 1. `archon hold set --reason "updating the pack"`, and wait until `archon workflow status`
    shows no start queued. If the pack was already updated without a hold, set it now and go on.
-2. `archon plugin update Wirasm/archon-software-factory`.
-3. `archon pack bindings Wirasm/archon-software-factory --force` with the same `--repo`,
+2. `archon plugin update dynamous-community/archon-software-factory`.
+3. `archon pack bindings dynamous-community/archon-software-factory --force` with the same `--repo`,
    `--host`, `--run-as`, `--cwd`, `--out` and `--config` setup used. They are in the README's setup
    step and in the binding files setup wrote; if you cannot find them, ask. Do not guess.
 4. Run every `archon trigger add` line it prints. A file with the same name replaces the old one.
@@ -138,7 +138,7 @@ Follow "Update the pack" in the README, in this order:
    wrote for this repository that are not in the new list. Leave every other file.
 6. `archon trigger check`, and fix what it reports.
 7. `archon hold lift`, then check that what the hold kept has started.
-8. `archon skill add --pack Wirasm/archon-software-factory`, to replace this skill.
+8. `archon skill add --pack dynamous-community/archon-software-factory`, to replace this skill.
 
 Runs that started before the update finish on the pack revision they started with.
 

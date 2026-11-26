@@ -10,7 +10,7 @@ about landing unless they told you which changes you may land; an ask whose answ
 changes something public (a format, an API, a stored shape); an ask the advice escalates;
 and any ask on an item where a stage was already overruled. The project's rules for this
 are in its attend policy: the file the `attend_policy` setting names in
-`.archon/packs/Wirasm.archon-software-factory.yaml`. Read it once a session.
+`.archon/packs/dynamous-community.archon-software-factory.yaml`. Read it once a session.
 
 ```bash
 archon workflow attention --json                 # open asks, each with its ref, options and recommendation

@@ -86,10 +86,10 @@ It exits 0 and names the credential source it found, or exits 1 with the reason 
 ### 3. Install the pack
 
 ```bash
-archon plugin add Wirasm/archon-software-factory
+archon plugin add dynamous-community/archon-software-factory
 ```
 
-`archon plugin list` shows it as `Wirasm/archon-software-factory`. In `archon pack bindings` and in the settings file name the pack is written with a dot, `Wirasm.archon-software-factory`, and its workflows run as `Wirasm/archon-software-factory:<stage>`, for example `Wirasm/archon-software-factory:inspect`.
+`archon plugin list` shows it as `dynamous-community/archon-software-factory`. In `archon pack bindings` and in the settings file name the pack is written with a dot, `dynamous-community.archon-software-factory`, and its workflows run as `dynamous-community/archon-software-factory:<stage>`, for example `dynamous-community/archon-software-factory:inspect`.
 
 ### 4. Write the bindings for your repository and register them
 
@@ -102,7 +102,7 @@ archon trigger whoami
 That prints your Archon user id. Then, from anywhere:
 
 ```bash
-archon pack bindings Wirasm.archon-software-factory --repo github.com/<owner>/<name> --host <host-id> --run-as <user-id> --cwd <path to the checkout> --out <bindings-dir>
+archon pack bindings dynamous-community.archon-software-factory --repo github.com/<owner>/<name> --host <host-id> --run-as <user-id> --cwd <path to the checkout> --out <bindings-dir>
 ```
 
 | Flag | What to give |
@@ -238,7 +238,7 @@ Delivery keeps one report on the pull request and replaces it after every round:
 The pack ships a skill at [`skill/archon-software-factory/`](skill/archon-software-factory/SKILL.md) that teaches a coding agent to operate the factory: where every item is, what waits on an operator, ordering, answering asks, pausing, and what to check when a session starts. Install it from the project your agent works in, after the pack itself is installed:
 
 ```bash
-archon skill add --pack Wirasm/archon-software-factory
+archon skill add --pack dynamous-community/archon-software-factory
 ```
 
 It copies the skill into `.claude/skills/archon-software-factory/` and `.agents/skills/archon-software-factory/` in your project; Claude Code reads the first; Codex and Pi read the second. An agent that reads neither folder needs the skill copied to wherever it looks for skills. The pack's skill covers running the factory; Archon's own commands are in the `archon-cli` skill, which `archon skill add` installs the same way. These are new files in your repository: commit them, or add both folders to `.gitignore`. If your project has its own checks on skill folders or on top-level paths, list them there too. Run it again after a pack update: it replaces both folders whole. The skill builds on Archon's own `archon-cli` skill, which `archon skill add` installs into the same two folders.
@@ -315,7 +315,7 @@ aliases:
 **How.** Write the file, for example `factory-run-config.yaml` holding the `aliases:` block above, then generate and register the bindings with it:
 
 ```bash
-archon pack bindings Wirasm.archon-software-factory --repo github.com/<owner>/<name> --host <host-id> --run-as <user-id> --cwd <path to the checkout> --out <bindings-dir> --config <path to factory-run-config.yaml> --force
+archon pack bindings dynamous-community.archon-software-factory --repo github.com/<owner>/<name> --host <host-id> --run-as <user-id> --cwd <path to the checkout> --out <bindings-dir> --config <path to factory-run-config.yaml> --force
 ```
 
 `--force` replaces the files already in `<bindings-dir>`. Run each `archon trigger add` line again, then `archon trigger check`.
@@ -330,7 +330,7 @@ An item keeps the config its most recent run started with, so editing the file c
 
 **Change it when** the factory keeps asking something your maintainers have already decided, holds changes to the wrong bar, or should land some changes without asking.
 
-**How.** Put a settings file in the project at `.archon/packs/Wirasm.archon-software-factory.yaml` and commit it. A run reads it from its own checkout, so an uncommitted file is not seen.
+**How.** Put a settings file in the project at `.archon/packs/dynamous-community.archon-software-factory.yaml` and commit it. A run reads it from its own checkout, so an uncommitted file is not seen.
 
 ```yaml
 settings:
@@ -506,7 +506,7 @@ One item ordered by hand with `"part_of": "<larger key>"` is recorded as part of
 `inspect` reads a pull request's own description as the item, runs the review and the test check on the proposed commit, and posts the same kind of report with findings on their lines. It changes nothing in the pull request. Run it from the project's checkout:
 
 ```bash
-archon workflow run Wirasm/archon-software-factory:inspect --input change=https://github.com/<owner>/<name>/pull/45
+archon workflow run dynamous-community/archon-software-factory:inspect --input change=https://github.com/<owner>/<name>/pull/45
 ```
 
 ## Pause everything
@@ -520,6 +520,20 @@ archon hold lift
 
 While the hold is set, no new run starts from any source on the install, not only the factory's. Runs already going finish. Orders, labels and answers are still recorded, and the starts they cause are kept. `archon hold lift` starts what was kept, in the order it arrived. The hold survives restarts, and nothing lifts it on a timer. `archon workflow status` says when it is set, who set it and which starts it keeps.
 
+## Moving from `Wirasm/archon-software-factory`
+
+The pack moved to the `dynamous-community` organization on 2026-11-26. GitHub redirects the old address, so an existing install keeps working and `archon plugin update` still finds it. Its name inside Archon stays `Wirasm/archon-software-factory` until you move the install, and this README names the new owner everywhere. Move it at a moment when no run of the pack is running and no start is queued:
+
+1. `archon hold set`.
+2. `archon plugin remove Wirasm/archon-software-factory`, then `archon plugin add dynamous-community/archon-software-factory`.
+3. In your project, rename `.archon/packs/Wirasm.archon-software-factory.yaml` to `.archon/packs/dynamous-community.archon-software-factory.yaml` and commit it.
+4. Delete the pack's old trigger files from `$ARCHON_HOME/triggers` (their names start with `Wirasm`), and remove its old event bindings from your source's config.
+5. Write and register the bindings again as in [setup step 4](#4-write-the-bindings-for-your-repository-and-register-them), with `dynamous-community.archon-software-factory`.
+6. `archon trigger check`, then `archon hold lift`.
+7. `archon skill add --pack dynamous-community/archon-software-factory`, to replace the skill.
+
+Items that were under way keep their history. A stage that was waiting on an ask starts from the new bindings when the ask is answered.
+
 ## Update the pack
 
 Prefer a moment when no start of the pack is queued. A start that is already queued (waiting for capacity, for its item or for its checkout) follows its trigger file when you register it again, so an update that only changes bindings loses no start. A start whose trigger file the update removed still runs as it was prepared, and when the update also removed a setting or an input its stage declared, that start is refused; the refusal is listed in `archon workflow attention`.
@@ -532,8 +546,8 @@ archon hold set
 Wait for running runs too: the start a run owes when it ends is matched against the binding files as they are at that moment. If you must update with runs running or starts queued, note their items first, and after step 5 look in `archon trigger list` for a refused start and start that stage on its item again by hand.
 
 ```bash
-archon plugin update Wirasm/archon-software-factory
-archon pack bindings Wirasm.archon-software-factory --repo github.com/<owner>/<name> --host <host-id> --run-as <user-id> --cwd <path to the checkout> --out <bindings-dir> --force
+archon plugin update dynamous-community/archon-software-factory
+archon pack bindings dynamous-community.archon-software-factory --repo github.com/<owner>/<name> --host <host-id> --run-as <user-id> --cwd <path to the checkout> --out <bindings-dir> --force
 ```
 
 Pass `--config` again if you used it. Then:
@@ -554,7 +568,7 @@ Work through these in order, from the project's checkout.
 1. **Read the item.** `archon workflow runs --item <key>` shows its runs and outcomes, starts that wait and what each waits behind, whether the hold or the run limit is holding it, and its open asks.
 2. **An ask is open.** Nothing that follows a stage starts while its asks are open. `archon workflow attention` lists them.
 3. **The hold is set.** `archon workflow status` says so. Lift it with `archon hold lift`.
-4. **A binding is broken or missing.** `archon trigger check` exits nonzero and names the file. `archon pack graph Wirasm.archon-software-factory` shows every arrow between stages, whether it is active on this install, and which outcomes start nothing.
+4. **A binding is broken or missing.** `archon trigger check` exits nonzero and names the file. `archon pack graph dynamous-community.archon-software-factory` shows every arrow between stages, whether it is active on this install, and which outcomes start nothing.
 5. **The item waits on another item.** Its last link run ended `waiting`. The item read lists what it depends on under `Links`, and the run's result names it in `waits_on`. See [items that wait](#items-that-wait).
 6. **The item stopped, or it is finished.** `archon workflow attention` lists an item as `stopped`, with the stage, the outcome and one line of why, when its last run ended where nothing starts and left no ask: an order that was `refused`; a plan that ended `stop`; a split that ended `waiting`; a host round that ended `waiting`; a link run that ended `none`; a close step that ended `reshape` or `not_closed`. It needs an operator, takes no answer, and stays listed until a run starts on the item again. An item that is finished is not listed: each stage declares the outcomes that finish its item (`returns.ends`). Those are an order that ended `work_order`, a split that ended `split`, a link run that ended `dropped` and a close step that ended `dropped`. The stages that only observe an item (`observes: true`: attend, complexity, landed, inspect, survey, order-done) never stop, end or move it, whatever they end with. A link run that ended `waiting` is not listed either: the item holds a `depends_on` the engine counts as a wait, and it is woken when what it waits on ends. Read any run's result with `archon workflow get <run-id> --json`.
 7. **Its stage is full.** The item read says what the start waits behind. See [how many items run at once](#how-many-items-run-at-once).
@@ -578,7 +592,7 @@ A split's members are the members of a work order: each is recorded as part of t
 To split an epic or a PRD without triage, start the stage on its item. With the bindings registered, its outcome starts what the table says.
 
 ```bash
-archon workflow run Wirasm/archon-software-factory:split --item <key> --input-file item=<a file with the item's text>
+archon workflow run dynamous-community/archon-software-factory:split --item <key> --input-file item=<a file with the item's text>
 ```
 
 ## Order several items at once
@@ -625,7 +639,7 @@ After `proposed`, the change goes the way of any ready change. The land gate ask
 Things to know:
 
 - **The order is reported once.** A member ordered into it afterwards is built and landed like any other, and no second report is written.
-- **A member ended by hand starts nothing.** `archon workflow end` on a member is no run, so no binding fires. When it was the last open member, start the stage on the order's item: `archon workflow run Wirasm/archon-software-factory:order-done --item <order key>`.
+- **A member ended by hand starts nothing.** `archon workflow end` on a member is no run, so no binding fires. When it was the last open member, start the stage on the order's item: `archon workflow run dynamous-community/archon-software-factory:order-done --item <order key>`.
 - **A shared branch is always proposed.** The stage cannot tell a branch meant to land once from one meant to stay apart, such as a release branch. The land gate asks before anything merges; answer `drop` when the branch should stay.
 - **The stage finds the base branch itself,** from the project's guidance and where its recent changes merged. Its own checkout is cut from the shared branch, and the engine hands it no other. The land gate's ask names the branch the change targets: read it.
 - **No host round reads the proposed change.** The land gate reads the project's checks at its head; checks that have not finished are an ask, not a wait.
@@ -673,7 +687,7 @@ Each check run leaves the report on the pull request, and the host stage closes 
 To start a build by hand on an item:
 
 ```bash
-archon workflow run Wirasm/archon-software-factory:stage-build --item <key> --input-file item=<a file with the item's text>
+archon workflow run dynamous-community/archon-software-factory:stage-build --item <key> --input-file item=<a file with the item's text>
 ```
 
 ## A change that fell behind: the short way back to landing

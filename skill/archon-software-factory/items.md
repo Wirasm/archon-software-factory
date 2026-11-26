@@ -83,7 +83,7 @@ Triage starts the split by itself when it judges `split`. To split an epic or a 
 directly, put its text in a file and run:
 
 ```bash
-archon workflow run Wirasm/archon-software-factory:split --item <key> --input-file item=<file>
+archon workflow run dynamous-community/archon-software-factory:split --item <key> --input-file item=<file>
 ```
 
 `whole` starts plan on the item. `split` orders each member that starts now as
