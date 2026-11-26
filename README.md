@@ -210,6 +210,7 @@ Which options an ask offers depends on the stage that left it:
 | Build | `send-back`, `replan`, `take-as-is`, `drop`, `reshape`. |
 | Check, host | `send-back`, `one-more-round`, `replan`, `take-as-is`, `drop`, `reshape`. |
 | Land gate, land | `land`, `send-back`, `drop`, `reshape`. |
+| Landed (the check after a merge) | `fix`, `dismiss`. |
 
 Except for plan and split, a stage's options are declared in its workflow (`returns.options`), with what each does and costs, so every ask of the stage offers the same set and `archon workflow attention --json` shows it. Every ask can also be answered in your own words (`--choose other --text "..."`); on a delivery or landing ask that starts nothing, so prefer an option.
 
@@ -220,6 +221,7 @@ Except for plan and split, a stage's options are declared in its workflow (`retu
 | `build` | On a triage ask: the link stage, then plan. The item is built as it stands. |
 | `split` | On a triage ask: the split stage, which cuts the item into members. |
 | `replan` | Plan, then delivery. |
+| `fix` | On an ask of the check after a merge: its work order is ordered as new work on the item. `dismiss` leaves it. |
 | `take-as-is` | After a build or check ask: the host round, on the change as it is. After a host ask: the land gate. |
 | `land` | The land stage, which merges the change when it still merges and its checks are green. |
 | `drop` | The close step: the change is closed without merging, with your answer written on it. The item ends. On a link ask there is no change yet: the link stage ends `dropped`. |

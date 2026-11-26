@@ -31,6 +31,7 @@ to the person, do not pick at random. To keep an item waiting, leave its ask ope
 | stage-build | `send-back`, `replan`, `take-as-is`, `drop`, `reshape`. |
 | stage-check, stage-host | `send-back`, `one-more-round`, `replan`, `take-as-is`, `drop`, `reshape`. |
 | landgate, land | `land`, `send-back`, `drop`, `reshape`. |
+| landed | `fix`, `dismiss`. |
 | link | `wait`, `start-anyway`, `drop`. Any answer starts the link stage again, which carries it out. |
 
 Except for plan and split, each stage declares its options, so `archon workflow attention

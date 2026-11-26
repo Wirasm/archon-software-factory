@@ -26,7 +26,7 @@ Read both with `archon workflow runs --item <key>`.
 | landgate `ask` | An ask is open; its context says what the land policy would have done. With the setting `land_gate: policy`, a change the policy lets land ends `land` and the land stage starts. |
 | land `landed` | The landed check and the discoveries drain. `behind`: the builder brings the change up to date with its landing branch, then the catch-up stage. `returned`: the builder, then the host round. `stop`, `ask`: an ask is open. |
 | catchup `ready` | The land stage, with no host round and no second land gate: the change is the one that was approved, and its checks are green. `changed`: the host round, then the land gate. |
-| landed `broken_here` | A fix is ordered on the same item. Every other outcome is only recorded. |
+| landed `broken_here` | A fix is ordered on the same item. `unclear`, `broken_before`, `not_landed`, `waiting`: an ask is open (`fix` orders the fix, `dismiss` leaves it). `clear`, `none`: only recorded. |
 | close `dropped` / `reshape` | The item ended / it waits to be shaped. `not_closed`: close the pull request by hand. |
 | order-done `open` | Nothing: a member of the work order is still open. It runs on the work order's item each time a member lands or is dropped. `reported`: the order's report is in the result, and nothing was proposed. `proposed`: the members' shared branch is proposed against the base branch, and the land gate starts on the work order's item. `already`: reported before. |
 
