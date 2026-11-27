@@ -36,21 +36,27 @@ returns:
   summary: summary
   options:
     - id: send-back
+      label: sent back
       does: The same builder continues on the change with what you say in your answer, and the checks look at it again.
       cost: One build run and one check round.
     - id: one-more-round
+      label: one more round
       does: The same builder fixes what the checks returned, and the checks look at it once more. If they return it again, you are asked again.
       cost: One build run and one check round.
     - id: replan
+      label: plan again
       does: The item goes back to planning with what you say in your answer.
       cost: The work so far may be discarded.
     - id: take-as-is
+      label: taken as it is
       does: The change goes on to the host round as it is.
       cost: What the checks returned stays unfixed.
     - id: drop
+      label: dropped by you
       does: The change is closed without merging and the item ends here. Your answer is written on the change as the reason.
       cost: The work on this change is given up; its branch stays.
     - id: reshape
+      label: needs shaping
       does: The change is closed without merging, its branch kept, and nothing more is built until the item is shaped again. Your answer is written on the change.
       cost: The item waits for shaping, and the next build starts a new change from what is decided then.
 
@@ -63,14 +69,6 @@ display:
     ask: { label: asked you, story: The checks asked you }
     replan: { label: plan again, story: The checks sent it back to planning }
     return: { label: returned, story: The checks sent it back }
-  answers:
-    send-back: { label: sent back }
-    one-more-round: { label: one more round }
-    other: { label: something else }
-    take-as-is: { label: taken as it is }
-    replan: { label: plan again }
-    drop: { label: dropped by you }
-    reshape: { label: needs shaping }
   phases:
     - label: Prepare
       cards:
@@ -93,7 +91,7 @@ display:
   marks:
     - { node: verdict__verdict, outcome: return, means: returns }
     - { node: verdict__verdict, outcome: approve, means: approves }
-  results: { round: /round, allowance: /allowance, change: /change }
+  results: { round: /round, change: /change }
 
 nodes:
   # The commit this change sits on, read after the builder's last commit: a builder

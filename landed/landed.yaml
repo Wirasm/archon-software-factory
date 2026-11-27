@@ -33,9 +33,11 @@ returns:
   summary: why
   options:
     - id: fix
+      label: fix ordered
       does: The work order this check wrote (or its finding, when it wrote none) is ordered as new work.
       cost: A new item goes through triage and the rest of the factory.
     - id: dismiss
+      label: dismissed
       does: Nothing more happens. The finding stays in this run's report.
       cost: If the branch is broken, nothing fixes it.
 
@@ -52,8 +54,6 @@ display:
     not_landed: { label: not merged }
     unclear: { label: unclear }
     waiting: { label: waiting on CI }
-  answers:
-    fix: { label: fix ordered }
   phases:
     - label: After the merge
       cards:

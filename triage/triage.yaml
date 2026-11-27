@@ -34,15 +34,19 @@ returns:
   summary: why
   options:
     - id: build
+      label: build
       does: The item is built as it stands. It goes on to the link stage and then to plan.
       cost: Work starts on something triage judged should not be built as it is.
     - id: split
+      label: split
       does: The item is split into smaller items, each ordered and triaged on its own.
       cost: One split run; the pieces may still need shaping.
     - id: reshape
+      label: needs shaping
       does: Nothing is built. The item waits to be shaped, with triage's open questions on it.
       cost: It stays open until someone shapes it and orders it again.
     - id: drop
+      label: dropped by you
       does: Nothing is built and the item ends here. Your answer is the reason.
       cost: The work it asked for is not done under this item.
 
@@ -62,12 +66,6 @@ display:
     recipe: { label: Handled another way, story: Triage judged it is handled another way }
     shape: { label: Needs shaping, story: "Triage judged it worth doing, once a maintainer settles its open questions" }
     split: { label: split, story: Triage judged it is more than one change }
-  answers:
-    build: { label: build }
-    split: { label: split }
-    drop: { label: dropped by you }
-    reshape: { label: needs shaping }
-    other: { label: something else }
   phases:
     - label: Decide
       cards:
