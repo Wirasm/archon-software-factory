@@ -8,6 +8,9 @@ description: |
 model: ['@lander', medium]
 
 inputs:
+  ordered:
+    result_of: order
+    description: What the item's last order returned. Its `issue` is the issue the item was ordered from, where the order showed that the item is in work.
   item:
     description: The work item as text.
   change:
@@ -112,3 +115,15 @@ nodes:
         returned: { type: string, description: 'What goes back to the builder: why the change did not land.' }
         noticed: { type: array, description: 'What the checks noticed that this change did not cause. The discoveries stage starts from it when the change has landed.' }
       required: [outcome, change, summary, returned, noticed]
+  # The item has ended: the issue it was ordered from no longer shows it as in work.
+  - id: unmark
+    depends_on: [end]
+    when: "$end.output.outcome == 'landed'"
+    runtime: bun
+    mutates_checkout: false
+    script: mark
+    with:
+      mode: end
+      ordered_by: ""   # start only
+      ordered: $INPUTS.ordered
+      label: $INPUTS.in_work_label

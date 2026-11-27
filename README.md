@@ -357,6 +357,7 @@ Paths are relative to the project, or absolute. An unknown key refuses the run b
 | `admit_policy` | Which items may start without an operator being asked | Triage's admit shadow. Recorded; nothing acts on it. |
 | `attend_policy` | What an agent may do with an ask: which are always the operator's, which kinds it may answer alone, the rulings already made | The attend stage. It advises; nothing acts on its answers. |
 | `validate_command` | Not a document: the command that proves a change works, run from the project's root | The land stage when the project has no host |
+| `in_work_label` | Not a document: the label an issue carries while its item is in work | The order stage, and every stage that ends an item |
 | `land_gate` | Not a document: `shadow` (the default) or `policy`. Whether the land gate acts on the land policy | Land gate |
 
 Two settings matter most:
@@ -420,6 +421,25 @@ Things to know before you rely on it:
 **Every new issue can be judged as a shadow.** The generated `...-survey-on-opened-<digest>.json` file is a third binding for the same `bindings` array. With it, each newly opened issue is judged once by the survey stage on the item `survey-<number>`: triage's judgment, and for an issue that should be built, whether the admit judgment would have started it with no operator. It starts nothing and writes nothing on the issue; it is a measurement, read with `archon metrics sf.admit_would_start`. Leave it out unless you want that measurement: each new issue costs one judgment.
 
 **On an install that receives webhooks,** the same binding object goes into the same `bindings` array of a source with `webhookSecretEnv`, and a server started with `ARCHON_TRIGGER_HOST=<host-id>` starts the runs. Archon's guide covers the server side: [configure GitHub event starts](https://archon.diy/guides/workflow-triggers/#configure-github-event-starts).
+
+### An issue in work shows who has it
+
+**What it does.** When an item is ordered from an issue, the order stage assigns that issue: to whoever added the `factory` label, or, for an order by hand, to the account the factory's credential acts as. With `in_work_label` set, it also adds that label to the issue and removes it when the item ends: its change landed, an operator dropped it, or, for an issue that was split, its last member is done. The assignee stays after the item ends. An answer of `reshape` keeps the label, because the item is still in work.
+
+**Default.** The issue is assigned, and no label is added.
+
+**Change it when.** You want an issue list that shows at a glance what the factory is working on.
+
+**How.** Create the label in the repository, then name it in the settings file:
+
+```yaml
+settings:
+  in_work_label: in-work
+```
+
+Nothing depends on either mark. When a step cannot be done (the label does not exist, GitHub will not assign that user, the forge plugin is older than the operation), the stage goes on and says so as a notice, which `archon workflow attention --watch` shows. A pull request given as the source is not assigned, and an order that is only text assigns nothing.
+
+It needs Archon 0.16.1 and a forge plugin of that release (`archon plugin update coleam00/Archon/plugins/forge-github`); `archon forge check` with `actor.self`, `workitem.assignee.add`, `workitem.label.add` and `workitem.label.remove` in its list says whether they are there. A label order assigns the person who added the label only after the `order-on-label` binding is written and put into your source's config again, as in [Update the pack](#update-the-pack); until then it assigns the factory's account.
 
 ### The wake timer
 

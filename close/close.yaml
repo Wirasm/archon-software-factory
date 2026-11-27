@@ -7,6 +7,9 @@ description: |
   starts nothing: after `drop` the item has ended, after `reshape` it waits to be shaped.
 
 inputs:
+  ordered:
+    result_of: order
+    description: What the item's last order returned. Its `issue` is the issue the item was ordered from, where the order showed that the item is in work.
   change:
     default: ""
     description: Where the change is proposed. Empty when the item stopped before a change was proposed.
@@ -72,3 +75,15 @@ nodes:
         change: { type: string }
         why: { type: string }
       required: [outcome, change, why]
+  # The item has ended: the issue it was ordered from no longer shows it as in work.
+  - id: unmark
+    depends_on: [close]
+    when: "$close.output.outcome == 'dropped'"
+    runtime: bun
+    mutates_checkout: false
+    script: mark
+    with:
+      mode: end
+      ordered_by: ""   # start only
+      ordered: $INPUTS.ordered
+      label: $INPUTS.in_work_label

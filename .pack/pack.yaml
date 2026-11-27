@@ -85,6 +85,12 @@ inputs:
       operator every time, and its ask, its result and the metric
       `sf.landgate_would_land` say what the policy would have done. `policy`: a
       change the policy lets land starts the land stage with no ask.
+  in_work_label:
+    default: ""
+    description: >-
+      The name of a label the order stage adds to the issue an item was ordered
+      from while the item is in work, removed when the item lands or is dropped.
+      The label must already exist in the repository. Empty adds none.
   discoveries_policy:
     section: Policies
     file: true
@@ -158,6 +164,7 @@ bindings:
       issue: { event: subject.number }
       repo_host: { repo: host }
       repo_path: { repo: path }
+      ordered_by: { event: label.actor.login }
   # A label on a pull request asks for a review of it: adding the label `factory-review` to
   # a pull request someone else proposed starts the inspect stage on the item `pr-<number>`,
   # which posts its report there and changes nothing. Same setup as the label above.

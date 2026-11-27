@@ -153,3 +153,15 @@ nodes:
         waits_on: { type: array, description: 'The keys of the items this one waits on.' }
         would_wait: { type: array, description: 'Shadow: the items outside the work order this item cannot be built before. Nothing waits on them.' }
       required: [outcome, item, land_on, links, waits_on, would_wait]
+  # The item has ended: the issue it was ordered from no longer shows it as in work.
+  - id: unmark
+    depends_on: [end]
+    when: "$end.output.outcome == 'dropped'"
+    runtime: bun
+    mutates_checkout: false
+    script: mark
+    with:
+      mode: end
+      ordered_by: ""   # start only
+      ordered: $INPUTS.order
+      label: $INPUTS.in_work_label

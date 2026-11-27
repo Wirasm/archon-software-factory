@@ -5,6 +5,9 @@ description: |
 model: ['@planner', large]
 
 inputs:
+  ordered:
+    result_of: order
+    description: What the item's last order returned. Its `issue` is the issue the item was ordered from, where the order showed that the item is in work.
   item:
     description: The work item as text.
   land_on:
@@ -69,3 +72,15 @@ nodes:
         notes: { type: string, description: 'Anything worth saying that has no field here: caveats, doubts, things noticed.' }
         for_next: { type: string, description: 'Anything the engineer who builds this needs from you that has no field here. Write it to them.' }
       required: [outcome, options, recommend, why, plan, proves, reaches, carried_by, disappears, not_doing, stop, notes, for_next]
+  # The item has ended: the issue it was ordered from no longer shows it as in work.
+  - id: unmark
+    depends_on: [plan]
+    when: "$plan.output.outcome == 'dropped'"
+    runtime: bun
+    mutates_checkout: false
+    script: mark
+    with:
+      mode: end
+      ordered_by: ""   # start only
+      ordered: $INPUTS.ordered
+      label: $INPUTS.in_work_label

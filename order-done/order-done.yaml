@@ -10,6 +10,9 @@ description: |
 model: ['@reporter', medium]
 
 inputs:
+  ordered:
+    result_of: order
+    description: What the item's last order returned. Its `issue` is the issue the item was ordered from, where the order showed that the item is in work.
   member:
     default: ""
     description: The key of the member whose ending started this run. The binding names it; nothing reads it but whoever reads the run.
@@ -142,3 +145,15 @@ nodes:
         title: { type: string }
         description: { type: string }
       required: [outcome, summary, report, members, left_open, change, land_on, title, description]
+  # The item has ended: the issue it was ordered from no longer shows it as in work.
+  - id: unmark
+    depends_on: [end]
+    when: "$end.output.outcome == 'reported'"
+    runtime: bun
+    mutates_checkout: false
+    script: mark
+    with:
+      mode: end
+      ordered_by: ""   # start only
+      ordered: $INPUTS.ordered
+      label: $INPUTS.in_work_label
