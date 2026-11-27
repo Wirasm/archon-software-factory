@@ -4,7 +4,7 @@
 
 - **`main` is what operators get.** `archon plugin add` installs the default branch, so `main` must always work on the latest released Archon. An operator on a released binary must never get a workflow that uses something their Archon lacks.
 - **`dev` is where pack work happens,** against Archon's own `dev` branch. A change that needs an unreleased engine feature lands on `dev` only.
-- **At each Archon release,** `dev` is merged into `main` the same day, and `main` is tagged with the Archon version it matches (`v0.15.0`, `v0.15.1`, ...), so an install can pin a tag: `archon plugin add <owner>/archon-software-factory@v0.15.0`.
+- **At each Archon release,** `dev` is merged into `main` the same day, and `main` is tagged with the Archon version it matches (`v0.16.0`, `v0.16.1`, ...), so an install can pin a tag: `archon plugin add <owner>/archon-software-factory@v0.15.0`.
 - **A fix that works on the released Archon** (a prompt, a README line, a manifest fix) may go to `main` directly and is then merged into `dev`.
 
 Pull requests target `dev`, unless the change is such a fix.

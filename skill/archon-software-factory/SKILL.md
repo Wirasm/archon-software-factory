@@ -82,7 +82,7 @@ it, ask; do not guess a path.
 
 ```bash
 archon trigger fire --config <bindings-dir>/<the order file> --inputs order.json
-# one issue, with no file (Archon newer than 0.15.0):
+# one issue, with no file:
 archon trigger fire --config <bindings-dir>/<the order file> --input key=issue-123 --input source=<issue url>
 ```
 
