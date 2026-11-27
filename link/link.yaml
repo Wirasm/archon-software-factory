@@ -44,12 +44,15 @@ returns:
   summary: summary
   options:
     - id: wait
+      label: keep waiting
       does: The item keeps waiting, and goes on when what it waits on is ordered and lands.
       cost: Nothing is built for it until then, and nothing lands what it waits on by itself.
     - id: start-anyway
+      label: started anyway
       does: The item stops waiting and is planned now, on the code as it is.
       cost: It is built without what it was said to depend on, or beside the item it overlaps.
     - id: drop
+      label: dropped by you
       does: The item ends here and nothing is built for it.
       cost: The work it asked for is not done under this item.
 

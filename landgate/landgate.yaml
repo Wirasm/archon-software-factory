@@ -32,15 +32,19 @@ returns:
   summary: summary
   options:
     - id: land
+      label: merge it
       does: The land stage merges the change into its landing branch, when it still merges and its checks are green.
       cost: The change is on the branch everyone builds on.
     - id: send-back
+      label: sent back
       does: The same builder continues on the change with what you say in your answer, and the checks look at it again.
       cost: One build run and one check round before it can land.
     - id: drop
+      label: dropped by you
       does: The change is closed without merging and the item ends here. Your answer is written on the change as the reason.
       cost: The work on this change is given up; its branch stays.
     - id: reshape
+      label: needs shaping
       does: The change is closed without merging, its branch kept, and nothing more is built until the item is shaped again. Your answer is written on the change.
       cost: The item waits for shaping, and the next build starts a new change from what is decided then.
 
@@ -52,12 +56,6 @@ display:
   outcomes:
     ask: { label: asked you, story: The land gate asked you }
     land: { label: merge it, story: The land gate said land }
-  answers:
-    land: { label: merge it }
-    send-back: { label: sent back }
-    other: { label: something else }
-    drop: { label: dropped by you }
-    reshape: { label: needs shaping }
   phases:
     - label: Gate
       cards:

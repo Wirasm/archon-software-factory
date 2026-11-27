@@ -34,21 +34,27 @@ returns:
   summary: summary
   options:
     - id: send-back
+      label: sent back
       does: The same builder continues on the change with what you say in your answer, and the checks look at it again.
       cost: One build run and one check round.
     - id: one-more-round
+      label: one more round
       does: The same builder fixes what the host returned, and the host is read once more. If it returns the change again, you are asked again.
       cost: One build run and one host read.
     - id: replan
+      label: plan again
       does: The item goes back to planning with what you say in your answer.
       cost: The work so far may be discarded.
     - id: take-as-is
+      label: taken as it is
       does: The change goes on to the land gate as it is.
       cost: What the host returned stays unfixed.
     - id: drop
+      label: dropped by you
       does: The change is closed without merging and the item ends here. Your answer is written on the change as the reason.
       cost: The work on this change is given up; its branch stays.
     - id: reshape
+      label: needs shaping
       does: The change is closed without merging, its branch kept, and nothing more is built until the item is shaped again. Your answer is written on the change.
       cost: The item waits for shaping, and the next build starts a new change from what is decided then.
 
@@ -61,14 +67,6 @@ display:
     ready: { label: ready, story: CI and the reviews passed }
     return: { label: returned, story: CI or a review sent it back }
     waiting: { label: waiting on CI, story: Waiting on CI }
-  answers:
-    send-back: { label: sent back }
-    other: { label: something else }
-    one-more-round: { label: one more round }
-    take-as-is: { label: taken as it is }
-    replan: { label: plan again }
-    drop: { label: dropped by you }
-    reshape: { label: needs shaping }
   phases:
     - label: Host round
       cards:
