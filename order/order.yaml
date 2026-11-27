@@ -65,7 +65,7 @@ returns: { node: order, outcome: outcome, ends: [work_order], summary: why }
 display:
   label: Order
   short: "Orders, labelled issues"
-  blurb: "Takes a work order, or an issue someone added the factory label to, and makes it one item the factory can read."
+  blurb: "Takes a work order, or an issue someone added the factory label to, makes it one item the factory can read, and assigns the issue to whoever ordered it."
   outcomes:
     ready: { label: ready, story: Order took the work order and made it an item }
     refused: { label: Refused at intake, story: Order refused the work order }
@@ -200,6 +200,7 @@ nodes:
       required: [outcome, item, land_on, part_of, depends_on, why, order, members, start, issue]
   # What the issue shows while the item is in work. It gates nothing and fails nothing.
   - id: mark
+    display: { label: Marks the issue as in work }
     depends_on: [order]
     when: "$order.output.outcome == 'ready'"
     runtime: bun
