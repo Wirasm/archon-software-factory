@@ -89,6 +89,7 @@ nodes:
       required: [outcome, options, recommend, why, plan, proves, reaches, carried_by, disappears, not_doing, stop, notes, for_next]
   # The item has ended: the issue it was ordered from no longer shows it as in work.
   - id: unmark
+    display: { label: Takes the in-work label off the issue }
     depends_on: [plan]
     when: "$plan.output.outcome == 'dropped'"
     runtime: bun

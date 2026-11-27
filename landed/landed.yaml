@@ -40,9 +40,9 @@ returns:
       cost: If the branch is broken, nothing fixes it.
 
 display:
-  label: Merged
-  short: The change is merged
-  blurb: The change is merged.
+  label: Landed check
+  short: After-merge check
+  blurb: "After the merge, checks the branch the change landed on, and orders a fix when the change broke it."
   story: The factory checked the branch after the merge
   outcomes:
     broken_before: { label: broken before the merge }

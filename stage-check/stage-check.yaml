@@ -80,7 +80,7 @@ display:
       cards:
         - { title: Code review, text: Reviews the change, icon: search-code, kind: check, covers: [review__review] }
         - { title: Test check, text: Checks the tests prove the change, icon: flask-conical, kind: check, covers: [tests__tests] }
-        - { title: Product check, text: Looks at the change in a browser, icon: monitor-check, kind: check, covers: [product__product] }
+        - { title: Product check, text: "Runs the software and reads its errors and docs; opens a browser only when the change has a screen", icon: monitor-check, kind: check, covers: [product__product] }
     - label: Verdict
       cards:
         - { title: Verdict, text: Approves the change or sends it back, icon: gavel, kind: check, covers: [verdict__verdict] }

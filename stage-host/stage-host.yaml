@@ -53,11 +53,11 @@ returns:
       cost: The item waits for shaping, and the next build starts a new change from what is decided then.
 
 display:
-  label: CI and review
+  label: Host round
   short: Reads CI and PR reviews
   blurb: Reads CI and the reviews on the pull request and sends back what they raise.
   outcomes:
-    ask: { label: asked you, story: CI and review asked you }
+    ask: { label: asked you, story: The host round asked you }
     ready: { label: ready, story: CI and the reviews passed }
     return: { label: returned, story: CI or a review sent it back }
     waiting: { label: waiting on CI, story: Waiting on CI }
@@ -70,14 +70,14 @@ display:
     drop: { label: dropped by you }
     reshape: { label: needs shaping }
   phases:
-    - label: CI and reviews
+    - label: Host round
       cards:
         - { title: Read CI and reviews, text: Reads CI and the pull request's reviews, icon: git-pull-request, kind: agent, covers: [rounds__host] }
     - label: Round ends
       cards:
         - { title: Count the round, text: Records the round and the rounds allowed, icon: ruler, kind: script, covers: [limit] }
         - { title: Rounds ran out, text: Asks you when the allowed rounds are used up, icon: circle-alert, kind: agent, covers: [exhausted] }
-        - { title: Hand on, text: "Hands the change on to the merge gate, back to the builder or to you", icon: send, kind: script, covers: [end] }
+        - { title: Hand on, text: "Hands the change on to the land gate, back to the builder or to you", icon: send, kind: script, covers: [end] }
         - { title: Report, text: Writes the factory's report on the pull request, icon: message-square, kind: agent, covers: [report__report] }
   marks:
     - { node: rounds__host, outcome: return, means: returns }

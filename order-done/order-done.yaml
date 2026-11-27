@@ -171,6 +171,7 @@ nodes:
       required: [outcome, summary, report, members, left_open, change, land_on, title, description]
   # The item has ended: the issue it was ordered from no longer shows it as in work.
   - id: unmark
+    display: { label: Takes the in-work label off the issue }
     depends_on: [end]
     when: "$end.output.outcome == 'reported'"
     runtime: bun
