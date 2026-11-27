@@ -62,8 +62,22 @@ inputs:
 # reports it when they are all done. `refused` stops it with the reason.
 returns: { node: order, outcome: outcome, ends: [work_order], summary: why }
 
+display:
+  label: Order
+  short: "Orders, labelled issues"
+  blurb: "Takes a work order, or an issue someone added the factory label to, and makes it one item the factory can read."
+  outcomes:
+    ready: { label: ready, story: Order took the work order and made it an item }
+    refused: { label: Refused at intake, story: Order refused the work order }
+    work_order: { label: Ordered as a work order, story: Order took the work order and ordered its pieces }
+  phases:
+    - label: Take the order
+      cards:
+        - { title: Take the order, text: "Turns a work order, or an issue given the factory label, into one item the factory can read", icon: inbox, kind: script, covers: [order] }
+
 nodes:
   - id: order
+    display: { label: Take the order }
     runtime: bun
     mutates_checkout: false
     with:

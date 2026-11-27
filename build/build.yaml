@@ -30,6 +30,7 @@ nodes:
   # on an item it already built, the builder still knows its change and reads what was
   # returned as decisions and findings already given; on a first run there is none to continue.
   - id: build
+    display: { label: Writes or fixes the change }
     command: build
     context: same
     output_format:

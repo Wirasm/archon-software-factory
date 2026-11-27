@@ -35,10 +35,36 @@ inputs:
 observes: true
 returns: { node: verdict, outcome: outcome }
 
+display:
+  label: Inspect
+  short: "Reviews others' PRs"
+  blurb: "Reviews a pull request someone else proposed, with the review and the test check, and posts one report on it. It changes nothing in the pull request and decides nothing for the maintainer."
+  outcomes:
+    approve: { label: would approve, story: The review found the pull request ready and said so in its report }
+    return: { label: changes asked, story: The review found what must change and posted it on the pull request }
+    replan: { label: needs another approach, story: The review found the pull request needs a different approach and said so in its report }
+    ask: { label: question for the maintainer, story: The review left a question for the maintainer in its report }
+  phases:
+    - label: Read
+      cards:
+        - { title: Read the pull request, text: "Reads the pull request, its description and its discussion, as the item", icon: git-pull-request, kind: script, covers: [read] }
+        - { title: Check it out, text: Checks out the proposed commit and finds the commit it was built on, icon: git-branch, kind: script, covers: [base] }
+    - label: Check
+      cards:
+        - { title: Code review, text: Reviews the change, icon: search-code, kind: check, covers: [review__review] }
+        - { title: Test check, text: Checks the tests prove the change, icon: flask-conical, kind: check, covers: [tests__tests] }
+    - label: Verdict
+      cards:
+        - { title: Verdict, text: Sorts what the checks found into one verdict, icon: gavel, kind: check, covers: [verdict__verdict] }
+    - label: Report
+      cards:
+        - { title: Report, text: Posts the report on the pull request with findings on their lines, icon: message-square, kind: agent, covers: [report__report] }
+
 nodes:
   # What is proposed, read through the forge: the description is the item, and the forge
   # names the commit to review and the branch it is proposed against.
   - id: read
+    display: { label: Reads the pull request }
     runtime: bun
     mutates_checkout: false
     with:
@@ -88,6 +114,7 @@ nodes:
 
   # The proposed commit, checked out here, and the commit it was built on.
   - id: base
+    display: { label: Checks out the proposed commit }
     depends_on: [read]
     when: "$read.output.outcome == 'ready'"
     bash: |

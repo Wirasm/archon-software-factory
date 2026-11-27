@@ -27,9 +27,29 @@ inputs:
 # Neither outcome ends the item: `ready` starts the land stage, `changed` the host round.
 returns: { node: end, outcome: outcome, summary: summary }
 
+display:
+  label: Catch up
+  short: "Still what was approved?"
+  blurb: "The short way back to merging. A change brought up to date with its landing branch goes straight back to land when the change itself is unchanged and CI is green; otherwise CI and the reviews read it again."
+  outcomes:
+    changed: { label: changed, story: "Catch up found the change differs from what was approved, or its CI is not green, and sent it to CI and the reviews" }
+    ready: { label: unchanged and green, story: "Catch up found the change unchanged and CI green, and sent it back to land" }
+  phases:
+    - label: Compare
+      cards:
+        - { title: Landing branch, text: Finds the branch the change lands on, icon: git-branch, kind: script, covers: [onto] }
+        - { title: Compare, text: Compares the lines the change adds and removes with what was approved, icon: search-code, kind: script, covers: [same] }
+    - label: CI
+      cards:
+        - { title: Read CI, text: "Reads the checks at the new head, when the change is unchanged", icon: monitor-check, kind: agent, covers: [checks] }
+    - label: Hand on
+      cards:
+        - { title: Hand on, text: "Back to land, or to CI and the reviews", icon: send, kind: script, covers: [end] }
+
 nodes:
   # The branch the change lands on, as the builder's checkout knows it after its merge.
   - id: onto
+    display: { label: Finds the landing branch }
     bash: |
       onto="${INPUTS_LAND_ON:-}"
       [ -n "$onto" ] || onto=$BASE_BRANCH
@@ -37,6 +57,7 @@ nodes:
 
   # Code compares; nobody judges whether two diffs mean the same.
   - id: same
+    display: { label: Compares the change before and after }
     depends_on: [onto]
     runtime: bun
     mutates_checkout: false
@@ -47,6 +68,7 @@ nodes:
   # The host's checks at the new head. Asked only when the change itself is unchanged:
   # a changed one goes to the host round, which reads the checks and the reviews.
   - id: checks
+    display: { label: Reads CI at the new head }
     depends_on: [same]
     when: "$same.output.same == true"
     command: catchup-checks
@@ -62,6 +84,7 @@ nodes:
       required: [checks, head, merges, summary]
 
   - id: end
+    display: { label: Hands the change on }
     depends_on: [same, checks]
     trigger_rule: none_failed_min_one_success
     runtime: bun

@@ -35,10 +35,37 @@ returns:
   outcome: recommend
   summary: why
 
+display:
+  label: Survey
+  short: Would triage build it?
+  blurb: "Judges a newly opened issue the way triage would, on an item of its own, and stops there. It starts nothing and writes nothing on the issue: its judgments are read together."
+  outcomes:
+    build: { label: would build, story: The survey judged it worth building }
+    narrow: { label: would narrow, story: "The survey judged it worth building, in a narrower form" }
+    split: { label: would split, story: The survey judged it is more than one change }
+    shape: { label: would need shaping, story: "The survey judged it worth doing, once a maintainer settles its open questions" }
+    recipe: { label: handled another way, story: The survey judged it is handled another way }
+    native: { label: handled another way, story: The survey judged it is handled another way }
+    fold: { label: would fold, story: The survey judged it belongs in another item }
+    park: { label: would park, story: The survey judged it should be parked for later }
+    deprecate: { label: would close, story: The survey judged it should be deprecated }
+    decline: { label: would close, story: The survey judged it should be declined }
+    close: { label: would close, story: The survey judged it should be closed }
+  phases:
+    - label: Read
+      cards:
+        - { title: Read the issue, text: "Reads the issue and its discussion, or the item given by hand", icon: inbox, kind: script, covers: [read] }
+    - label: Decide
+      cards:
+        - { title: Decide, text: "Decides whether the item is worth building, and how, as triage would", icon: scale, kind: agent, covers: [judge__judge] }
+        - { title: Would it start on its own, text: Decides whether it would start without you, icon: ruler, kind: agent, covers: [judge__admit] }
+        - { title: Record, text: Records the measurement, icon: database, kind: script, covers: [judge__admitted] }
+
 nodes:
   # The item as text: what a run by hand gave, or the issue the binding names, read
   # through the forge. An issue that cannot be read fails the run with the reason.
   - id: read
+    display: { label: Reads the issue }
     runtime: bun
     mutates_checkout: false
     with:

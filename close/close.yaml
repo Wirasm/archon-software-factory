@@ -22,8 +22,23 @@ inputs:
 # closed, it needs an operator.
 returns: { node: close, outcome: outcome, ends: [dropped], summary: why }
 
+display:
+  label: Drop or reshape
+  short: Carries out your answer
+  blurb: "Closes the pull request without merging when you drop it, or leaves it as a draft when you send it back to shaping."
+  outcomes:
+    dropped: { label: Dropped by you, story: { withChange: "You dropped it; the factory closed the PR without merging", withoutChange: You dropped it before a change was proposed } }
+    none: { label: nothing to do, story: Drop or reshape found no drop or reshape answer and did nothing }
+    not_closed: { label: "The forge would not close the PR: close or draft it by hand", story: "The factory could not carry out your drop or reshape on the change; do it by hand" }
+    reshape: { label: Needs shaping, story: { withChange: "You sent it back to shaping; the PR stays open as a draft", withoutChange: You sent it back to shaping before a change was proposed } }
+  phases:
+    - label: Drop or reshape
+      cards:
+        - { title: Drop or reshape, text: "Closes or drafts the change you dropped or reshaped, and says why on it", icon: git-pull-request, kind: script, covers: [close] }
+
 nodes:
   - id: close
+    display: { label: Carries out drop or reshape }
     runtime: bun
     mutates_checkout: false
     with:

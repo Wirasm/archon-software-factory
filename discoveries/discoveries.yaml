@@ -17,10 +17,17 @@ inputs:
 # When nothing was noticed the drain is skipped and the run completes with no result.
 returns: drain
 
+display:
+  label: Discoveries
+  short: Files what was noticed
+  blurb: "After a merge, files what agents noticed outside their own task as new work, or holds or drops it."
+  story: The factory looked for other work it noticed
+
 nodes:
   # An empty list is the common case: most deliveries notice nothing. Count the entries so
   # the manager is not started to say so.
   - id: intake
+    display: { label: Collect what agents noticed }
     runtime: bun
     with:
       discoveries: $INPUTS.discoveries
@@ -36,6 +43,7 @@ nodes:
       console.log(JSON.stringify({ entries }));
 
   - id: drain
+    display: { label: "File it as new work, or hold or drop it" }
     depends_on: [intake]
     when: "$intake.output.entries > 0"
     command: discoveries

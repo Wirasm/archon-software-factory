@@ -33,8 +33,23 @@ inputs:
 # drop it. Its reason is in `stop` too.
 returns: { node: plan, outcome: outcome, asks: asks, ends: [dropped], summary: stop }
 
+display:
+  label: Plan
+  short: Plans how to build it
+  blurb: Works out how to build the item and writes the plan down.
+  outcomes:
+    ask: { label: asked you, story: Plan asked you before writing the approach }
+    planned: { label: planned, story: Plan wrote the approach }
+    stop: { label: Stopped at planning, story: Plan stopped it }
+    dropped: { label: dropped by you, story: Your answer on the plan's ask dropped the item }
+  phases:
+    - label: Plan
+      cards:
+        - { title: Plan, text: Works out how to build the item and writes the plan down, icon: clipboard-list, kind: agent, covers: [plan] }
+
 nodes:
   - id: plan
+    display: { label: Writes the plan }
     command: plan
     mutates_checkout: false
     output_format:

@@ -29,6 +29,7 @@ returns: { node: verdict, outcome: outcome }
 
 nodes:
   - id: verdict
+    display: { label: Verdict }
     command: verdict
     mutates_checkout: false
     output_format:

@@ -32,6 +32,7 @@ The generated bindings then start every stage from that folder. Keep the folder 
 - **The engine coordinates.** Waiting, linking, limits, queues and what follows what are bindings in `.pack/pack.yaml`, not scripts in a stage.
 - **Prompts are generic.** No project, forge, provider or model is named in a prompt. What a project wants goes in its policy files (`policy/` holds the defaults).
 - **A new judgment runs as a shadow first.** It records what it would have done and nothing acts on it, until it has been compared with what happened. The README's "What is not there yet" lists the shadows.
+- **A stage carries its own words.** Its `display:` block holds the label, short line and blurb the Console shows, a label for each step and outcome, and what its answers do; `how-it-works.md` (named by `document` in `archon-plugin.json`) groups the stages. A new stage, step or outcome gets its words in the same change: `archon validate` warns on one without a label and fails on a stage that is in no group.
 - **Docs your change makes untrue are part of the change:** the README, `how-it-works.md` with its `groups:` header, and the skill in `skill/`.
 
 `evals/` holds the cases and logs the prompts were tuned against, including `evals/overrules/log.md`: each time an operator overruled a stage's verdict, with why. Add to it when you overrule one.

@@ -30,6 +30,7 @@ returns: report
 
 nodes:
   - id: report
+    display: { label: Writes the report }
     command: report
     mutates_checkout: false
     output_format:

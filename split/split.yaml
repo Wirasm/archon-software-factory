@@ -32,8 +32,23 @@ inputs:
 # `split` ends this item: the work goes on as its members, each its own item.
 returns: { node: members, outcome: outcome, asks: asks, ends: [split], summary: why }
 
+display:
+  label: Split
+  short: Cuts it into pieces
+  blurb: "Cuts an item triage judged to be more than one change into pieces, and starts each piece as a work order."
+  outcomes:
+    split: { label: Split into pieces, story: Split cut it into pieces }
+    waiting: { label: waiting to split, story: Split is waiting before it can cut it }
+    whole: { label: kept whole, story: Split kept it as one change }
+  phases:
+    - label: Split
+      cards:
+        - { title: Cut it into pieces, text: Decides how an item that is not one change is split, icon: scissors, kind: agent, covers: [cut] }
+        - { title: Start the pieces, text: Orders each piece that can start now as an item of its own, icon: inbox, kind: script, covers: [members] }
+
 nodes:
   - id: cut
+    display: { label: Decides how to split it }
     command: cut
     mutates_checkout: false
     output_format:
@@ -105,6 +120,7 @@ nodes:
   # binding starts the order stage on each member listed in `start`, and the order stage
   # takes a member once.
   - id: members
+    display: { label: Starts the pieces }
     depends_on: [cut]
     runtime: bun
     mutates_checkout: false

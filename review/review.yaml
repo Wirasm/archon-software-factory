@@ -27,6 +27,7 @@ returns: { node: review, outcome: outcome }
 
 nodes:
   - id: review
+    display: { label: Code review }
     command: review
     output_format:
       type: object

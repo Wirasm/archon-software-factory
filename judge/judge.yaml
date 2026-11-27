@@ -30,6 +30,7 @@ returns: judge
 
 nodes:
   - id: judge
+    display: { label: Decides whether to build }
     command: judge
     mutates_checkout: false
     output_format:
@@ -75,6 +76,7 @@ nodes:
   # The `admitted` node below records what the judgment would have done, so the prompt
   # and the project's admit policy can be tuned against what then happened to the item.
   - id: admit
+    display: { label: Would it start on its own }
     command: admit
     model: ['@judge', medium]
     mutates_checkout: false
@@ -119,6 +121,7 @@ nodes:
 
   # What admit would have done, as records for `archon metrics`: one per item, latest wins.
   - id: admitted
+    display: { label: Records the admit measurement }
     depends_on: [admit]
     runtime: bun
     mutates_checkout: false
