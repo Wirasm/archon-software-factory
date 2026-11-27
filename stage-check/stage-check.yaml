@@ -54,10 +54,52 @@ returns:
       does: The change is closed without merging, its branch kept, and nothing more is built until the item is shaped again. Your answer is written on the change.
       cost: The item waits for shaping, and the next build starts a new change from what is decided then.
 
+display:
+  label: Checks
+  short: "Review, tests, product"
+  blurb: "A review, a test check and a product check read the change and approve it or send it back."
+  outcomes:
+    approve: { label: approved, story: The checks approved it }
+    ask: { label: asked you, story: The checks asked you }
+    replan: { label: plan again, story: The checks sent it back to planning }
+    return: { label: returned, story: The checks sent it back }
+  answers:
+    send-back: { label: sent back }
+    one-more-round: { label: one more round }
+    other: { label: something else }
+    take-as-is: { label: taken as it is }
+    replan: { label: plan again }
+    drop: { label: dropped by you }
+    reshape: { label: needs shaping }
+  phases:
+    - label: Prepare
+      cards:
+        - { title: Read the base, text: Reads the commit the change is checked against, icon: git-branch, kind: script, covers: [base] }
+        - { title: Sizes, text: Reads the change's size at each delivery run since it was last planned, icon: ruler, kind: script, covers: [sizes] }
+    - label: Check
+      cards:
+        - { title: Code review, text: Reviews the change, icon: search-code, kind: check, covers: [review__review] }
+        - { title: Test check, text: Checks the tests prove the change, icon: flask-conical, kind: check, covers: [tests__tests] }
+        - { title: Product check, text: Looks at the change in a browser, icon: monitor-check, kind: check, covers: [product__product] }
+    - label: Verdict
+      cards:
+        - { title: Verdict, text: Approves the change or sends it back, icon: gavel, kind: check, covers: [verdict__verdict] }
+    - label: Round ends
+      cards:
+        - { title: Count the round, text: Records the round and the rounds allowed, icon: ruler, kind: script, covers: [limit] }
+        - { title: Rounds ran out, text: Asks you when the allowed rounds are used up, icon: circle-alert, kind: agent, covers: [exhausted] }
+        - { title: Hand on, text: "Hands the change on to CI, back to the builder or to Plan, or to you", icon: send, kind: script, covers: [end] }
+        - { title: Report, text: Writes the factory's report on the pull request, icon: message-square, kind: agent, covers: [report__report] }
+  marks:
+    - { node: verdict__verdict, outcome: return, means: returns }
+    - { node: verdict__verdict, outcome: approve, means: approves }
+  results: { round: /round, allowance: /allowance, change: /change }
+
 nodes:
   # The commit this change sits on, read after the builder's last commit: a builder
   # may move its branch onto newer work, and the checks must compare against that.
   - id: base
+    display: { label: Reads the base commit }
     bash: |
       onto="${INPUTS_LAND_ON:-}"
       [ -n "$onto" ] || onto=$BASE_BRANCH
@@ -66,6 +108,7 @@ nodes:
   # The change's size at the end of each delivery run since the item was last planned, as
   # the engine recorded it, for the verdict and the exhausted ask.
   - id: sizes
+    display: { label: Reads the change's sizes }
     runtime: bun
     mutates_checkout: false
     script: sizes
@@ -129,6 +172,7 @@ nodes:
   # Which round this is, and whether the start this round's outcome needs is used up: a
   # return goes to the builder twice on an item by itself, a replan to planning once.
   - id: limit
+    display: { label: Counts the round }
     depends_on: [verdict]
     runtime: bun
     script: limit
@@ -147,6 +191,7 @@ nodes:
   # round is not automatic: an agent reads what is left and recommends what to do, with
   # the prompt in commands/exhausted.md. The options are the stage's: the recommendation names one.
   - id: exhausted
+    display: { label: Rounds ran out }
     depends_on: [limit, sizes]
     when: "$limit.output.state == 'used_up'"
     command: exhausted
@@ -180,6 +225,7 @@ nodes:
       required: [asks, same_kind]
 
   - id: end
+    display: { label: Hands the change on }
     depends_on: [limit, exhausted]
     trigger_rule: all_done
     runtime: bun

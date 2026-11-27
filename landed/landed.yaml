@@ -39,8 +39,29 @@ returns:
       does: Nothing more happens. The finding stays in this run's report.
       cost: If the branch is broken, nothing fixes it.
 
+display:
+  label: Merged
+  short: The change is merged
+  blurb: The change is merged.
+  story: The factory checked the branch after the merge
+  outcomes:
+    broken_before: { label: broken before the merge }
+    broken_here: { label: broke the branch }
+    clear: { label: branch sound }
+    none: { label: nothing to check }
+    not_landed: { label: not merged }
+    unclear: { label: unclear }
+    waiting: { label: waiting on CI }
+  answers:
+    fix: { label: fix ordered }
+  phases:
+    - label: After the merge
+      cards:
+        - { title: Is the branch still sound, text: "Reads the branch after the merge, orders a fix when the change broke it, and asks you when it cannot tell", icon: shield-check, kind: agent, covers: [landed, verdict] }
+
 nodes:
   - id: landed
+    display: { label: Checks the branch after the merge }
     command: landed
     mutates_checkout: false
     output_format:
@@ -82,6 +103,7 @@ nodes:
 
   # Turns an outcome that needs an operator into an ask, so it shows in attention.
   - id: verdict
+    display: { label: Asks you when the branch needs a decision }
     depends_on: [landed]
     runtime: bun
     mutates_checkout: false

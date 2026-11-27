@@ -46,6 +46,40 @@ returns:
       does: Nothing is built and the item ends here. Your answer is the reason.
       cost: The work it asked for is not done under this item.
 
+display:
+  label: Triage
+  short: "Is it worth building?"
+  blurb: "Judges whether an item is worth building, the way the project's maintainers would."
+  outcomes:
+    build: { label: build, story: Triage judged it worth building }
+    close: { label: Closed by triage, story: Triage judged it should be closed }
+    decline: { label: Closed by triage, story: Triage judged it should be declined }
+    deprecate: { label: Closed by triage, story: Triage judged it should be deprecated }
+    fold: { label: Folded into another item, story: Triage judged it belongs in another item }
+    narrow: { label: narrow, story: "Triage judged it worth building, in a narrower form" }
+    native: { label: Handled another way, story: Triage judged it is handled another way }
+    park: { label: Parked by triage, story: Triage judged it should be parked for later }
+    recipe: { label: Handled another way, story: Triage judged it is handled another way }
+    shape: { label: Needs shaping, story: "Triage judged it worth doing, once a maintainer settles its open questions" }
+    split: { label: split, story: Triage judged it is more than one change }
+  answers:
+    build: { label: build }
+    split: { label: split }
+    drop: { label: dropped by you }
+    reshape: { label: needs shaping }
+    other: { label: something else }
+  phases:
+    - label: Decide
+      cards:
+        - { title: Decide, text: "Decides whether the item is worth building, and how", icon: scale, kind: agent, covers: [judge__judge] }
+    - label: Follow up
+      cards:
+        - { title: Would it start on its own, text: Decides whether it would start without you, icon: ruler, kind: agent, covers: [judge__admit] }
+        - { title: Record, text: Records the measurement, icon: database, kind: script, covers: [judge__admitted] }
+    - label: Hand on
+      cards:
+        - { title: The call, text: "Hands on build, narrow or split, and asks you about every other call", icon: send, kind: script, covers: [verdict] }
+
 nodes:
   - id: judge
     include: judge
@@ -59,6 +93,7 @@ nodes:
 
   # Builds the ask for a judgment that does not start the next stage by itself.
   - id: verdict
+    display: { label: Asks you when the call is yours }
     # all_done: the include's last nodes (the admit shadow) are skipped for every
     # judgment but build and narrow, and this node must run after every judgment.
     depends_on: [judge]

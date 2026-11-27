@@ -22,10 +22,29 @@ inputs:
 observes: true
 returns: { node: end, outcome: outcome, summary: summary }
 
+display:
+  label: Attend
+  short: Your agent's advice
+  blurb: "Reads the asks a stage left the way your own agent would, and records the answer it would give or that it would bring the ask to you. Advice only: it answers nothing."
+  outcomes:
+    none: { label: no asks to advise on, story: Attend found no open asks to advise on }
+    recorded: { label: advice recorded, story: Attend recorded how your agent would answer the asks }
+  phases:
+    - label: Read the asks
+      cards:
+        - { title: Count the asks, text: "Counts the asks the stage left, so no agent starts when there are none", icon: clipboard-list, kind: script, covers: [given] }
+    - label: Advise
+      cards:
+        - { title: Advise, text: "Says how your agent would answer each ask, or that it would bring the ask to you", icon: message-square, kind: agent, covers: [attend] }
+    - label: Record
+      cards:
+        - { title: Record, text: "Records the advice beside the asks; nothing acts on it", icon: database, kind: script, covers: [end] }
+
 nodes:
   # A link run that waits ends `waiting` with or without an ask. Count the asks, so the
   # agent is not started to say there are none.
   - id: given
+    display: { label: Counts the asks }
     runtime: bun
     mutates_checkout: false
     with:
@@ -37,6 +56,7 @@ nodes:
       emit({ asks: Array.isArray(asks) ? asks.length : 0 });
 
   - id: attend
+    display: { label: Advises on each ask }
     depends_on: [given]
     when: "$given.output.asks > 0"
     command: attend
@@ -66,6 +86,7 @@ nodes:
   # What the advice was, as records for `archon metrics`: three per ask, under the ask's
   # ref. It acts on nothing.
   - id: end
+    display: { label: Records the advice }
     depends_on: [given, attend]
     trigger_rule: none_failed_min_one_success
     runtime: bun

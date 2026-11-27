@@ -1,13 +1,29 @@
 ---
 groups:
   - name: Intake
-    stages: [order, triage, split, link]
+    blurb: Order, triage, split and link, and surveying new issues
+    kind: intake
+    stages: [order, triage, split, link, complexity, survey]
   - name: Plan and build
-    stages: [plan, stage-build]
+    blurb: Plan, then build
+    kind: build
+    stages: [plan, stage-build, attend]
   - name: Checks
-    stages: [stage-check, stage-host]
+    blurb: Checks, CI and PR reviews, catching up, and reviewing others' PRs
+    kind: check
+    stages: [stage-check, stage-host, catchup, inspect]
   - name: Landing
+    blurb: Gate, merge, and what follows the merge
+    kind: merge
     stages: [landgate, land, landed, discoveries, close, order-done]
+words:
+  round: check round
+  rounds: check rounds
+  sentBack: sent back
+  parked: Parked
+  workOrder: work order
+  workOrders: work orders
+exit: landed
 ---
 
 # How the factory works

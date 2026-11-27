@@ -22,6 +22,7 @@ returns: { node: product, outcome: outcome }
 
 nodes:
   - id: product
+    display: { label: Product check }
     command: product
     output_format:
       type: object

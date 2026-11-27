@@ -28,6 +28,7 @@ returns: { node: host, outcome: outcome }
 
 nodes:
   - id: host
+    display: { label: Reads CI and PR reviews }
     command: host
     mutates_checkout: false
     output_format:

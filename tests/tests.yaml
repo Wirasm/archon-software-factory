@@ -27,6 +27,7 @@ returns: { node: tests, outcome: outcome }
 
 nodes:
   - id: tests
+    display: { label: Test check }
     command: tests
     # A small model sometimes fails to produce a report that meets the schema on a large
     # change. A second attempt starts with a fresh context, which is what gets past it.

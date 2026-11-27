@@ -53,9 +53,31 @@ returns:
       does: The item ends here and nothing is built for it.
       cost: The work it asked for is not done under this item.
 
+display:
+  label: Link
+  short: "What does it wait on?"
+  blurb: "Finds how the item relates to the project's other work, and holds it until what it depends on has landed."
+  outcomes:
+    dropped: { label: Dropped by link, story: Link dropped it }
+    fold: { label: Folded into another item, story: Link folded it into another item }
+    none: { label: nothing to change, story: "Link found it was not waiting, and changed nothing" }
+    place: { label: placed, story: Link found what it relates to and sent it on to planning }
+    waiting: { label: waiting on what it needs, story: Link is holding it until what it depends on has landed }
+  phases:
+    - label: Read the order
+      cards:
+        - { title: Read the order, text: Reads what the order says about the item and its work order, icon: clipboard-list, kind: script, covers: [given] }
+    - label: Link
+      cards:
+        - { title: Link, text: "Links the item to related items, and decides whether it can be built now or waits", icon: link, kind: agent, covers: [link] }
+    - label: Hand on
+      cards:
+        - { title: Hand on, text: "Hands the item to planning, or leaves it waiting", icon: send, kind: script, covers: [end] }
+
 nodes:
   # The order's result as fields a prompt can name, and the item's key.
   - id: given
+    display: { label: Reads the order }
     runtime: bun
     mutates_checkout: false
     with:
@@ -68,6 +90,7 @@ nodes:
     output_format: { type: object }
 
   - id: link
+    display: { label: Links related items }
     depends_on: [given]
     command: link
     mutates_checkout: false
@@ -118,6 +141,7 @@ nodes:
   # the plan stage that `place` starts. It decides nothing. An ask with no recommendation
   # carries the stage's reason in the recommendation's place.
   - id: end
+    display: { label: Hands the item on }
     depends_on: [link]
     runtime: bun
     mutates_checkout: false

@@ -27,11 +27,33 @@ inputs:
 observes: true
 returns: { node: end, outcome: outcome, summary: summary }
 
+display:
+  label: Order done
+  short: Reports finished orders
+  blurb: "When the last member of a work order is done, reports the order, and proposes the members' shared branch for the land gate when they landed together."
+  outcomes:
+    open: { label: members still open, story: A member of the work order is still open; nothing was reported }
+    already: { label: already reported, story: The work order was reported before; nothing changed }
+    unknown: { label: could not tell, story: The factory could not read whether every member is done }
+    reported: { label: reported, story: Every member is done; the work order was reported }
+    proposed: { label: proposed for landing, story: "Every member is done; their shared branch was proposed, and the land gate decides" }
+  phases:
+    - label: Read
+      cards:
+        - { title: Read the order, text: "Reads whether every member is done, and the branch they shared", icon: clipboard-list, kind: script, covers: [read] }
+    - label: Report
+      cards:
+        - { title: Report, text: "Reports the order, and proposes the shared branch when the members landed on one", icon: message-square, kind: agent, covers: [report] }
+    - label: Hand on
+      cards:
+        - { title: Hand on, text: Hands a proposed branch to the land gate, icon: send, kind: script, covers: [end] }
+
 nodes:
   # The facts the engine holds: whether every member is done, whether this order was
   # reported before, and the branch the members shared. A member is done when its change
   # merged, it ended, or it is itself a work order whose members are all done.
   - id: read
+    display: { label: Reads the order's members }
     runtime: bun
     mutates_checkout: false
     script: |
@@ -63,6 +85,7 @@ nodes:
       required: [state, key, members, branch]
 
   - id: report
+    display: { label: Reports the order }
     depends_on: [read]
     when: "$read.output.state == 'done'"
     command: order-done
@@ -97,6 +120,7 @@ nodes:
   # The outcome the bindings route on. `proposed` hands the change to the land gate with
   # the base branch as the branch it lands on; every other outcome starts nothing here.
   - id: end
+    display: { label: Hands the order on }
     depends_on: [read, report]
     trigger_rule: none_failed_min_one_success
     runtime: bun
