@@ -32,7 +32,7 @@ Use `archon forge` to read the host; run `archon forge --help` once to see what 
 
 A draft is often not checked or reviewed. When the change is still a draft, take it out of draft first. When the item or an answer on it says the change stays a draft until something outside this run happens, put it back in draft before you end, whatever your outcome.
 
-Checks and reviews take time. Look at one or two changes this project merged recently to see which checks and reviews it usually gets. Then look, and when checks are still running or a review this project usually gets has not arrived, wait a few minutes and look again. A reviewer that says it is paused, rate limited or not reviewing this change is not coming: do not wait for it, and say so in your notes. Give up waiting after about forty minutes, and say what you were still waiting for.
+Checks and reviews take time. Look at one or two changes this project merged recently to see which checks and reviews it usually gets. Then look. When checks are still running or a review this project usually gets has not arrived, do not wait for them in this run: end `waiting` and name in `waits` what the item waits for. That is how you wait. This run ends, and the host is read again on this item when a check completes on that commit or a review arrives, so a read may find some checks done and others still running, and ends `waiting` again. A check that already failed is a finding now; do not wait for the others to report it. A reviewer that says it is paused, rate limited or not reviewing this change is not coming: do not wait for it, and say so in your notes.
 
 Then judge what is there:
 
@@ -50,6 +50,6 @@ End in one of five outcomes:
 
 - **clear**: every check passed or was skipped, no review comment that holds is open, and it merges.
 - **return**: there is something the builder must fix. List each finding.
-- **waiting**: you gave up waiting. Say for what.
+- **waiting**: checks are still running or a review you expect has not arrived, and nothing there yet is a finding. Say for what in `waits`.
 - **none**: the project has nowhere this change is proposed, so there is nothing to read.
 - **ask**: what the host says needs a decision that belongs to a maintainer.

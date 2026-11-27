@@ -22,7 +22,7 @@ Read both with `archon workflow runs --item <key>`.
 | stage-build `built` / `built_for_host` / `built_for_land` | The checks / the host round / the catch-up stage. `replan`: plan starts with what the builder said (once on an item; after that it asks). `ask`: an ask is open. |
 | stage-check `approve` / `return` | The host round / the builder. `replan`: plan starts with what the checks said (once on an item; after that it asks). `ask`: an ask is open. |
 | stage-host `ready` / `return` | The land gate / the builder, then the host again. `ask`: an ask is open. |
-| stage-host `waiting` | Nothing, and no ask. It gave up waiting for the project's checks. The item shows as stopped in `archon workflow attention`. Report it. |
+| stage-host `waiting` | Nothing now, and no ask. The item waits for the project's checks or a review, listed under `Waiting for` in the item read, and the host round starts again by itself when one arrives. Listed in `archon workflow attention` as `overdue_wait` when none came in time: report it. |
 | landgate `ask` | An ask is open; its context says what the land policy would have done. With the setting `land_gate: policy`, a change the policy lets land ends `land` and the land stage starts. |
 | land `landed` | The landed check and the discoveries drain. `behind`: the builder brings the change up to date with its landing branch, then the catch-up stage. `returned`: the builder, then the host round. `stop`, `ask`: an ask is open. |
 | catchup `ready` | The land stage, with no host round and no second land gate: the change is the one that was approved, and its checks are green. `changed`: the host round, then the land gate. |
@@ -55,7 +55,12 @@ change proposed; that plans and builds it a second time.
 - **A start limit is reached** (`Start limits: 2 of 2`). A returned change goes back to
   its builder twice without an operator; the third time the stage asks. Answer the ask.
   The count starts over when the item is planned again.
-- **It ended where nothing starts** (a plan `stop`, a host round `waiting`). Report it with the stage's reason. When
+- **What it waits for did not come** (`overdue_wait` in attention, `Waiting for` in the item
+  read: a host round that ended `waiting`). A check or review that still arrives starts the
+  host round. When the wake bindings are missing from the install's sources file, or the
+  check will never run, start the host round again from the waiting run's record, as above,
+  and report why nothing woke it.
+- **It ended where nothing starts** (a plan `stop`). Report it with the stage's reason. When
   the person says it is over, end it: `archon workflow end --item <key> --as <you> -- <reason>`.
   An ended item leaves attention, and a new order opens it again.
 

@@ -595,6 +595,50 @@ bindings:
       change: { result: /change }
       returned_before: { result: /returned }
       builder_reply: { result: /reply }
+  # A host read that finds checks still running or a review still expected ends `waiting`
+  # and says what its item waits for (`returns.waits`): `checks` about the head commit,
+  # `review` about the head commit on the pull request it names. These two start the host
+  # stage again on that item when a check completes on that commit, or a review is
+  # submitted on that pull request at that commit, with what the waiting run was given and
+  # in the checkout it left. Neither maps an item: a check names only a commit, and a
+  # review names its pull request, which is the wait's subject while the item is keyed by
+  # whatever it was ordered as. Each completed check is an event of its own, so a read may
+  # end `waiting` again. Add both generated bindings to the GitHub source plugin's
+  # bindings, as for the labels; the source receives the events by webhook or, with
+  # `observe`, reads them while a wait is open.
+  stage-host-on-checks:
+    workflow: stage-host
+    resource: stage-host
+    capacity: 5
+    overlap: queue
+    event:
+      kind: check.changed
+      actions: [changed]
+      predicates: [{ field: check.phase, equals: completed }]
+    wake: { workflow: stage-host, wait: checks, about: check.revision, checkout: waiting-run }
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      change: { input: change }
+      returned_before: { input: returned_before }
+      builder_reply: { input: builder_reply }
+  stage-host-on-review:
+    workflow: stage-host
+    resource: stage-host
+    capacity: 5
+    overlap: queue
+    event:
+      kind: review.changed
+      actions: [submitted]
+    wake: { workflow: stage-host, wait: review, about: review.commit, checkout: waiting-run }
+    inputs:
+      item: { input: item }
+      land_on: { input: land_on }
+      answers: { item: answers }
+      change: { input: change }
+      returned_before: { input: returned_before }
+      builder_reply: { input: builder_reply }
   # A builder that cannot build the plan (`stop`) and a check round whose reports say
   # replan send the item back to planning with what they ended with, once on an item each.
   # After that the stage ends as `ask`, and `replan` is one of the options.

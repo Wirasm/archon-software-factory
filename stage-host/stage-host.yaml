@@ -2,7 +2,9 @@ name: stage-host
 description: |
   Delivery as three stages, stage three: one read of what the place the change is proposed
   says about it. Ready ends delivery; a finding goes back to the builder through the
-  pack's bindings, and the host is read again after the fix.
+  pack's bindings, and the host is read again after the fix. A read that finds checks
+  still running or a review still expected ends `waiting` with what it waits for, and the
+  host is read again when that happens.
 
 inputs:
   item:
@@ -31,6 +33,9 @@ returns:
   node: end
   outcome: outcome
   asks: asks
+  # What a `waiting` round waits for: the pack's wake bindings (`stage-host-on-checks`,
+  # `stage-host-on-review`) start this stage again on the item when it happens.
+  waits: waits
   summary: summary
   options:
     - id: send-back

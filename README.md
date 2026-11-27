@@ -125,19 +125,19 @@ The command needs the project's base branch, the branch changes land on. It read
 
 The command prints what it wrote in four groups. Act on each:
 
-- **Run-ended bindings** and **asks-settled bindings**: register every one. The command prints an `archon trigger add '<file>'` line for each, close to a hundred of them. Run those lines, or register them in one go: every generated file except the order file and the label file.
+- **Run-ended bindings** and **asks-settled bindings**: register every one. The command prints an `archon trigger add '<file>'` line for each, close to a hundred of them. Run those lines, or register them in one go: every generated file except the order file and the event files.
 
   ```bash
-  for f in <bindings-dir>/*.json; do echo "$f" | grep -Eq -- '([^k]-order|-(order|inspect)-on-label|-survey-on-opened)-[0-9a-f]+\.json$' || archon trigger add "$f"; done
+  for f in <bindings-dir>/*.json; do echo "$f" | grep -Eq -- '([^k]-order|-(order|inspect)-on-label|-survey-on-opened|-stage-host-on-(checks|review))-[0-9a-f]+\.json$' || archon trigger add "$f"; done
   ```
 
-  PowerShell: `Get-ChildItem <bindings-dir>\*.json | Where-Object { $_.Name -notmatch '([^k]-order|-(order|inspect)-on-label|-survey-on-opened)-[0-9a-f]+\.json$' } | ForEach-Object { archon trigger add $_.FullName }`
+  PowerShell: `Get-ChildItem <bindings-dir>\*.json | Where-Object { $_.Name -notmatch '([^k]-order|-(order|inspect)-on-label|-survey-on-opened|-stage-host-on-(checks|review))-[0-9a-f]+\.json$' } | ForEach-Object { archon trigger add $_.FullName }`
 
   Registering all of them can take several minutes. It is done when the loop returns; `archon trigger check` then lists them.
 
-  The pattern leaves out the order file and the three event files, and keeps `...-order-after-work-order-work-order-<digest>.json`, which starts the members of an order of several items. A file is active as soon as it is added.
+  The pattern leaves out the order file and the five event files, and keeps `...-order-after-work-order-work-order-<digest>.json`, which starts the members of an order of several items. A file is active as soon as it is added.
 - **Fire-only bindings**: one file, the order file (`...-order-<digest>.json`). Do not add it. You fire it by hand in step 5.
-- **Event bindings**: three files, `...-order-on-label-<digest>.json`, `...-inspect-on-label-<digest>.json` and `...-survey-on-opened-<digest>.json`. Do not add them with `archon trigger add`. Leave them unless you set up [label intake](#label-intake-a-label-is-a-work-order), which says what each is for. The command's own output tells you to add it to a sources file and start a server; that is the label intake setup, and nothing else needs it.
+- **Event bindings**: five files. Do not add them with `archon trigger add`: each is one object for the `bindings` array of a sources file, and the command's own output says so. `...-stage-host-on-checks-<digest>.json` and `...-stage-host-on-review-<digest>.json` start the host round again when the checks or a review it waited for arrive; set them up as [host wakes](#host-wakes-the-host-is-read-again-when-checks-finish) say, or every change whose checks were still running needs you to start its host round by hand. `...-order-on-label-<digest>.json`, `...-inspect-on-label-<digest>.json` and `...-survey-on-opened-<digest>.json` are optional: [label intake](#label-intake-a-label-is-a-work-order) says what each is for.
 
 Then check everything that is registered:
 
@@ -422,6 +422,21 @@ Things to know before you rely on it:
 
 **On an install that receives webhooks,** the same binding object goes into the same `bindings` array of a source with `webhookSecretEnv`, and a server started with `ARCHON_TRIGGER_HOST=<host-id>` starts the runs. Archon's guide covers the server side: [configure GitHub event starts](https://archon.diy/guides/workflow-triggers/#configure-github-event-starts).
 
+### Host wakes: the host is read again when checks finish
+
+**What it does.** A host round that finds the project's checks still running, or a review the project usually gets not yet there, does not sit and poll. It ends `waiting` and leaves what the item waits for: `checks` at the head commit of the change, `review` on its pull request at that commit, or both. Two event bindings start the host round again on the item, with what the waiting run was given and in its checkout: `stage-host-on-checks` when a check completes on that commit, `stage-host-on-review` when a review is submitted on that pull request at that commit. No agent and no capacity slot is held while the item waits.
+
+**Default.** Off until the two bindings are in a source's config. Without them a `waiting` round still ends and leaves its waits, and nothing starts the host again: past the time the round gave, `archon workflow attention` lists the item as an overdue wait, and an operator starts the host round by hand.
+
+**How.** The generated `...-stage-host-on-checks-<digest>.json` and `...-stage-host-on-review-<digest>.json` files are two more objects for the `bindings` array of the sources file [label intake](#label-intake-a-label-is-a-work-order) describes. With no label intake, follow its steps 1 to 5 with these two objects as the only entries. On an install that receives no webhooks the [wake timer](#the-wake-timer) reads the checks and reviews while a wait is open, and reads nothing when none is. On an install that receives webhooks, the source needs the forge's check and review events delivered.
+
+Things to know before you rely on it:
+
+- **Each completed check starts one host read.** The engine wakes the item for the first check that completes on the commit. A read that finds other checks still running ends `waiting` again, and the next completed check starts the next read. A change with many checks gets several short reads where it had one long one.
+- **Only the commit the round named counts.** A check or review of an older commit starts nothing. A push alone does not move the wait: the host round that follows the builder's fix leaves waits about the new commit, and those replace the old ones.
+- **A wait past its time wakes nothing and is not closed.** The item is listed in `archon workflow attention` as `overdue_wait` with ref `wait:<run-id>`. A late check or review still starts the host. To stop waiting, start the host round on the item again, or withdraw the wait with `archon workflow answer --withdraw wait:<run-id>`.
+- **`archon workflow runs --item <key>`** lists what an item waits for under `Waiting for`.
+
 ### An issue in work shows who has it
 
 **What it does.** When an item is ordered from an issue, the order stage assigns that issue: to whoever added the `factory` label, or, for an order by hand, to the account the factory's credential acts as. With `in_work_label` set, it also adds that label to the issue and removes it when the item ends: its change landed, an operator dropped it, or, for an issue that was split, its last member is done. The assignee stays after the item ends. An answer of `reshape` keeps the label, because the item is still in work.
@@ -443,11 +458,11 @@ It needs Archon 0.16.1 and a forge plugin of that release (`archon plugin update
 
 ### The wake timer
 
-**What it does.** Installs one job per Archon install that keeps `archon workflow wake --watch` running. The watch reads labels for label intake, starts a stage whose starting process died, and continues paused runs when what they wait for happens.
+**What it does.** Installs one job per Archon install that keeps `archon workflow wake --watch` running. The watch reads labels for label intake and the checks and reviews for [host wakes](#host-wakes-the-host-is-read-again-when-checks-finish), starts a stage whose starting process died, and continues paused runs when what they wait for happens.
 
 **Default.** Not installed. The factory's stage-to-stage starts do not need it: the process that ends a run or records an answer starts what follows.
 
-**Change it when** you use label intake, or you want starts that were left behind picked up without a command by hand.
+**Change it when** you use label intake or host wakes on an install that receives no webhooks, or you want starts that were left behind picked up without a command by hand.
 
 **How.** The command is the same on every operating system:
 
@@ -574,7 +589,7 @@ Pass `--config` again if you used it. Then:
 
 1. Run every `archon trigger add` line the command printed. A file with the same name replaces the one registered before.
 2. Remove what the pack no longer declares. A binding the update dropped leaves its old file in Archon's triggers directory (`~/.archon/triggers/`, or `triggers/` under `ARCHON_HOME`). Delete each file there that an earlier `pack bindings` run wrote for this repository and that is not in the list the command just printed. `archon trigger check` reports a leftover whose stage no longer exists.
-3. If you use label intake, replace the binding object in your sources file with the new `...-order-on-label-<digest>.json`.
+3. Replace each binding object in your sources file with its new generated file: `...-stage-host-on-checks-<digest>.json` and `...-stage-host-on-review-<digest>.json` for [host wakes](#host-wakes-the-host-is-read-again-when-checks-finish), and the label and survey files if you use label intake. An update that adds an event binding adds an object there: host wakes arrived this way, and until both objects are in the file a host round that ends `waiting` is started again only by hand.
 4. Run `archon trigger check` and fix what it reports.
 5. Run `archon hold lift`.
 6. Install the [skill](#install-the-skill) again.
@@ -590,7 +605,7 @@ Work through these in order, from the project's checkout.
 3. **The hold is set.** `archon workflow status` says so. Lift it with `archon hold lift`.
 4. **A binding is broken or missing.** `archon trigger check` exits nonzero and names the file. `archon pack graph dynamous-community.archon-software-factory` shows every arrow between stages, whether it is active on this install, and which outcomes start nothing.
 5. **The item waits on another item.** Its last link run ended `waiting`. The item read lists what it depends on under `Links`, and the run's result names it in `waits_on`. See [items that wait](#items-that-wait).
-6. **The item stopped, or it is finished.** `archon workflow attention` lists an item as `stopped`, with the stage, the outcome and one line of why, when its last run ended where nothing starts and left no ask: an order that was `refused`; a plan that ended `stop`; a split that ended `waiting`; a host round that ended `waiting`; a link run that ended `none`; a close step that ended `reshape` or `not_closed`. It needs an operator, takes no answer, and stays listed until a run starts on the item again. An item that is finished is not listed: each stage declares the outcomes that finish its item (`returns.ends`). Those are an order that ended `work_order`, a split that ended `split`, a link run that ended `dropped` and a close step that ended `dropped`. The stages that only observe an item (`observes: true`: attend, complexity, landed, inspect, survey, order-done) never stop, end or move it, whatever they end with. A link run that ended `waiting` is not listed either: the item holds a `depends_on` the engine counts as a wait, and it is woken when what it waits on ends. Read any run's result with `archon workflow get <run-id> --json`.
+6. **The item stopped, or it is finished.** `archon workflow attention` lists an item as `stopped`, with the stage, the outcome and one line of why, when its last run ended where nothing starts and left no ask: an order that was `refused`; a plan that ended `stop`; a split that ended `waiting`; a link run that ended `none`; a close step that ended `reshape` or `not_closed`. It needs an operator, takes no answer, and stays listed until a run starts on the item again. An item that is finished is not listed: each stage declares the outcomes that finish its item (`returns.ends`). Those are an order that ended `work_order`, a split that ended `split`, a link run that ended `dropped` and a close step that ended `dropped`. The stages that only observe an item (`observes: true`: attend, complexity, landed, inspect, survey, order-done) never stop, end or move it, whatever they end with. A link run that ended `waiting` is not listed either: the item holds a `depends_on` the engine counts as a wait, and it is woken when what it waits on ends. Nor is a host round that ended `waiting`: it left what the item waits for, shown under `Waiting for` in the item read, and the item is listed as `overdue_wait` only when that has not happened in the time the round gave. See [host wakes](#host-wakes-the-host-is-read-again-when-checks-finish). Read any run's result with `archon workflow get <run-id> --json`.
 7. **Its stage is full.** The item read says what the start waits behind. See [how many items run at once](#how-many-items-run-at-once).
 8. **A start was admitted and nothing runs it.** The item read shows its state as `unowned`. Run it once with `archon trigger execute <request-id> --host <host-id>`.
 9. **A run on the item lost its process.** One run of a stage works an item at a time, so a dead run holds the item. The item read says when a run's owner is gone and prints `archon workflow resume <run-id>` and `archon workflow abandon <run-id>`.
@@ -694,7 +709,7 @@ The first shows the item's last link run as `waiting` and its `depends_on` links
 
 ## Delivery as three stages
 
-Delivery is three stages, `stage-build`, `stage-check` and `stage-host`, each a run of its own on the item, started by the pack's bindings. A check that returns the change starts the builder in the session it last had on the item; an approval starts the host round; and an answer starts only the stage its option names.
+Delivery is three stages, `stage-build`, `stage-check` and `stage-host`, each a run of its own on the item, started by the pack's bindings. A check that returns the change starts the builder in the session it last had on the item; an approval starts the host round; and an answer starts only the stage its option names. A host round that finds checks still running or a review still expected ends `waiting` and holds nothing while the item waits; it starts again when one arrives ([host wakes](#host-wakes-the-host-is-read-again-when-checks-finish)).
 
 **The round limit.** A check that returns the change starts the builder by itself twice on an item, and so does a host read, counted since the item was last planned. So without an operator an item gets three check rounds and three host reads. The engine keeps the count: the two bindings that carry a return to the builder declare `limit: { starts: 2, reset_on: plan }` in [`.pack/pack.yaml`](.pack/pack.yaml), and `archon workflow runs --item <key>` shows where each limit stands. The engine refuses a start past its limit and lists the item in `archon workflow attention` as stopped, with the limit; that entry takes no answer. So a stage does not hand on to one: it reads the count, and a round that would return the change with no starts left ends in an ask instead, with an agent's recommendation of what to do. `one-more-round` and `send-back` on that ask start the builder through bindings that have no limit, so an answer is never refused; the round after it asks again if it still returns the change. To change the limit, change `starts` and write the bindings again.
 
@@ -739,10 +754,10 @@ It starts after these endings, the ones that carry asks: plan `ask`, link `waiti
 
 - **Nothing lands without an operator, unless you switch it on.** After a ready change the land gate asks, every time, and says what the project's land policy would have done. `land_gate: policy` makes the gate act on the policy ([settings](#policy-files-and-project-settings)). The land stage then merges the change into its landing branch through the forge, when it still merges and the host's checks at its head are green; a change that does not goes back to its builder.
 - **The round limit asks; it does not stop.** The pack's stages ask before a start would be refused, so the engine's refusal is never reached. A start refused all the same (a binding file changed by hand, a stage that failed before its ask) is on its receipt (`archon trigger list`) and listed in `archon workflow attention`; it is not among the item's asks, so it takes no answer.
-- **A host round that ends `waiting` starts nothing and leaves no ask.** The host stage gave up waiting for the project's checks or reviews. Nothing reads the host again by itself. The item shows as stopped in `archon workflow attention`; an operator starts the host round again.
+- **Host wakes are not measured yet.** Since 2026-11-27 a host round that ends `waiting` leaves what the item waits for, and the host is read again when a check completes or a review arrives ([host wakes](#host-wakes-the-host-is-read-again-when-checks-finish)). It has not run on a real change. Known before it has: every completed check starts a read, so a change with many checks gets many; each of those reads counts as a round in the report; and a check or review that never comes wakes nothing, so the item is listed as an overdue wait and an operator decides.
 - **A plan that stops leaves no ask.** A plan that ends `stop` shows the item as stopped in `archon workflow attention`, with the reason, and nothing starts until an operator acts. Triage does ask: every judgment that is not `build`, `narrow` or `split` leaves an ask with the reason, and the answer (`build`, `split`, `drop` or `reshape`) starts the link, split or close stage. Nothing runs the shaping itself: after `reshape`, an operator settles the open questions and orders the item again.
 - **The link stage holds an item only inside a work order.** On an item outside the item's work order it does not wait and names what it would have waited on ([items that wait](#items-that-wait)). What an order states with `depends_on` holds everywhere. Before that shadow goes, an outside blocker that nobody has ordered needs its rule: the link stage is told to ask about it and never to wait on it silently, and that is not measured.
-- **A waiting item is told only of an ending.** The link stage starts on it again when the item it waits on lands or ends in one of the ways listed under [items that wait](#items-that-wait). Nothing tells it when that item only sits: an ask nobody answers, a host round that ended `waiting`, an issue closed on the forge by hand. It stays `waiting` and visible until an operator moves the blocker.
+- **A waiting item is told only of an ending.** The link stage starts on it again when the item it waits on lands or ends in one of the ways listed under [items that wait](#items-that-wait). Nothing tells it when that item only sits: an ask nobody answers, a host round whose wait is overdue, an issue closed on the forge by hand. It stays `waiting` and visible until an operator moves the blocker.
 - **A link run that ends `fold` or `dropped` starts nothing.** `fold` leaves an ask; `dropped` ends the item.
 - **A work order's last stage is not measured yet.** Since 2026-11-26 the [order-done stage](#when-a-work-order-is-done) reports a work order when its last member is done, and proposes a shared branch against the base branch. It has run on scratch orders only: the report on members that landed on the base branch. The path from a shared branch to a merged change has not run on a real order. Not tried either: `send-back` on the land gate's ask for such a change, which starts a builder on the work order's item in a checkout cut from the shared branch. And a member ended by hand, or one ordered into an order that was already reported, starts no report.
 - **The label orders one item.** `depends_on` and `items` reach the order stage only through an order file.

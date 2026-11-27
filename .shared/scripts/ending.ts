@@ -2,6 +2,8 @@
 // result the pack's bindings read. It maps the agent's ending to the outcome the bindings
 // route on, passes the asks along, and writes the round metrics. It judges nothing. The
 // options of an ask are the stage's `returns.options`; no ask written here carries any.
+// A host round that ends `waiting` passes on what the agent said the item waits for
+// (`returns.waits`), which the pack's wake bindings start the host stage again on.
 //
 // Inputs: `stage`, the workflow's name; `last`, what the stage's agent ended with; `change`,
 // where the change is proposed; `returned`, what goes back to the builder when this run
@@ -91,6 +93,7 @@ emit({
     // What the builder says it did about what it was given; nothing on a first build.
     ? { reply: returned ? input('last') : '' }
     : { noticed: last.noticed ?? parse('checked')?.noticed ?? [], round }),
+  ...(stage === 'stage-host' ? { waits: outcome === 'waiting' ? last.waits ?? [] : [] } : {}),
   asks,
   metrics: [
     ...(outcome === 'ready' ? [count('sf.ended_ready', 'runs', 1)] : []),

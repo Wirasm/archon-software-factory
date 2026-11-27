@@ -64,7 +64,7 @@ Do these before anything else, and tell the person what you found in a few lines
    and `abandon` commands), and when an admitted start is `unowned` (run it once with
    `archon trigger execute <request-id> --host <host-id>`). Never abandon a run because
    it is old; abandon only one whose process you have verified is gone.
-6. With label intake set up: `archon workflow wake schedule status --json` shows whether
+6. With label intake or host wakes set up: `archon workflow wake schedule status --json` shows whether
    the wake job is installed, registered, and what its last pass failed on.
 
 Then keep one `archon workflow attention --watch --json` stream open as a background task
@@ -151,9 +151,11 @@ Runs that started before the update finish on the pack revision they started wit
 - A work order is reported once, when its last member is done (`order-done`; the report is in
   that run's result and a notice). A member ended by hand starts no report: start
   `order-done` on the order's item.
-- A host round that ends `waiting` and a plan that ends `stop` start nothing and leave no
-  ask; the item shows as stopped. A triage judgment that is not `build`, `narrow` or
-  `split` leaves an ask, and its answer starts the next stage.
+- A plan that ends `stop` starts nothing and leaves no ask; the item shows as stopped. A
+  host round that ends `waiting` is started again when a check completes or a review
+  arrives, and by nothing when neither comes: the item is then listed as an overdue wait.
+  A triage judgment that is not `build`, `narrow` or `split` leaves an ask, and its answer
+  starts the next stage.
 - Nothing lands without an answer unless the project set `land_gate: policy`.
 - A split member that waits on a ruling or a signal starts only when the split runs
   again, and a split does not create the landing branch.

@@ -61,7 +61,28 @@ nodes:
               from: { type: string }
               why: { type: string }
             required: [comment, from, why]
-        waited: { type: string, description: 'How long you waited and for what.' }
+        waited: { type: string, description: 'What is still running or expected, when you end waiting.' }
+        waits:
+          type: array
+          description: 'With waiting: what the item now waits for. This run ends, and the host is read again on the item when a check completes on that commit or a review is submitted on it. One entry for the checks, one for a review, or both; the first that happens starts the read. Past the time of any of them the item is listed for an operator as overdue. Empty with every other outcome.'
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              event: { type: string, enum: [checks, review] }
+              about: { type: string, description: 'The full commit id of the head of the change, as the host names it. Only a check or a review of that commit counts.' }
+              subject:
+                description: 'For review: where the change is proposed, as the host numbers it. For checks: null.'
+                anyOf:
+                  - type: object
+                    additionalProperties: false
+                    properties:
+                      kind: { type: string, enum: [pr] }
+                      number: { type: integer }
+                    required: [kind, number]
+                  - type: 'null'
+              within_minutes: { type: integer, description: 'How many minutes from now you expect it at the latest, from how long it took on changes this project merged recently.' }
+            required: [event, about, subject, within_minutes]
         asks:
           type: array
           description: 'Each decision that belongs to a maintainer. Empty when there is none.'
@@ -91,4 +112,4 @@ nodes:
             required: [question, context, options, recommendation]
         notes: { type: string, description: 'Anything worth saying that has no field here.' }
         for_next: { type: string, description: 'Anything the builder who fixes this, or the maintainer who lands it, needs from you that has no field here. Write it to them.' }
-      required: [outcome, summary, head, findings, declined, waited, asks, notes, for_next]
+      required: [outcome, summary, head, findings, declined, waited, waits, asks, notes, for_next]
