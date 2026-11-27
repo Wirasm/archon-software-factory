@@ -330,7 +330,7 @@ An item keeps the config its most recent run started with, so editing the file c
 
 **Change it when** the factory keeps asking something your maintainers have already decided, holds changes to the wrong bar, or should land some changes without asking.
 
-**How.** Put a settings file in the project at `.archon/packs/dynamous-community.archon-software-factory.yaml` and commit it. A run reads it from its own checkout, so an uncommitted file is not seen.
+**How.** Put a settings file in the project at `.archon/packs/dynamous-community.archon-software-factory.yaml` and commit and push it. A run reads it from its own checkout, which starts from the branch on the remote, so a file that is uncommitted, or committed but not pushed, is not seen.
 
 ```yaml
 settings:
